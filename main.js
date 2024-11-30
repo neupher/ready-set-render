@@ -1,10 +1,10 @@
 const canvas = document.getElementById("webgl-canvas");
 
 // Initialize the WebGL context
-const gl = canvas.getContext("webgl");
+const gl = canvas.getContext("webgl2");
 
 if (!gl) {
-  alert("WebGL not supported in this browser!");
+  alert("WebGL2 not supported in this browser/device!");
 } else {
   console.log("WebGL initialized successfully!");
 }
