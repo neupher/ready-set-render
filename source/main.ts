@@ -1,4 +1,4 @@
-import { setupRightMenu } from './ui/right_menu';
+import { setupRightMenu } from './ui/right_menu.js';
 
 // Select the canvas element
 const canvas = document.getElementById('webgl-canvas') as HTMLCanvasElement;
