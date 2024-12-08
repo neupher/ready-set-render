@@ -1,4 +1,6 @@
-import { setupRightMenu } from './ui/right_menu.js';
+// if "file not found" try adding .js extensions
+import { setupRightMenu } from './ui/right_menu';
+import { Renderer } from './renderer/renderer';
 // Select the canvas element
 const canvas = document.getElementById('webgl-canvas');
 // Initialize the WebGL context
@@ -21,8 +23,26 @@ window.addEventListener('resize', resizeCanvas);
 // Set the canvas background color to black
 gl.clearColor(0.1, 0.1, 0.1, 1.0); // RGBA: Black
 gl.clear(gl.COLOR_BUFFER_BIT);
+const renderer = new Renderer(canvas);
+function onMenuItemSelected(selection) {
+    console.log(`Menu item selected: ${selection}`);
+    switch (selection.toLowerCase()) {
+        case 'cube':
+            renderer.setPrimitive('cube');
+            break;
+        case 'sphere':
+            renderer.setPrimitive('sphere');
+            break;
+        case 'line mode':
+            renderer.setRenderMode('line');
+            break;
+        case 'webgl mode':
+            renderer.setRenderMode('webgl');
+            break;
+        default:
+            console.warn(`Unknown selection: ${selection}`);
+            break;
+    }
+}
 // Initialize the menu
-setupRightMenu(() => {
-    // Placeholder for future callback when a menu item is selected
-    console.log('Menu item selected.');
-});
+setupRightMenu(onMenuItemSelected);

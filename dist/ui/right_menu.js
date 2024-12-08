@@ -13,8 +13,8 @@ export function setupRightMenu(onMenuItemSelected) {
     const menuItems = document.querySelectorAll('#primitives-menu li');
     menuItems.forEach((menuItem) => {
         menuItem.addEventListener('click', () => {
-            console.log(`Menu item clicked: ${menuItem.textContent}`);
-            onMenuItemSelected();
+            const text = menuItem.textContent || '';
+            onMenuItemSelected(text.trim());
         });
     });
 }

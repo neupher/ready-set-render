@@ -1,4 +1,4 @@
-export function setupRightMenu(onMenuItemSelected: () => void): void {
+export function setupRightMenu(onMenuItemSelected: (selection: string) => void): void {
     const rightMenuToggle = document.getElementById('right-menu-toggle') as HTMLButtonElement;
     const primitivesMenu = document.getElementById('primitives-menu') as HTMLElement;
 
@@ -16,8 +16,8 @@ export function setupRightMenu(onMenuItemSelected: () => void): void {
     const menuItems = document.querySelectorAll('#primitives-menu li');
     menuItems.forEach((menuItem) => {
         menuItem.addEventListener('click', () => {
-        console.log(`Menu item clicked: ${(menuItem as HTMLElement).textContent}`);
-        onMenuItemSelected();
+            const text = (menuItem as HTMLElement).textContent || '';
+            onMenuItemSelected(text.trim());
+        });
     });
-});
 }
