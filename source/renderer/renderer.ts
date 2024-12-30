@@ -58,5 +58,6 @@ export class Renderer {
         const {gl} = this;
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        console.log('Screen Cleared');
     }
 }

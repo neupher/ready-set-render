@@ -45,7 +45,7 @@ export class LineRenderer {
         //Update the MVP matrix uniform
         gl.useProgram(this.program);
         if (this.uMVPLocation) {
-            gl.uniformMatrix2x4fv(this.uMVPLocation, false, mvpMatrix);
+            gl.uniformMatrix4fv(this.uMVPLocation, false, mvpMatrix);
         }
         gl.useProgram(null);
     }
@@ -59,7 +59,7 @@ export class LineRenderer {
         }
         gl.useProgram(this.program);
         if (this.uMVPLocation) {
-            gl.uniformMatrix2x4fv(this.uMVPLocation, false, mvpMatrix);
+            gl.uniformMatrix4fv(this.uMVPLocation, false, mvpMatrix);
         }
         gl.bindVertexArray(this.vao);
         // Each line contributes 2 vertices
@@ -86,6 +86,7 @@ export class LineRenderer {
         this.gl.shaderSource(shader, src);
         this.gl.compileShader(shader);
         if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+            console.error('Shader Compile Error: ', this.gl.getShaderInfoLog(shader));
             throw new Error(`Shader Compile Error: ${this.gl.getShaderInfoLog(shader)}`);
         }
         return shader;

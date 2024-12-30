@@ -8,10 +8,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 // if "file not found" try adding .js extensions
-import { setupRightMenu } from './ui/right_menu';
-import { Renderer } from './renderer/renderer';
+import { setupRightMenu } from './ui/right_menu.js';
+import { Renderer } from './renderer/renderer.js';
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log('Main function started');
         // Select the canvas element
         const canvas = document.getElementById('webgl-canvas');
         // Initialize the WebGL context
@@ -23,9 +24,21 @@ function main() {
             console.log('WebGL2 context initialized!');
         }
         // Fetch shaders
-        const vertShaderResponce = yield fetch('assets/shaders/basic_vert.glsl');
+        const vertShaderPath = 'assets/shaders/basic_vert.glsl';
+        const fragShaderPath = 'assets/shaders/basic_frag.glsl';
+        console.log('Fetching vertex shader from:', vertShaderPath);
+        const vertShaderResponce = yield fetch(vertShaderPath);
+        if (!vertShaderResponce.ok) {
+            console.error('Failed to fetch vertex shader:', vertShaderResponce.statusText);
+            return;
+        }
         const vertShaderSrc = yield vertShaderResponce.text();
-        const fragShaderResponce = yield fetch('assets/shaders/basic_frag.glsl');
+        console.log('Fetching fragment shader from:', fragShaderPath);
+        const fragShaderResponce = yield fetch(fragShaderPath);
+        if (!fragShaderResponce.ok) {
+            console.error('Failed to fetch fragment shader:', fragShaderResponce.statusText);
+            return;
+        }
         const fragShaderSrc = yield fragShaderResponce.text();
         // Set the canvas size
         function resizeCanvas() {
@@ -64,3 +77,5 @@ function main() {
         setupRightMenu(onMenuItemSelected);
     });
 }
+// Call the main function
+main().catch(console.error);
