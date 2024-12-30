@@ -42,9 +42,10 @@ export class Renderer {
 
         if (this.currentRenderMode === 'line') {
             this.renderWireframe(this.currentPrimitive);
-        } else if (this.currentRenderMode === 'fill') {
+        } /*else if (this.currentRenderMode === 'fill') {
             console.log('rasterizer not implemented yet');
         }
+            */
     }
 
     // pass primitive and mvp to line renderer
