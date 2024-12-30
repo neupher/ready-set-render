@@ -36,7 +36,7 @@ export class Renderer {
         this.redraw();
     }
 
-    private redraw(): void {
+    public redraw(): void {
         this.clearScreen();
         if (!this.currentPrimitive) return;
 

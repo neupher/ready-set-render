@@ -40,19 +40,22 @@ function main() {
             return;
         }
         const fragShaderSrc = yield fragShaderResponce.text();
+        const renderer = new Renderer(gl, vertShaderSrc, fragShaderSrc);
         // Set the canvas size
         function resizeCanvas() {
+            const canvas = document.getElementById('webgl-canvas');
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+            renderer.redraw();
         }
-        resizeCanvas();
-        // Handle window resize
+        // Add a resize event listener
         window.addEventListener('resize', resizeCanvas);
+        // initial resize
+        resizeCanvas();
         // Set the canvas background color to black
         gl.clearColor(0.1, 0.1, 0.1, 1.0); // RGBA: Black
         gl.clear(gl.COLOR_BUFFER_BIT);
-        const renderer = new Renderer(gl, vertShaderSrc, fragShaderSrc);
         function onMenuItemSelected(selection) {
             console.log(`Menu item selected: ${selection}`);
             switch (selection.toLowerCase()) {
