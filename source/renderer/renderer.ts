@@ -1,7 +1,7 @@
-import { PrimitiveType, RenderMode, Primitive } from './types';
-import { LineRenderer } from './line_renderer';
-import { Cube } from './primitives/cube';
-import { mat4Identity, mat4Perspective } from './utils/transforms';
+import { PrimitiveType, RenderMode, Primitive } from './types.js';
+import { LineRenderer } from './line_renderer.js';
+import { Cube } from './primitives/cube.js';
+import { mat4Identity, mat4Perspective } from './utils/transforms.js';
 
 export class Renderer {
     private gl: WebGL2RenderingContext;

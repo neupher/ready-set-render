@@ -1,6 +1,6 @@
-import { LineRenderer } from './line_renderer';
-import { Cube } from './primitives/cube';
-import { mat4Identity } from './utils/transforms';
+import { LineRenderer } from './line_renderer.js';
+import { Cube } from './primitives/cube.js';
+import { mat4Identity } from './utils/transforms.js';
 export class Renderer {
     constructor(gl, vertShaderSrc, fragShaderSrc) {
         this.currentPrimitive = null;

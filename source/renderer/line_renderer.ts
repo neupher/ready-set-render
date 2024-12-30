@@ -1,4 +1,4 @@
-import { Primitive } from "./types";
+import { Primitive } from "./types.js";
 
 export class LineRenderer {
     private gl: WebGL2RenderingContext;
