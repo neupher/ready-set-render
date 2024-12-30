@@ -65,10 +65,10 @@ function main() {
                 case 'sphere':
                     renderer.setPrimitive('sphere');
                     break;
-                case 'line mode':
+                case 'line renderer':
                     renderer.setRenderMode('line');
                     break;
-                case 'webgl mode':
+                case 'shaded':
                     renderer.setRenderMode('webgl');
                     break;
                 default:
