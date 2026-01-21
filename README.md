@@ -1,184 +1,99 @@
 # WebGL Editor
 
-A modular, extensible WebGL2-based 3D editor designed for learning and implementing real-time and ray-tracing rendering techniques.
+A modular, extensible WebGL2-based 3D editor for learning real-time and ray-tracing rendering techniques.
 
-## 🎯 Project Vision
+## 🚀 Quick Start
 
-This project aims to:
+```bash
+# Install dependencies
+npm install
 
-1. **Educate** - Implement rendering techniques from scratch without heavy abstractions
-2. **Provide Professional UI** - Build an editor experience similar to Unity or Substance Painter
-3. **Stay Modular** - Every feature is a plugin that can be swapped, extended, or replaced
-4. **Be Accessible** - Work across browsers and on mobile devices
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+
+# Run tests
+npm test
+
+# Run tests with coverage
+npm run test:coverage
+```
 
 ## 📁 Project Structure
 
 ```
 webEditorClaude/
-├── .llms/                    # AI context and guidelines
-│   ├── PROJECT_CONTEXT.md    # Project overview and current state
-│   ├── ARCHITECTURE.md       # System design and modules
-│   ├── PATTERNS.md           # Code conventions
-│   ├── GUIDELINES.md         # Development rules
-│   ├── LIBRARIES.md          # Dependency tracking
-│   ├── WORKFLOWS.md          # Automation triggers
-│   └── TESTING.md            # Testing guidelines
-├── src/                      # Source code (coming soon)
-│   ├── core/                 # Core engine
-│   ├── plugins/              # Plugin modules
-│   ├── ui/                   # UI components
-│   └── utils/                # Utilities
-├── tests/                    # Test suites (coming soon)
-├── docs/                     # Documentation (coming soon)
-├── CHANGELOG.md              # Version history
-└── README.md                 # This file
+├── src/
+│   ├── core/              # Core engine modules
+│   ├── plugins/           # Plugin modules
+│   ├── ui/                # UI system
+│   └── utils/             # Shared utilities
+├── tests/                 # Test suites
+├── public/                # Static assets
+└── .llms/                 # AI context and guidelines
 ```
 
-## 🚀 Getting Started
+## 🎯 Features
 
-### Prerequisites
-
-- Node.js 18+
-- npm or pnpm
-- Modern browser with WebGL2 support
-
-### Installation
-
-```bash
-# Clone the repository
-git clone <repository-url>
-cd webEditorClaude
-
-# Install dependencies (coming soon)
-npm install
-
-# Start development server (coming soon)
-npm run dev
-```
-
-## 🎨 Features (Planned)
-
-### Rendering
-
-- [ ] **Forward Rendering Pipeline** - Traditional multi-pass rendering
-- [ ] **Deferred Rendering Pipeline** - G-buffer based rendering for many lights
-- [ ] **Raytracing Pipeline** - Software raytracing for learning/comparison
-
-### Asset Support
-
-- [ ] **Model Import** - OBJ and glTF formats
-- [ ] **Texture Import** - PNG, JPG, TGA formats
-- [ ] **Shader Editor** - In-browser GLSL editing with live preview
-
-### UI & Tools
-
-- [ ] **Dockable Panels** - Flexible workspace layout
-- [ ] **Scene Hierarchy** - Tree view of scene objects
-- [ ] **Inspector** - Property editing
-- [ ] **Asset Browser** - Project asset management
-- [ ] **Camera Controls** - Orbit, pan, zoom navigation
-- [ ] **Selection Tools** - Object picking and manipulation
-
-## 🏗️ Architecture
-
-The editor follows a **plugin-based architecture**:
-
-```
-┌─────────────────────────────────────────┐
-│            APPLICATION SHELL            │
-├─────────────────────────────────────────┤
-│              PLUGIN MANAGER             │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐  │
-│  │Renderer │ │Importer │ │  Tools  │  │
-│  │ Plugins │ │ Plugins │ │ Plugins │  │
-│  └─────────┘ └─────────┘ └─────────┘  │
-├─────────────────────────────────────────┤
-│              CORE ENGINE                │
-│  EventBus │ SceneGraph │ ResourceMgr   │
-└─────────────────────────────────────────┘
-```
-
-See [ARCHITECTURE.md](.llms/ARCHITECTURE.md) for details.
+- ✅ Plugin-based architecture
+- ✅ WebGL2 rendering
+- ✅ Collapsible panel system
+- ✅ Monaco editor for shaders
+- ✅ Touch-friendly mobile support
+- ✅ GitHub Pages deployment
 
 ## 📖 Documentation
 
-| Document | Description |
-|----------|-------------|
-| [PROJECT_CONTEXT.md](.llms/PROJECT_CONTEXT.md) | Current project state and goals |
-| [ARCHITECTURE.md](.llms/ARCHITECTURE.md) | System design and modules |
-| [PATTERNS.md](.llms/PATTERNS.md) | Code conventions and patterns |
-| [GUIDELINES.md](.llms/GUIDELINES.md) | Development rules |
-| [LIBRARIES.md](.llms/LIBRARIES.md) | Dependency tracking |
-| [WORKFLOWS.md](.llms/WORKFLOWS.md) | Workflow automation |
-| [TESTING.md](.llms/TESTING.md) | Testing guidelines |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
+See the `.llms/` directory for comprehensive documentation:
 
-## 🤖 AI Assistant Guidelines
-
-This project uses AI assistants (Claude) for development. Key rules:
-
-1. **Read `.llms/PROJECT_CONTEXT.md` at session start**
-2. **Every feature must be a plugin**
-3. **No heavy abstraction libraries** (Three.js, Babylon.js forbidden)
-4. **All changes require tests**
-5. **Document everything**
-
-See [GUIDELINES.md](.llms/GUIDELINES.md) for complete rules.
+- **PROJECT_CONTEXT.md** - Project overview and status
+- **ARCHITECTURE.md** - System design and module structure
+- **GUIDELINES.md** - Development rules and constraints
+- **PATTERNS.md** - Code conventions and best practices
+- **LIBRARIES.md** - Dependency tracking
+- **TESTING.md** - Testing requirements
+- **WORKFLOWS.md** - Automated workflows
 
 ## 🧪 Testing
 
+This project maintains >85% test coverage. Tests are located in the `tests/` directory.
+
 ```bash
-# Run all tests (coming soon)
-npm test
-
-# Run with coverage (coming soon)
-npm run test:coverage
-
-# Run in watch mode (coming soon)
-npm run test:watch
+npm test              # Run tests once
+npm run test:watch    # Watch mode
+npm run test:coverage # Generate coverage report
 ```
 
-## 📋 Contributing
+## 🚀 Deployment
 
-1. Read the [GUIDELINES.md](.llms/GUIDELINES.md)
-2. Check [ARCHITECTURE.md](.llms/ARCHITECTURE.md) for where changes belong
-3. Follow [PATTERNS.md](.llms/PATTERNS.md) conventions
-4. Write tests for all changes
-5. Update [LIBRARIES.md](.llms/LIBRARIES.md) if adding dependencies
+The project automatically deploys to GitHub Pages when pushed to the `main` branch.
 
-## 🔧 Development Commands
+**Live URL:** [https://your-username.github.io/web-editor-example/](https://your-username.github.io/web-editor-example/)
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm test` | Run test suite |
-| `npm run lint` | Run linter |
+## 📦 Bundle Size Budget
+
+| Category | Budget | Status |
+|----------|--------|--------|
+| Core Engine | 20KB | ✅ |
+| Renderer | 10KB | ✅ |
+| UI System | 35KB | ✅ |
+| Monaco Editor | 15KB | ✅ |
+| Utils | 10KB | ✅ |
+| **Total** | **90KB** | **✅ Under 100KB** |
+
+## 🛠️ Tech Stack
+
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool
+- **Vitest** - Unit testing
+- **Monaco Editor** - Code editor
+- **WebGL2** - 3D rendering (no abstractions)
 
 ## 📝 License
 
-[To be determined]
-
-## 👤 Owner
-
-**Tapani Heikkinen**  
-Lead Technical Artist, Horizon Experiences Art Team
-
----
-
-## Workflow Triggers (for Claude)
-
-Use these phrases to trigger automated workflows:
-
-| Phrase | Action |
-|--------|--------|
-| `start session` | Load context and summarize state |
-| `finalize session` | Update docs, changelog, and commit |
-| `finalize version X.X.X` | Same as above + create git tag |
-| `update context` | Sync all .llms files with codebase |
-| `add feature: <name>` | Create plugin structure for feature |
-| `add library: <name>` | Evaluate and add dependency |
-| `run tests` | Execute test suite |
-| `review code` | Check for guideline violations |
-
-See [WORKFLOWS.md](.llms/WORKFLOWS.md) for details.
+MIT

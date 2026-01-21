@@ -36,10 +36,15 @@ This document defines automated workflows triggered by specific phrases. When Cl
    - List all significant changes
 
 3. **Update .llms/ files with timestamps**
-   - Update `PROJECT_CONTEXT.md`
+   - Update `PROJECT_CONTEXT.md` (ALWAYS)
      - Sync "Current State" section
      - Update "Last Updated" timestamp
      - Update version number
+   - Update `IMPLEMENTATION_PLAN.md` (IF APPLICABLE)
+     - Mark phases as complete when finished
+     - Update bundle size tracking when measured
+     - Update success criteria when met
+     - Add timestamp only when content changes
    - Update any other affected `.llms/*.md` files
      - Add timestamp to "Last Updated" field
      - Format: `YYYY-MM-DDTHH:MM:SSZ` (ISO 8601)

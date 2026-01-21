@@ -1,39 +1,45 @@
-# Node.js dependencies (if using npm/yarn for development tools)
+# Dependencies
 node_modules/
 package-lock.json
 yarn.lock
+pnpm-lock.yaml
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
 
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Compiled files
-out/
-build/
-
-# Operating system files
-.DS_Store
-Thumbs.db
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.swn
-*.swx
-*.swn
+# Monaco Editor workers (generated at runtime)
+public/monaco-editor/
 
 # Temporary files
-*.tmp
-*.temp
-
-# Cache directories
 .cache/
-coverage/
-
-#workspaces
-*.code-workspace
+.temp/
+tmp/
