@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-22T10:34:00Z  
-> **Version:** 0.1.1
-> **Status:** Foundation Complete - Ready for Phase 2
+> **Last Updated:** 2026-01-22T11:10:00Z  
+> **Version:** 0.2.0
+> **Status:** Phase 2 Complete - Core Engine Ready
 
 ---
 
@@ -37,6 +37,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 ## Current State
 
 ### ✅ Completed - Phase 1: Foundation Setup
+
 - **Project Structure**: Complete directory structure created following `.llms/ARCHITECTURE.md`
   - `src/` with core, plugins, ui, utils subdirectories
   - `tests/` with unit, integration, helpers structure
@@ -46,34 +47,54 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - Vite 6.3.5 for dev server and bundling
   - Vitest 2.1.8 with 85% coverage thresholds
 - **Configuration Files**: All essential configs in place
-  - `package.json` with 266 dependencies installed
-  - `tsconfig.json` with `@core/*`, `@plugins/*`, `@utils/*`, `@ui/*` aliases
-  - `vite.config.ts` with production optimizations
-  - `vitest.config.ts` with jsdom environment
-  - `.gitignore` for clean repository
 - **CI/CD**: GitHub Actions workflow created
-  - Automated testing on push
-  - Automated deployment to GitHub Pages
-  - Build artifact generation
-- **Entry Point**: Basic application shell
-  - WebGL2 detection and validation
-  - Loading screen with spinner
-  - Error handling and display
-  - Placeholder UI confirming Phase 1 complete
-- **Documentation**: 
-  - Updated README.md with quick start guide
-  - CHANGELOG.md with v0.1.0 release notes
-  - Bundle size budget tracking
+- **Entry Point**: Basic application shell with WebGL2 detection
+
+### ✅ Completed - Phase 2: Core Engine
+
+- **Core Interfaces** (`src/core/interfaces/`)
+  - `IPlugin.ts`: Plugin and context interfaces
+  - `ISceneObject.ts`: Scene object, transform, renderable types
+  - `IRenderPipeline.ts`: Hot-swappable render pipeline interface
+  - `IImporter.ts`: File importer plugin interface
+  - Barrel exports via `index.ts`
+
+- **EventBus** (`src/core/EventBus.ts`)
+  - Pub/sub event system for loose coupling
+  - Methods: `on()`, `once()`, `emit()`, `off()`, `clear()`
+  - 17 unit tests passing
+
+- **WebGLContext** (`src/core/WebGLContext.ts`)
+  - WebGL2 context management and state tracking
+  - Shader compilation with detailed error handling
+  - Program linking, state caching
+  - 20 unit tests passing
+
+- **SceneGraph** (`src/core/SceneGraph.ts`)
+  - Hierarchical scene structure with `SceneObject` class
+  - Add, remove, find, reparent, traverse operations
+  - Event emission for all modifications
+  - 32 unit tests passing
+
+- **PluginManager** (`src/core/PluginManager.ts`)
+  - Plugin lifecycle management
+  - Dependency injection via `IPluginContext`
+  - Topological sorting, circular dependency detection
+  - 29 unit tests passing
+
+- **Test Infrastructure**
+  - `tests/helpers/webgl-mock.ts`: Mock WebGL2 context
+  - 98 total unit tests passing
 
 ### 🔨 In Progress
-- None (Phase 1 complete, ready for Phase 2)
 
-### 📋 Next Steps (Phase 2: Core Engine)
-1. **EventBus** - Pub/sub event system for module communication
-2. **PluginManager** - Plugin lifecycle and dependency injection
-3. **WebGLContext** - WebGL2 context management and shader compilation
-4. **SceneGraph** - Hierarchical scene structure
-5. **ResourceManager** - Asset loading and caching
+- None (Phase 2 complete, ready for Phase 3)
+
+### 📋 Next Steps (Phase 3: Migrate Renderer)
+
+1. **Line Renderer Plugin** - Migrate from existing code as IRenderPipeline plugin
+2. **Primitives** - Migrate Cube as ISceneObject implementation
+3. **Transform Utilities** - Move to `src/utils/math/`
 
 ---
 

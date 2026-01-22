@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] - 2026-01-22
+
+### Added
+
+- **Phase 2: Core Engine Implementation**
+  - Complete core engine with 5 modules and 98 unit tests
+  
+- **Core Interfaces** (`src/core/interfaces/`)
+  - `IPlugin.ts`: Plugin and context interfaces for extensibility
+  - `ISceneObject.ts`: Scene object, transform, and renderable interfaces
+  - `IRenderPipeline.ts`: Hot-swappable render pipeline interface
+  - `IImporter.ts`: File importer plugin interface
+  - Barrel exports via `index.ts`
+
+- **EventBus** (`src/core/EventBus.ts`)
+  - Pub/sub event system for loose coupling between modules
+  - Methods: `on()`, `once()`, `emit()`, `off()`, `clear()`
+  - Returns unsubscribe functions for easy cleanup
+  - 17 unit tests
+
+- **WebGLContext** (`src/core/WebGLContext.ts`)
+  - WebGL2 context management and state tracking
+  - Shader compilation with detailed error handling
+  - Program linking with `ShaderCompilationError` and `ProgramLinkError`
+  - State caching to avoid redundant GL calls
+  - 20 unit tests
+
+- **SceneGraph** (`src/core/SceneGraph.ts`)
+  - Hierarchical scene structure with `SceneObject` class
+  - Add, remove, find, reparent operations
+  - Depth-first traversal with early termination support
+  - Event emission for all scene modifications
+  - Circular reference prevention
+  - 32 unit tests
+
+- **PluginManager** (`src/core/PluginManager.ts`)
+  - Plugin lifecycle management (register, initialize, dispose)
+  - Dependency injection via `IPluginContext`
+  - Topological sorting for initialization order
+  - Circular dependency detection with `CircularDependencyError`
+  - `PluginDependencyError` for missing dependencies
+  - 29 unit tests
+
+- **Test Infrastructure**
+  - `tests/helpers/webgl-mock.ts`: Mock WebGL2 context utilities
+  - `tests/unit/core/`: Unit tests for all core modules
+  - Updated `tsconfig.json` to include tests directory
+
+### Changed
+
+- Updated `tsconfig.json` to include `tests` in compilation
+
+---
+
 ## [0.1.1] - 2026-01-22
 
 ### Changed
