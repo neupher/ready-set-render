@@ -27,7 +27,7 @@ npm run test:coverage
 ## 📁 Project Structure
 
 ```
-webEditorClaude/
+ready-set-render/
 ├── src/
 │   ├── core/              # Core engine modules
 │   ├── plugins/           # Plugin modules
@@ -73,7 +73,7 @@ npm run test:coverage # Generate coverage report
 
 The project automatically deploys to GitHub Pages when pushed to the `main` branch.
 
-**Live URL:** [https://your-username.github.io/web-editor-example/](https://your-username.github.io/web-editor-example/)
+**Live URL:** [https://your-username.github.io/ready-set-render/](https://your-username.github.io/ready-set-render/)
 
 ## 📦 Bundle Size Budget
 

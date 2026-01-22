@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-21T18:39:00Z  
-> **Version:** 0.1.0  
+> **Last Updated:** 2026-01-22T09:52:00Z  
+> **Version:** 0.1.1  
 > **Status:** Foundation Complete - Ready for Phase 2
 
 ---
@@ -93,7 +93,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 ## Directory Structure (Planned)
 
 ```
-webEditorClaude/
+ready-set-render/
 ├── .llms/                    # AI context and guidelines
 │   ├── PROJECT_CONTEXT.md    # This file
 │   ├── ARCHITECTURE.md       # System design

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] - 2026-01-22
+
+### Changed
+
+- **Project Renaming**: Updated all references to use consistent `ready-set-render` naming
+  - `package.json`: Changed name from `webgl-editor` to `ready-set-render`
+  - `vite.config.ts`: Updated production base path from `/web-editor-example/` to `/ready-set-render/`
+  - `README.md`: Updated directory structure and GitHub Pages URL references
+  - `CHANGELOG.md`: Updated base path reference
+  - `.llms/PROJECT_CONTEXT.md`: Updated directory structure reference
+  - `.llms/IMPLEMENTATION_PLAN.md`: Updated project name reference
+
+---
+
 ## [0.1.0] - 2026-01-21
 
 ### Added
@@ -57,7 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Foundation is complete and ready for Phase 2 (Core Engine implementation)
 - All configuration files validated with no errors
 - Dev server configured on port 3000 with auto-open
-- Production build targets GitHub Pages with base path `/web-editor-example/`
+- Production build targets GitHub Pages with base path `/ready-set-render/`
 
 ---
 

@@ -1,5 +1,5 @@
 {
-  "name": "webgl-editor",
+  "name": "ready-set-render",
   "version": "0.1.0",
   "description": "A modular, extensible WebGL2-based 3D editor for learning real-time and ray-tracing rendering",
   "type": "module",

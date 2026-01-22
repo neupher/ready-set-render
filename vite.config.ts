@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import path from 'path';
 
 export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/web-editor-example/' : '/',
+  base: process.env.NODE_ENV === 'production' ? '/ready-set-render/' : '/',
 
   resolve: {
     alias: {
