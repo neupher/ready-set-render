@@ -1,0 +1,633 @@
+/**
+ * WebGL Editor Theme
+ * Design tokens matching Unity/Substance Painter aesthetic
+ *
+ * @version 0.4.0
+ */
+
+/* ======================================
+   CSS Custom Properties (Design Tokens)
+   ====================================== */
+
+:root {
+  /* Background Colors */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #1e1e1e;
+  --bg-tertiary: #252525;
+  --bg-elevated: #2a2a2a;
+  --bg-hover: #2a2a2a;
+  --bg-active: #333333;
+  --bg-viewport: #1a1a1c;
+
+  /* Text Colors */
+  --text-primary: #e0e0e0;
+  --text-secondary: #a0a0a0;
+  --text-muted: #717182;
+  --text-disabled: #666666;
+
+  /* Border Colors */
+  --border-primary: #2a2a2a;
+  --border-secondary: #3a3a3a;
+  --border-focus: rgba(59, 130, 246, 0.5);
+
+  /* Accent Colors */
+  --accent-blue: #3b82f6;
+  --accent-blue-hover: rgba(59, 130, 246, 0.5);
+  --accent-green: #22c55e;
+  --accent-yellow: #facc15;
+  --accent-red: #ef4444;
+  --accent-purple: #a855f7;
+
+  /* Icon Colors (for tree view) */
+  --icon-mesh: #60a5fa;
+  --icon-group: #facc15;
+  --icon-material: #a855f7;
+  --icon-texture: #22c55e;
+
+  /* Spacing Scale (8px grid) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+
+  /* Border Radius */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms cubic-bezier(0.4, 0.0, 0.2, 1);
+
+  /* Panel Dimensions */
+  --panel-header-height: 32px;
+  --menu-bar-height: 40px;
+  --panel-min-width: 200px;
+  --panel-default-width: 280px;
+  --panel-max-width: 500px;
+
+  /* Z-Index Layers */
+  --z-panel: 10;
+  --z-dropdown: 100;
+  --z-modal: 1000;
+  --z-overlay: 9999;
+}
+
+/* ======================================
+   Base Styles
+   ====================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Text Selection */
+::selection {
+  background-color: var(--accent-blue);
+  color: white;
+}
+
+::-moz-selection {
+  background-color: var(--accent-blue);
+  color: white;
+}
+
+/* ======================================
+   Scrollbar Styles
+   ====================================== */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-md);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-secondary);
+}
+
+/* ======================================
+   Editor Layout
+   ====================================== */
+
+.editor-root {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+  overflow: hidden;
+}
+
+.editor-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ======================================
+   Panel Styles
+   ====================================== */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  height: 100%;
+}
+
+.panel-header {
+  height: var(--panel-header-height);
+  min-height: var(--panel-header-height);
+  padding: 0 var(--spacing-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.panel-header-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Resizable Panel */
+.resizable-panel {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.resize-handle {
+  position: absolute;
+  z-index: var(--z-panel);
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+  background: var(--accent-blue-hover);
+}
+
+.resize-handle-left {
+  top: 0;
+  left: -2px;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+.resize-handle-right {
+  top: 0;
+  right: -2px;
+  width: 4px;
+  height: 100%;
+  cursor: col-resize;
+}
+
+/* ======================================
+   Menu Bar Styles
+   ====================================== */
+
+.menu-bar {
+  height: var(--menu-bar-height);
+  min-height: var(--menu-bar-height);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-sm);
+  gap: var(--spacing-xs);
+}
+
+.menu-item {
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.menu-item.active {
+  background: var(--bg-active);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 160px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: var(--z-dropdown);
+  padding: var(--spacing-xs) 0;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background: var(--bg-hover);
+}
+
+/* ======================================
+   Collapsible Section Styles
+   ====================================== */
+
+.collapsible-section {
+  border: 1px solid var(--border-primary);
+}
+
+.collapsible-section.collapsed {
+  background: var(--bg-primary);
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.collapsible-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.collapsible-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.collapsible-title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+.collapsible-content {
+  padding: var(--spacing-sm);
+  display: none;
+}
+
+.collapsible-section.expanded .collapsible-content {
+  display: block;
+}
+
+/* ======================================
+   Tree View Styles
+   ====================================== */
+
+.tree-view {
+  overflow-y: auto;
+}
+
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.tree-item:hover {
+  background: var(--bg-hover);
+}
+
+.tree-item.selected {
+  background: var(--bg-hover);
+}
+
+.tree-expand-btn {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+.tree-expand-btn:hover {
+  background: var(--bg-active);
+}
+
+.tree-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.tree-icon.mesh {
+  color: var(--icon-mesh);
+}
+
+.tree-icon.group {
+  color: var(--icon-group);
+}
+
+.tree-icon.material {
+  color: var(--icon-material);
+}
+
+.tree-name {
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ======================================
+   Viewport Styles
+   ====================================== */
+
+.viewport-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-viewport);
+}
+
+.viewport-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.viewport-controls {
+  display: flex;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.viewport-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.viewport-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.viewport-status {
+  position: absolute;
+  bottom: var(--spacing-lg);
+  left: var(--spacing-lg);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+}
+
+/* ======================================
+   Tab Styles
+   ====================================== */
+
+.tabs-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.tabs-list {
+  display: flex;
+  gap: 0;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-primary);
+  padding-top: var(--spacing-sm);
+}
+
+.tab-trigger {
+  padding: var(--spacing-sm) var(--spacing-lg);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-bottom: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab-trigger:hover {
+  color: var(--text-primary);
+}
+
+.tab-trigger.active {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border-color: var(--border-focus);
+  border-bottom-color: var(--bg-secondary);
+  position: relative;
+  z-index: 1;
+}
+
+.tab-content {
+  flex: 1;
+  overflow: auto;
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}
+
+/* ======================================
+   Form Controls
+   ====================================== */
+
+/* Input */
+.input {
+  width: 100%;
+  height: 28px;
+  padding: 0 var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--accent-blue);
+}
+
+.input::placeholder {
+  color: var(--text-disabled);
+}
+
+/* Number Input */
+.input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.input[type="number"]::-webkit-outer-spin-button,
+.input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Color Input */
+.input[type="color"] {
+  padding: 2px;
+  cursor: pointer;
+}
+
+/* Label */
+.label {
+  display: block;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.label-axis {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Vector3 Input Group */
+.vector3-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.vector3-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Property Group */
+.property-group {
+  margin-bottom: var(--spacing-md);
+}
+
+/* ======================================
+   Utility Classes
+   ====================================== */
+
+.hidden {
+  display: none !important;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.cursor-ew-resize {
+  cursor: ew-resize;
+}
+
+/* ======================================
+   Draggable Number Input
+   ====================================== */
+
+.draggable-input {
+  cursor: default;
+}
+
+.draggable-input.dragging {
+  cursor: ew-resize;
+}
+
+/* Drag overlay for capturing mouse events */
+.drag-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: var(--z-overlay);
+}

@@ -1,7 +1,7 @@
 # Implementation Plan: WebGL Editor
 
-> **Last Updated:** 2026-01-22T14:17:00Z
-> **Status:** Phase 3 Complete ✓ | Phase 4 Ready
+> **Last Updated:** 2026-01-22T14:53:00Z
+> **Status:** Phase 4 Complete ✓ | Phase 5 Ready
 
 ---
 
@@ -741,7 +741,41 @@ export function mat4Perspective(
 
 ---
 
-## Phase 4: Build UI Layer (Vanilla TS + Web Components)
+## Phase 4: Build UI Layer (Vanilla TS + Web Components) ✅ COMPLETE
+
+### Completed Items:
+- ✅ **Theme System** (`src/ui/theme/theme.css`)
+  - CSS custom properties (design tokens) for colors, spacing, typography
+  - Complete styling for all UI components, panels, inputs, tree views
+  - Dark theme matching Figma reference designs
+
+- ✅ **UI Components** (`src/ui/components/`)
+  - `CollapsibleSection.ts`: Expandable sections with chevron animations (17 tests)
+  - `DraggableNumberInput.ts`: Drag-to-adjust number inputs with left-click zone, middle-mouse, Alt+left-click support (20 tests)
+  - `TreeView.ts`: Hierarchical tree view with expand/collapse and typed icons (24 tests)
+  - `ResizablePanel.ts`: Drag-to-resize panels with min/max constraints
+  - `TopMenuBar.ts`: Dropdown menu bar component
+
+- ✅ **UI Panels** (`src/ui/panels/`)
+  - `HierarchyPanel.ts`: Scene tree panel using TreeView component
+  - `ViewportPanel.ts`: WebGL canvas container with ResizeObserver
+  - `PropertiesPanel.ts`: Tabbed properties panel (Details + Shader Editor)
+  - `EditorLayout.ts`: Main layout assembler with dependency injection
+
+- ✅ **Core Enhancements**
+  - `Camera.ts`: ICamera implementation with lazy matrix computation
+  - `SceneGraph.ts`: Added `getRenderables()` method implementing IScene interface
+
+- ✅ **Barrel Exports**
+  - `src/ui/index.ts` - Main UI entry point
+  - `src/ui/components/index.ts` - Component exports
+  - `src/ui/panels/index.ts` - Panel exports
+
+- ✅ **Unit Tests**: 267 total tests passing (61 new UI tests)
+
+**Outcome:** Complete UI system with vanilla TypeScript matching Figma reference design
+
+---
 
 > **Architecture Note:** UI components are NOT plugins. They use standard Web Components architecture with direct dependency injection. This follows the refined guideline that only rendering features, importers, exporters, and scene operations need to be plugins. UI is infrastructure to support learning goals, not a learning goal itself.
 

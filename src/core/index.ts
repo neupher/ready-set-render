@@ -30,6 +30,9 @@ export {
 // Scene Graph
 export { SceneGraph, SceneObject } from './SceneGraph';
 
+// Camera
+export { Camera } from './Camera';
+
 // Plugin Manager
 export {
   PluginManager,

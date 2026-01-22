@@ -3,6 +3,7 @@
  *
  * Manages scene objects in a tree hierarchy.
  * Provides traversal, querying, and modification operations.
+ * Implements IScene for render pipeline compatibility.
  *
  * @example
  * ```typescript
@@ -18,8 +19,15 @@
  */
 
 import { EventBus } from './EventBus';
-import type { ISceneObject, Transform } from './interfaces';
+import type { ISceneObject, IRenderable, Transform, IScene } from './interfaces';
 import { createDefaultTransform } from './interfaces';
+
+/**
+ * Type guard to check if an object is renderable.
+ */
+function isRenderable(object: ISceneObject): object is IRenderable {
+  return 'render' in object && typeof (object as IRenderable).render === 'function';
+}
 
 /**
  * Generate a unique ID for scene objects.
@@ -49,8 +57,9 @@ export class SceneObject implements ISceneObject {
 /**
  * SceneGraph manages all objects in the scene.
  * Provides hierarchical organization and event-driven updates.
+ * Implements IScene for render pipeline compatibility.
  */
-export class SceneGraph {
+export class SceneGraph implements IScene {
   private readonly root: ISceneObject;
   private readonly objectMap = new Map<string, ISceneObject>();
   private readonly eventBus: EventBus;
@@ -390,5 +399,23 @@ export class SceneGraph {
     }
 
     return path;
+  }
+
+  /**
+   * Get all renderable objects in the scene.
+   * Implements IScene interface.
+   *
+   * @returns Array of renderable objects
+   */
+  getRenderables(): IRenderable[] {
+    const renderables: IRenderable[] = [];
+
+    this.traverse((object) => {
+      if (isRenderable(object)) {
+        renderables.push(object);
+      }
+    });
+
+    return renderables;
   }
 }

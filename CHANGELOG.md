@@ -7,13 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-01-22
+
+### Added
+
+- **Phase 4: Build UI Layer**
+  - Complete UI system with vanilla TypeScript (no React)
+  - Figma-inspired dark theme matching professional 3D editor aesthetic
+
+- **Theme System** (`src/ui/theme/theme.css`)
+  - CSS custom properties (design tokens) for colors, spacing, typography
+  - Complete styling for all UI components, panels, inputs, tree views
+  - Dark theme matching Figma reference designs
+
+- **UI Components** (`src/ui/components/`)
+  - `CollapsibleSection.ts`: Expandable sections with chevron animations
+  - `DraggableNumberInput.ts`: Drag-to-adjust number inputs with:
+    - Left-click drag on drag zone (left 50%)
+    - Middle-mouse drag anywhere on input
+    - Alt+left-click drag anywhere
+  - `TreeView.ts`: Hierarchical tree view with expand/collapse and typed icons
+  - `ResizablePanel.ts`: Drag-to-resize panels with min/max constraints
+  - `TopMenuBar.ts`: Dropdown menu bar component
+
+- **UI Panels** (`src/ui/panels/`)
+  - `HierarchyPanel.ts`: Scene tree panel using TreeView component
+  - `ViewportPanel.ts`: WebGL canvas container with ResizeObserver
+  - `PropertiesPanel.ts`: Tabbed properties panel (Details + Shader Editor)
+  - `EditorLayout.ts`: Main layout assembler with dependency injection
+
+- **Core Enhancements**
+  - `Camera.ts`: ICamera implementation with lazy matrix computation
+  - `SceneGraph.ts`: Added `getRenderables()` method implementing IScene interface
+
+- **Barrel Exports**
+  - `src/ui/index.ts` - Main UI entry point
+  - `src/ui/components/index.ts` - Component exports
+  - `src/ui/panels/index.ts` - Panel exports
+
+- **Unit Tests**
+  - `CollapsibleSection.test.ts`: 17 tests
+  - `DraggableNumberInput.test.ts`: 20 tests
+  - `TreeView.test.ts`: 24 tests
+  - Total: 267 tests passing (61 new UI tests)
+
+### Changed
+
+- Updated `src/index.ts` to use Camera class instead of raw matrices
+- `SceneGraph` now implements `IScene` interface
+
+---
+
 ## [0.3.0] - 2026-01-22
 
 ### Added
 
 - **Phase 3: Migrate Renderer**
   - Complete renderer migration with LineRenderer plugin, Cube primitive, and transform utilities
-  
+
 - **Transform Utilities** (`src/utils/math/transforms.ts`)
   - Matrix math functions: `mat4Identity`, `mat4Perspective`, `mat4LookAt`, `mat4Multiply`
   - Transform matrices: `mat4Translation`, `mat4Scale`, `mat4RotationX/Y/Z`
@@ -53,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Phase 2: Core Engine Implementation**
   - Complete core engine with 5 modules and 98 unit tests
-  
+
 - **Core Interfaces** (`src/core/interfaces/`)
   - `IPlugin.ts`: Plugin and context interfaces for extensibility
   - `ISceneObject.ts`: Scene object, transform, and renderable interfaces

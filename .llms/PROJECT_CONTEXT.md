@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-22T14:17:00Z  
-> **Version:** 0.3.0
-> **Status:** Phase 3 Complete - Renderer Migrated
+> **Last Updated:** 2026-01-22T14:52:00Z
+> **Version:** 0.4.0
+> **Status:** Phase 4 Complete - UI Layer Built
 
 ---
 
@@ -115,17 +115,42 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `src/plugins/primitives/index.ts`
   - `src/utils/math/index.ts`
 
-### 🔨 In Progress
+### ✅ Completed - Phase 4: Build UI Layer
 
-- None (Phase 3 complete, ready for Phase 4)
+- **Theme System** (`src/ui/theme/theme.css`)
+  - CSS custom properties matching Figma reference dark theme
+  - Design tokens for colors, spacing, typography
+  - Styles for all UI components, panels, inputs, tree views
 
-### 📋 Next Steps (Phase 4: Build UI Layer)
+- **UI Components** (`src/ui/components/`)
+  - `CollapsibleSection.ts`: Expandable sections with chevron animations (17 tests)
+  - `DraggableNumberInput.ts`: Drag-to-adjust number inputs with left-click zone, middle-mouse, and Alt+left-click support (20 tests)
+  - `TreeView.ts`: Hierarchical tree view with expand/collapse and typed icons (24 tests)
+  - `ResizablePanel.ts`: Drag-to-resize panels with min/max constraints
+  - `TopMenuBar.ts`: Dropdown menu bar component
 
-1. **Collapsible Panel System** - Panels collapsed by default with toggle buttons
-2. **Viewport Panel** - WebGL canvas display
-3. **Hierarchy Panel** - Scene tree view
-4. **Properties Panel** - Selected object properties
-5. **Editor Layout** - Assemble all panels with dependency injection
+- **UI Panels** (`src/ui/panels/`)
+  - `HierarchyPanel.ts`: Scene tree panel using TreeView component
+  - `ViewportPanel.ts`: WebGL canvas container with ResizeObserver
+  - `PropertiesPanel.ts`: Tabbed properties panel (Details + Shader Editor tabs)
+  - `EditorLayout.ts`: Main layout assembler with dependency injection
+
+- **Core Enhancements**
+  - `Camera.ts`: Proper ICamera implementation with lazy matrix computation
+  - `SceneGraph.ts`: Added IScene implementation with `getRenderables()` method
+
+- **Barrel Exports**
+  - `src/ui/index.ts`
+  - `src/ui/components/index.ts`
+  - `src/ui/panels/index.ts`
+
+- **Tests**: 267 total tests passing (61 new UI tests)
+
+### 📋 Next Steps (Phase 5: Testing Infrastructure)
+
+1. **WebGL Mock Enhancements** - Expand mock coverage for integration tests
+2. **Integration Tests** - Test full render pipeline with scene graph
+3. **E2E Tests** - Browser-based tests with actual WebGL context
 
 ---
 
