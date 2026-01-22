@@ -79,12 +79,12 @@ The project automatically deploys to GitHub Pages when pushed to the `main` bran
 
 | Category | Budget | Status |
 |----------|--------|--------|
-| Core Engine | 20KB | ✅ |
-| Renderer | 10KB | ✅ |
-| UI System | 35KB | ✅ |
+| Core Engine | 50KB | ✅ |
+| Renderer | 30KB | ✅ |
+| UI System | 75KB | ✅ |
 | Monaco Editor | 15KB | ✅ |
-| Utils | 10KB | ✅ |
-| **Total** | **90KB** | **✅ Under 100KB** |
+| Utils | 30KB | ✅ |
+| **Total** | **200KB** | **✅ Under 250KB** |
 
 ## 🛠️ Tech Stack
 

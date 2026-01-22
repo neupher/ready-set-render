@@ -1,7 +1,7 @@
 # Library Tracking: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:10:00Z  
-> **Version:** 0.1.0
+> **Last Updated:** 2026-01-22T09:58:00Z  
+> **Version:** 0.1.1
 
 ---
 
@@ -191,16 +191,18 @@ Add a comment in package.json explaining why the library exists.
 
 ## Size Budget
 
-To keep the project lean, we maintain a size budget:
+To keep the project lean while allowing flexibility for good architectural decisions, we maintain a size budget:
 
 | Category | Budget | Current | Remaining |
 |----------|--------|---------|-----------|
-| Core dependencies | 50KB | 0KB | 50KB |
-| UI libraries | 20KB | 0KB | 20KB |
-| Utility libraries | 30KB | 0KB | 30KB |
-| **Total** | **100KB** | **0KB** | **100KB** |
+| Core dependencies | 100KB | 0KB | 100KB |
+| UI libraries | 75KB | 0KB | 75KB |
+| Utility libraries | 75KB | 0KB | 75KB |
+| **Total** | **250KB** | **0KB** | **250KB** |
 
 *Sizes are minified + gzipped*
+
+**Note:** Budget increased from 100KB to 250KB (2026-01-22) to allow flexibility for better architectural decisions without being overly constrained.
 
 ---
 

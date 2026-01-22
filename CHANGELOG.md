@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `.llms/PROJECT_CONTEXT.md`: Updated directory structure reference
   - `.llms/IMPLEMENTATION_PLAN.md`: Updated project name reference
 
+- **Bundle Size Budget Increase**: Increased from 100KB to 250KB
+  - Rationale: Avoid making poor architectural decisions due to overly tight constraints
+  - Updated `.llms/LIBRARIES.md` with new budget breakdown (Core: 100KB, UI: 75KB, Utils: 75KB)
+  - Updated `.llms/IMPLEMENTATION_PLAN.md` references
+  - Updated `README.md` budget table
+  - Decision to use Vanilla TypeScript + Web Components remains unchanged
+
 ---
 
 ## [0.1.0] - 2026-01-21
@@ -57,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed Meta-specific references from `.llms/` files for public repository
 
 ### Technical Details
-- **Bundle Size Budget**: 90KB total (10KB under 100KB limit)
+- **Bundle Size Budget**: 200KB target (50KB under 250KB limit)
   - Core Engine: 20KB
   - Renderer: 10KB
   - UI System: 35KB

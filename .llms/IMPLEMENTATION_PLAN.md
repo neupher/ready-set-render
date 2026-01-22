@@ -1,6 +1,6 @@
 # Implementation Plan: WebGL Editor
 
-> **Last Updated:** 2026-01-22T09:52:00Z  
+> **Last Updated:** 2026-01-22T10:01:00Z  
 > **Status:** Phase 1 Complete ✓ | Phase 2 Ready
 
 ---
@@ -11,7 +11,7 @@ This plan details the implementation strategy for merging two existing projects 
 1. **Figma GUI Project** - React-based UI with professional design
 2. **Ready-Set-Render** - WebGL2 renderer with TypeScript
 
-**Decision:** Rebuild UI in Vanilla TypeScript + Web Components to meet the 100KB bundle budget and plugin architecture requirements.
+**Decision:** Rebuild UI in Vanilla TypeScript + Web Components to meet the 250KB bundle budget and plugin architecture requirements.
 
 ---
 
@@ -38,7 +38,7 @@ This plan details the implementation strategy for merging two existing projects 
 **Concerns:**
 - ❌ **React is 45KB** (gzipped) - violates `.llms/LIBRARIES.md` guidance
 - ❌ **Too many dependencies** - MUI Material (unused?), Emotion, 40+ Radix components
-- ❌ **Total bundle size likely >200KB** - exceeds 100KB budget
+- ❌ **Total bundle size likely >200KB** - approaches 250KB budget with little headroom
 - ❌ Figma-specific hooks (`ImageWithFallback.tsx`)
 - ❌ Not plugin-based architecture
 
@@ -78,7 +78,7 @@ React ecosystem is TOO HEAVY. However, the UI design and component structure are
 
 ## UI Library Re-evaluation
 
-Given the 100KB budget and plugin-based architecture requirements:
+Given the 250KB budget and plugin-based architecture requirements:
 
 | Library | Size | Verdict | Rationale |
 |---------|------|---------|-----------|
@@ -1001,7 +1001,7 @@ Professional GLSL shader editing with syntax highlighting, autocomplete, and err
 - [ ] Line renderer working in viewport
 - [ ] Cube primitive renders correctly
 - [ ] All tests pass (>85% coverage)
-- [ ] Bundle size <100KB
+- [ ] Bundle size <250KB
 - [x] GitHub Pages deployment working
 - [x] Local dev server working (`npm run dev`)
 - [x] No `.llms/GUIDELINES.md` violations

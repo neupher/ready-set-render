@@ -1,6 +1,6 @@
 # Workflows: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:11:00Z  
+> **Last Updated:** 2026-01-21T17:11:00Z
 > **Version:** 0.1.0
 
 ---
@@ -15,12 +15,12 @@ This document defines automated workflows triggered by specific phrases. When Cl
 
 ---
 
-### Finalize Session
+### finalise Session
 
-**Triggers:** 
-- `finalize session`
-- `finalize version X.X.X`
-- `finalize as X.X.X`
+**Triggers:**
+- `finalise session`
+- `finalise version X.X.X`
+- `finalise as X.X.X`
 
 **Steps:**
 
@@ -339,7 +339,7 @@ The timestamp MUST be updated whenever:
 
 ## Related Documents
 
-- [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) - Updated by finalize workflow
+- [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) - Updated by finalise workflow
 - [GUIDELINES.md](./GUIDELINES.md) - Rules that workflows enforce
 - [LIBRARIES.md](./LIBRARIES.md) - Updated by add library workflow
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Updated by add feature workflow
