@@ -73,7 +73,7 @@ npm run test:coverage # Generate coverage report
 
 The project automatically deploys to GitHub Pages when pushed to the `main` branch.
 
-**Live URL:** [https://your-username.github.io/ready-set-render/](https://your-username.github.io/ready-set-render/)
+**Live URL:** [https://neupher.github.io/ready-set-render/](https://your-username.github.io/ready-set-render/)
 
 ## 📦 Bundle Size Budget
 
