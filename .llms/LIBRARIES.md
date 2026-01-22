@@ -1,7 +1,7 @@
 # Library Tracking: WebGL Editor
 
-> **Last Updated:** 2026-01-22T09:58:00Z  
-> **Version:** 0.1.1
+> **Last Updated:** 2026-01-22T18:17:00Z
+> **Version:** 0.1.2
 
 ---
 
@@ -17,7 +17,7 @@ This is a **MANDATORY** requirement. See [GUIDELINES.md](./GUIDELINES.md) for ru
 
 | Library | Category | Size | Status |
 |---------|----------|------|--------|
-| *No libraries added yet* | - | - | - |
+| monaco-editor | UI / Editor | ~700KB gzip | ✅ Approved |
 
 ---
 
@@ -136,11 +136,11 @@ Add an entry below in the "Added Libraries" section with:
 ```markdown
 ### [Library Name]
 
-**Added:** YYYY-MM-DD  
-**Version:** X.X.X  
-**Category:** Math / UI / Build / Utility / etc.  
-**Size:** XXkb (minified + gzipped)  
-**npm:** https://www.npmjs.com/package/[name]  
+**Added:** YYYY-MM-DD
+**Version:** X.X.X
+**Category:** Math / UI / Build / Utility / etc.
+**Size:** XXkb (minified + gzipped)
+**npm:** https://www.npmjs.com/package/[name]
 **GitHub:** https://github.com/[org]/[repo]
 
 #### Justification
@@ -177,15 +177,69 @@ Add a comment in package.json explaining why the library exists.
 
 ## Added Libraries
 
-*No libraries have been added yet. This section will be populated as the project develops.*
+### monaco-editor
+
+**Added:** 2026-01-22
+**Version:** ^0.52.2
+**Category:** UI / Code Editor
+**Size:** ~700KB (gzipped), ~2.5MB (unpacked)
+**npm:** https://www.npmjs.com/package/monaco-editor
+**GitHub:** https://github.com/microsoft/monaco-editor
+
+#### Justification
+
+Monaco Editor is required for **Goal #10: In-editor shader text editor**. A professional-grade code editor with syntax highlighting is essential for shader development workflow. Monaco provides:
+
+- GLSL/shader syntax highlighting (via custom language definitions)
+- Intelligent code completion
+- Error highlighting and diagnostics
+- Multi-cursor editing
+- Find and replace with regex support
+- Minimap navigation
+- Bracket matching and auto-closing
+
+This is a **specialized feature** that would be impractical to implement manually. The complexity of building a production-quality code editor exceeds the learning goals of this project (which focus on WebGL2 rendering, not text editing).
+
+#### Size Budget Exemption
+
+Monaco is exempt from the standard 250KB size budget because:
+
+1. It's a specialized, isolated feature (shader editor panel only)
+2. It will be **lazy-loaded** — not included in the initial bundle
+3. No reasonable alternatives exist at smaller sizes for this level of functionality
+4. The learning focus is WebGL2, not reinventing code editors
+
+#### Usage
+
+- `src/ui/panels/PropertiesPanel.ts` — Shader Editor tab (planned)
+- Future: Standalone shader editor window
+
+#### Lazy Loading Strategy
+
+```typescript
+// Monaco should be dynamically imported when shader tab is first opened
+const monaco = await import('monaco-editor');
+```
+
+This ensures the ~700KB payload is only downloaded when users actually need the shader editor.
+
+#### Alternatives Considered
+
+| Alternative | Why Not Chosen |
+|-------------|---------------|
+| CodeMirror 6 | Similar size (~400KB), less TypeScript integration, fewer features |
+| Ace Editor | Older architecture, less active development |
+| Simple textarea | Insufficient for shader development (no highlighting, no errors) |
+| Custom implementation | Impractical — would take months and distract from core goals |
 
 ---
 
 ## Dependency Audit Log
 
 | Date | Action | Library | By | Reason |
-|------|--------|---------|----|----|
+|------|--------|---------|----|--------|
 | 2026-01-21 | Initial setup | - | System | Project initialization |
+| 2026-01-22 | Documented | monaco-editor | Claude | Shader editor requirement (Goal #10) |
 
 ---
 
@@ -199,6 +253,12 @@ To keep the project lean while allowing flexibility for good architectural decis
 | UI libraries | 75KB | 0KB | 75KB |
 | Utility libraries | 75KB | 0KB | 75KB |
 | **Total** | **250KB** | **0KB** | **250KB** |
+
+### Exemptions
+
+| Library | Size | Reason for Exemption |
+|---------|------|----------------------|
+| monaco-editor | ~700KB | Specialized feature, lazy-loaded, no practical alternative |
 
 *Sizes are minified + gzipped*
 
