@@ -26,6 +26,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated `README.md` budget table
   - Decision to use Vanilla TypeScript + Web Components remains unchanged
 
+- **Refined Plugin Architecture Requirements**
+  - Updated `.llms/GUIDELINES.md`: UI components are now explicitly excluded from plugin requirements
+  - Plugins required for: render pipelines, importers, exporters, primitives, post-processing, scene operations
+  - NOT plugins: UI panels, UI components, layout system, core systems
+  - Rationale: Learning goals focus on WebGL2 rendering; UI is infrastructure, not a learning goal
+
+- **Phase 4 UI Architecture Rewrite**
+  - Updated `.llms/IMPLEMENTATION_PLAN.md` with non-plugin UI approach
+  - Added: HierarchyPanel, PropertiesPanel, ViewportPanel implementations with constructor injection
+  - Added: EditorLayout class for dependency injection
+  - Added: Clear `src/ui/` directory structure (components, panels, layout, theme)
+  - Key principle: Panels receive dependencies via constructor, not plugin context
+
 ---
 
 ## [0.1.0] - 2026-01-21

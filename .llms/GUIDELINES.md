@@ -1,7 +1,7 @@
 # Development Guidelines: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:09:00Z  
-> **Version:** 0.1.0
+> **Last Updated:** 2026-01-22T10:32:00Z  
+> **Version:** 0.1.1
 
 ---
 
@@ -15,19 +15,44 @@ These guidelines are **mandatory rules** that Claude (AI assistant) and develope
 
 ### 1. Plugin-Based Architecture (MANDATORY)
 
-**Every new feature MUST be implemented as a plugin.**
+**Rendering features, importers, exporters, and scene operations MUST be implemented as plugins.**
+
+UI components use standard Web Components architecture and are NOT required to be plugins.
+
+#### What MUST Be Plugins
+
+| Category | Examples | Rationale |
+|----------|----------|-----------|
+| **Render Pipelines** | Forward, Deferred, Raytracing | Hot-swappable at runtime |
+| **Importers** | OBJ, GLTF, FBX | Extensible format support |
+| **Exporters** | OBJ, GLTF, PNG | Extensible output formats |
+| **Primitives** | Cube, Sphere, Plane | Extensible geometry |
+| **Post-Processing** | Bloom, SSAO, Tonemapping | Composable effects |
+| **Scene Operations** | Transform tools, snapping | Extensible tooling |
+
+#### What Should NOT Be Plugins
+
+| Category | Examples | Rationale |
+|----------|----------|-----------|
+| **UI Panels** | Hierarchy, Properties, Viewport | Fixed editor shell |
+| **UI Components** | Buttons, inputs, trees | Standard building blocks |
+| **Layout System** | Docking, resizing | Core infrastructure |
+| **Core Systems** | EventBus, SceneGraph | Foundation, not features |
 
 ```
 ✅ ALLOWED:
 - Adding new render pipelines as plugins
-- Creating new UI panels as plugins
-- Implementing new importers as plugins
+- Creating new importers/exporters as plugins
+- Implementing new scene tools as plugins
 
 ❌ FORBIDDEN:
-- Adding features directly to core modules
+- Adding rendering features directly to core modules
 - Creating global singletons outside the plugin system
-- Hard-coding feature logic into the application shell
+- Hard-coding renderer logic into the application shell
+- Forcing UI components into the plugin interface
 ```
+
+**Why UI is excluded:** The learning goals focus on WebGL2 rendering, not UI architecture. UI is infrastructure to support these goals. Real editors (Unity, Blender, Substance) have fixed UI shells with plugin systems for features.
 
 ### 2. No Bloated Libraries (MANDATORY)
 
