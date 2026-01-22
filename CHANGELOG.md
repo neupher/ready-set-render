@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.3.0] - 2026-01-22
+
+### Added
+
+- **Phase 3: Migrate Renderer**
+  - Complete renderer migration with LineRenderer plugin, Cube primitive, and transform utilities
+  
+- **Transform Utilities** (`src/utils/math/transforms.ts`)
+  - Matrix math functions: `mat4Identity`, `mat4Perspective`, `mat4LookAt`, `mat4Multiply`
+  - Transform matrices: `mat4Translation`, `mat4Scale`, `mat4RotationX/Y/Z`
+  - Angle conversion: `degToRad`, `radToDeg`
+  - Type definitions: `Mat4`, `Vec3`
+  - 40+ unit tests
+
+- **Cube Primitive** (`src/plugins/primitives/Cube.ts`)
+  - Implements `IRenderable` interface
+  - 8 vertices, 12 edges for wireframe rendering
+  - GPU resource management (VAO, VBO)
+  - Model matrix computation from transform (T × Rz × Ry × Rx × S)
+  - 30+ unit tests
+
+- **LineRenderer Plugin** (`src/plugins/renderers/line/LineRenderer.ts`)
+  - Implements `IRenderPipeline` interface as forward renderer
+  - Embedded GLSL shaders (WebGL2/ES 300)
+  - Polymorphic rendering - calls `render()` on each `IRenderable`
+  - Line color customization via `setLineColor()`
+  - 25+ unit tests
+
+- **Plugin Barrel Exports**
+  - `src/plugins/index.ts` - Main plugins export
+  - `src/plugins/renderers/index.ts` - Renderer plugins
+  - `src/plugins/primitives/index.ts` - Primitive types
+  - `src/utils/math/index.ts` - Math utilities
+
+### Changed
+
+- Updated `tests/helpers/webgl-mock.ts` with `uniform3fv` method
+
+---
+
 ## [0.2.0] - 2026-01-22
 
 ### Added

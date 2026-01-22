@@ -4,7 +4,7 @@
   "description": "A modular, extensible WebGL2-based 3D editor for learning real-time and ray-tracing rendering",
   "type": "module",
   "main": "dist/index.js",
-  "scripts": {
+"scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
