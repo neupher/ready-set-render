@@ -401,7 +401,11 @@ body {
 }
 
 .tree-item.selected {
-  background: var(--bg-hover);
+  background: rgba(59, 130, 246, 0.25);
+}
+
+.tree-item.selected:hover {
+  background: rgba(59, 130, 246, 0.35);
 }
 
 .tree-expand-btn {

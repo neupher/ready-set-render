@@ -60,6 +60,7 @@ export class HierarchyPanel {
     this.treeView = new TreeView({
       onSelect: this.handleSelect.bind(this),
       onToggle: this.handleToggle.bind(this),
+      onRename: this.handleRename.bind(this),
       expandedIds: new Set(['root'])
     });
 
@@ -125,6 +126,13 @@ export class HierarchyPanel {
 
   private handleToggle(id: string, expanded: boolean): void {
     this.eventBus.emit('hierarchy:toggle', { id, expanded });
+  }
+
+  private handleRename(id: string, newName: string): void {
+    const obj = this.sceneGraph.find(id);
+    if (obj) {
+      this.sceneGraph.rename(obj, newName);
+    }
   }
 
   private convertSceneToTree(): TreeNode[] {

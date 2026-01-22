@@ -293,13 +293,12 @@ export const DEFAULT_MENUS: Menu[] = [
   {
     name: 'File',
     items: [
-      { label: 'New', shortcut: 'Ctrl+N' },
-      { label: 'Open', shortcut: 'Ctrl+O' },
-      { label: 'Import', separator: true },
-      { label: 'Export' },
-      { label: 'Save', shortcut: 'Ctrl+S' },
-      { label: 'Save As', shortcut: 'Ctrl+Shift+S', separator: true },
-      { label: 'Exit' }
+      { label: 'New', shortcut: 'Ctrl+N', disabled: true },
+      { label: 'Open', shortcut: 'Ctrl+O', disabled: true },
+      { label: 'Import', separator: true, disabled: true },
+      { label: 'Export', disabled: true },
+      { label: 'Save', shortcut: 'Ctrl+S', disabled: true },
+      { label: 'Save As', shortcut: 'Ctrl+Shift+S', disabled: true }
     ]
   },
   {
@@ -332,9 +331,9 @@ export const DEFAULT_MENUS: Menu[] = [
   {
     name: 'Rendering',
     items: [
-      { label: 'Render' },
-      { label: 'Settings' },
-      { label: 'Output' }
+      { label: 'Render', disabled: true },
+      { label: 'Settings', disabled: true },
+      { label: 'Output', disabled: true }
     ]
   },
   {

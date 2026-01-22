@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-22T15:35:00Z
-> **Version:** 0.5.0
+> **Last Updated:** 2026-01-22T22:02:00Z
+> **Version:** 0.5.1
 > **Status:** Phase 5 Complete - Scene Instantiation System
 
 ---
@@ -171,6 +171,23 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 1. **WebGL Mock Enhancements** - Expand mock coverage for integration tests
 2. **Integration Tests** - Test full render pipeline with scene graph
 3. **E2E Tests** - Browser-based tests with actual WebGL context
+
+### 📝 Future Enhancements (Backlog)
+
+1. **Settings System**
+   - Create a general Settings menu (accessible from menu bar)
+   - **Color Themes**: Allow users to switch between different UI color themes
+   - **Hotkeys**: Customizable keyboard shortcuts configuration
+   - **Persistence**: Save/cache user preferences to localStorage for future sessions
+   - Related: Will need to implement settings storage service and theme switching in `theme.css`
+
+2. **Undo/Redo System**
+   - Implement command pattern for reversible operations
+   - Track scene modifications (create, delete, rename, transform changes)
+   - **Keyboard shortcuts**: Ctrl+Z (undo), Ctrl+Shift+Z or Ctrl+Y (redo)
+   - **UI**: Add Edit menu with Undo/Redo items showing action descriptions
+   - **History stack**: Configurable max history depth
+   - Related: Will need `CommandManager` service and `ICommand` interface
 
 ---
 

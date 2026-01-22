@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.1] - 2026-01-22
+
+### Added
+
+- **About Dialog** (`src/ui/components/AboutDialog.ts`)
+  - Modal dialog showing project info, version, author (Tapani Heikkinen), and MIT license link
+  - Accessible via Help → About menu
+  - Closes on Escape key, overlay click, or Close button
+
+- **Double-Click Rename in Hierarchy**
+  - Double-click on entity names to rename inline
+  - Two-way binding with Properties panel Name field
+  - Enter to save, Escape to cancel
+
+- **Future Enhancements Backlog** (`.llms/PROJECT_CONTEXT.md`)
+  - Settings System: Color themes, hotkeys, localStorage persistence
+  - Undo/Redo System: Command pattern, history stack, keyboard shortcuts
+
+### Changed
+
+- **Menu Items** (`src/ui/components/TopMenuBar.ts`)
+  - Grayed out unimplemented items in File menu (New, Open, Import, Export, Save, Save As)
+  - Grayed out all Rendering menu items (Render, Settings, Output)
+  - Removed Exit button from File menu
+
+- **Selection Highlight** (`src/ui/theme/theme.css`)
+  - Selected items now have blueish tint (`rgba(59, 130, 246, 0.25)`)
+  - Distinct from gray hover highlight
+
+- **Scene Entity Properties** (`src/ui/panels/PropertiesPanel.ts`)
+  - Root "Scene" entity now only shows Object section (no Transform, Mesh, Material)
+
+- **Shader Editor Placeholder** (`src/ui/panels/PropertiesPanel.ts`)
+  - Changed from GLSL template to "Select Mesh Object to Display Shader Code"
+
+- **Documentation Link**
+  - Help → Documentation now opens GitHub README
+
+### Fixed
+
+- **Hierarchy Click Response** (`src/ui/components/TreeView.ts`)
+  - Removed 200ms delay that caused sluggish clicks
+  - Selection now updates CSS classes directly instead of full re-render
+  - Double-click rename works reliably
+
+---
+
 ## [0.5.0] - 2026-01-22
 
 ### Added

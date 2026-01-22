@@ -23,6 +23,7 @@ import { SceneGraph } from '@core/SceneGraph';
 import { PrimitiveRegistry } from '@plugins/primitives';
 import { TopMenuBar, DEFAULT_MENUS } from '../components/TopMenuBar';
 import { ResizablePanel } from '../components/ResizablePanel';
+import { AboutDialog } from '../components/AboutDialog';
 import { HierarchyPanel } from './HierarchyPanel';
 import { ViewportPanel } from './ViewportPanel';
 import { PropertiesPanel, DEFAULT_SHADER_CODE } from './PropertiesPanel';
@@ -58,6 +59,9 @@ export class EditorLayout {
   private hierarchyPanel: HierarchyPanel | null = null;
   private viewportPanel: ViewportPanel | null = null;
   private propertiesPanel: PropertiesPanel | null = null;
+  private aboutDialog: AboutDialog | null = null;
+
+  private static readonly REPO_URL = 'https://github.com/neupher/ready-set-render';
 
   constructor(options: EditorLayoutOptions) {
     this.container = options.container;
@@ -134,6 +138,9 @@ export class EditorLayout {
     // Assemble
     this.root.appendChild(main);
     this.container.appendChild(this.root);
+
+    // Setup property change handler for name changes
+    this.eventBus.on('object:propertyChanged', this.handlePropertyChanged.bind(this));
 
     // Trigger initial viewport resize after layout is attached to DOM
     requestAnimationFrame(() => {
@@ -213,12 +220,27 @@ export class EditorLayout {
         this.eventBus.emit('command:settings');
         break;
       case 'Documentation':
-        window.open('https://github.com/your-repo/docs', '_blank');
+        window.open(`${EditorLayout.REPO_URL}#readme`, '_blank');
         break;
       case 'About':
-        this.eventBus.emit('command:about');
+        this.showAboutDialog();
         break;
     }
+  }
+
+  /**
+   * Show the About dialog.
+   */
+  private showAboutDialog(): void {
+    if (!this.aboutDialog) {
+      this.aboutDialog = new AboutDialog({
+        projectName: 'Ready Set Render',
+        version: '0.5.0',
+        author: 'Tapani Heikkinen',
+        repoUrl: EditorLayout.REPO_URL
+      });
+    }
+    this.aboutDialog.show();
   }
 
   /**
@@ -237,6 +259,19 @@ export class EditorLayout {
       console.log(`Created ${type}: ${primitive.name}`);
     } else {
       console.warn(`Failed to create primitive: ${type}`);
+    }
+  }
+
+  /**
+   * Handle property changes from the properties panel.
+   * Routes name changes to SceneGraph.rename() for two-way binding with hierarchy.
+   */
+  private handlePropertyChanged(data: { id: string; property: string; value: unknown }): void {
+    if (data.property === 'name' && typeof data.value === 'string') {
+      const obj = this.sceneGraph.find(data.id);
+      if (obj && obj.name !== data.value) {
+        this.sceneGraph.rename(obj, data.value);
+      }
     }
   }
 }

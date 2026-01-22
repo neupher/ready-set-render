@@ -165,9 +165,11 @@ export class PropertiesPanel {
   private setupEvents(): void {
     this.handleSelectionChange = this.handleSelectionChange.bind(this);
     this.handlePropertyChange = this.handlePropertyChange.bind(this);
+    this.handleObjectRenamed = this.handleObjectRenamed.bind(this);
 
     this.eventBus.on('selection:changed', this.handleSelectionChange);
     this.eventBus.on('object:propertyChanged', this.handlePropertyChange);
+    this.eventBus.on('scene:objectRenamed', this.handleObjectRenamed);
   }
 
   private handleSelectionChange(data: { id: string }): void {
@@ -177,6 +179,13 @@ export class PropertiesPanel {
 
   private handlePropertyChange(): void {
     this.renderDetails();
+  }
+
+  private handleObjectRenamed(data: { object: { id: string }; newName: string }): void {
+    // Re-render if the renamed object is currently selected
+    if (this.selectedObject && this.selectedObject.id === data.object.id) {
+      this.renderDetails();
+    }
   }
 
   private switchTab(tab: 'details' | 'shader'): void {
@@ -207,6 +216,7 @@ export class PropertiesPanel {
     }
 
     const obj = this.selectedObject;
+    const isRootScene = obj.id === 'root';
     const contentWrapper = document.createElement('div');
     contentWrapper.style.padding = '0';
 
@@ -249,6 +259,12 @@ export class PropertiesPanel {
 
     nameSection.setContent(nameContent);
     contentWrapper.appendChild(nameSection.element);
+
+    // Skip Transform and other components for root scene object
+    if (isRootScene) {
+      this.detailsContent.appendChild(contentWrapper);
+      return;
+    }
 
     // Transform Section
     const transformSection = new CollapsibleSection({ title: 'Transform', defaultOpen: true });
@@ -470,25 +486,6 @@ export class PropertiesPanel {
 }
 
 /**
- * Default GLSL shader template.
+ * Default shader editor placeholder text.
  */
-export const DEFAULT_SHADER_CODE = `// GLSL Shader Code
-#version 300 es
-precision highp float;
-
-in vec2 vUv;
-in vec3 vNormal;
-in vec3 vPosition;
-
-out vec4 fragColor;
-
-uniform float uTime;
-uniform vec3 uColor;
-
-void main() {
-    vec3 color = uColor;
-    float light = dot(normalize(vNormal), normalize(vec3(1.0, 1.0, 1.0)));
-    color *= max(light, 0.2);
-
-    fragColor = vec4(color, 1.0);
-}`;
+export const DEFAULT_SHADER_CODE = `// Select Mesh Object to Display Shader Code`;

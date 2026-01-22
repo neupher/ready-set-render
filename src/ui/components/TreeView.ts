@@ -30,6 +30,8 @@ export interface TreeViewOptions {
   onSelect?: (id: string, node: TreeNode) => void;
   /** Callback when a node is expanded/collapsed */
   onToggle?: (id: string, expanded: boolean) => void;
+  /** Callback when a node is renamed via double-click */
+  onRename?: (id: string, newName: string) => void;
   /** Initially selected node ID */
   selectedId?: string;
   /** Initially expanded node IDs */
@@ -47,11 +49,14 @@ export class TreeView {
   private expandedIds: Set<string>;
   private readonly onSelect?: (id: string, node: TreeNode) => void;
   private readonly onToggle?: (id: string, expanded: boolean) => void;
+  private readonly onRename?: (id: string, newName: string) => void;
   private nodeMap = new Map<string, TreeNode>();
+  private editingId: string | null = null;
 
   constructor(options: TreeViewOptions = {}) {
     this.onSelect = options.onSelect;
     this.onToggle = options.onToggle;
+    this.onRename = options.onRename;
     this.selectedId = options.selectedId ?? null;
     this.expandedIds = options.expandedIds ?? new Set();
 
@@ -215,12 +220,35 @@ export class TreeView {
     const name = document.createElement('span');
     name.className = 'tree-name';
     name.textContent = node.name;
+    // Prevent text selection on double-click
+    name.style.userSelect = 'none';
     item.appendChild(name);
 
-    // Click handler for selection
+    // Double-click handler for renaming
+    name.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      
+      if (this.onRename) {
+        this.startEditing(node, name);
+      }
+    });
+
+    // Click handler for selection (immediate, no delay)
     item.addEventListener('click', () => {
+      // If we're editing, don't handle clicks
+      if (this.editingId) return;
+      
+      // Update selection state
       this.selectedId = node.id;
-      this.render();
+      
+      // Update visual state directly without full re-render
+      this.container.querySelectorAll('.tree-item.selected').forEach(el => {
+        el.classList.remove('selected');
+      });
+      item.classList.add('selected');
+      
+      // Notify listeners
       if (this.onSelect) {
         this.onSelect(node.id, node);
       }
@@ -234,6 +262,67 @@ export class TreeView {
         this.renderNode(child, depth + 1);
       }
     }
+  }
+
+  /**
+   * Start inline editing of a node's name.
+   */
+  private startEditing(node: TreeNode, nameElement: HTMLSpanElement): void {
+    if (this.editingId) return;
+    this.editingId = node.id;
+
+    const currentName = node.name;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'tree-name-input';
+    input.value = currentName;
+    input.style.cssText = `
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      border: 1px solid var(--accent-primary);
+      padding: 2px 4px;
+      font-size: inherit;
+      font-family: inherit;
+      outline: none;
+      width: 100%;
+      min-width: 50px;
+      box-sizing: border-box;
+    `;
+
+    let isFinishing = false;
+
+    const finishEditing = (save: boolean) => {
+      if (isFinishing) return;
+      isFinishing = true;
+
+      const newName = input.value.trim();
+      this.editingId = null;
+
+      // Always restore the name element and remove input
+      nameElement.style.display = '';
+      input.remove();
+
+      if (save && newName && newName !== currentName && this.onRename) {
+        this.onRename(node.id, newName);
+      }
+    };
+
+    input.addEventListener('blur', () => finishEditing(true));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        finishEditing(false);
+      }
+    });
+
+    // Hide the name and show input
+    nameElement.style.display = 'none';
+    nameElement.parentElement?.appendChild(input);
+    input.focus();
+    input.select();
   }
 
   private getChevronRight(): string {

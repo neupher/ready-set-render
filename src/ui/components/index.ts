@@ -18,3 +18,6 @@ export type { ResizablePanelOptions } from './ResizablePanel';
 
 export { TopMenuBar, DEFAULT_MENUS } from './TopMenuBar';
 export type { MenuItem, Menu, TopMenuBarOptions } from './TopMenuBar';
+
+export { AboutDialog } from './AboutDialog';
+export type { AboutDialogOptions } from './AboutDialog';
