@@ -20,8 +20,9 @@ export type {
   ISceneObject,
   IRenderable,
   Transform,
+  IInitializable,
 } from './ISceneObject';
-export { createDefaultTransform } from './ISceneObject';
+export { createDefaultTransform, isInitializable } from './ISceneObject';
 export type { IImporter, ImportResult } from './IImporter';
 
 // Entity Component System

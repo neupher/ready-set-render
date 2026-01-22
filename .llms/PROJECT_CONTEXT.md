@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-22T22:02:00Z
-> **Version:** 0.5.1
-> **Status:** Phase 5 Complete - Scene Instantiation System
+> **Last Updated:** 2026-01-22T23:55:00Z
+> **Version:** 0.6.0
+> **Status:** Phase 6.1 Complete - Render Pipeline Fixed
 
 ---
 
@@ -166,28 +166,36 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - [x] Phase 5.6: Connect menu to scene operations, clean scene init
 - [x] Phase 5.7: Add EntityIdGenerator utility
 
-### 📋 Next Steps (Phase 6: Testing Infrastructure)
+### 📋 Next Steps (Phase 6: Functional Editor)
 
-1. **WebGL Mock Enhancements** - Expand mock coverage for integration tests
-2. **Integration Tests** - Test full render pipeline with scene graph
-3. **E2E Tests** - Browser-based tests with actual WebGL context
+**See detailed plan:** [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)
+
+**Summary (14 sub-phases, ~60-80 hours):**
+1. **Fix Rendering Pipeline** - Make instantiated objects render
+2. **Camera as Scene Entity** - Composition pattern with RenderCameraAdapter
+3. **Input System & Navigation** - Maya-style Alt+drag controls
+4. **Selection System** - Click to select, ray picking
+5. **Directional Light** - Editable light with enable/disable toggle
+6. **Forward Renderer** - Solid mesh rendering with lighting
+7. **PBR Uber Shader** - Cook-Torrance BRDF (Blender-style)
+8. **Transform Gizmos** - Translate/Rotate/Scale handles (W/E/R)
+9. **Live Shader Editor** - ShaderToy-style with debounced compilation
+10. **Render Mode Dropdown** - Shaded/Wireframe/Both/Raytraced(grayed)
+11. **Undo/Redo System** - Command pattern (moved from backlog)
+12. **Viewport Grid** - XZ plane grid with toggle button
+13. **Settings Window** - Two-panel modal, Grid settings (from backlog)
+14. **Hierarchy Context Menu** - Delete, Duplicate, Rename
 
 ### 📝 Future Enhancements (Backlog)
 
-1. **Settings System**
-   - Create a general Settings menu (accessible from menu bar)
-   - **Color Themes**: Allow users to switch between different UI color themes
-   - **Hotkeys**: Customizable keyboard shortcuts configuration
-   - **Persistence**: Save/cache user preferences to localStorage for future sessions
-   - Related: Will need to implement settings storage service and theme switching in `theme.css`
+1. **Color Themes**
+   - Allow users to switch between different UI color themes
+   - Theme switching in `theme.css`
+   - Part of Settings System (Phase 6.13 provides foundation)
 
-2. **Undo/Redo System**
-   - Implement command pattern for reversible operations
-   - Track scene modifications (create, delete, rename, transform changes)
-   - **Keyboard shortcuts**: Ctrl+Z (undo), Ctrl+Shift+Z or Ctrl+Y (redo)
-   - **UI**: Add Edit menu with Undo/Redo items showing action descriptions
-   - **History stack**: Configurable max history depth
-   - Related: Will need `CommandManager` service and `ICommand` interface
+2. **Hotkeys Configuration**
+   - Customizable keyboard shortcuts
+   - Part of Settings System (Phase 6.13 provides foundation)
 
 ---
 

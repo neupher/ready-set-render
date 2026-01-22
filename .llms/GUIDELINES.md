@@ -1,7 +1,7 @@
 # Development Guidelines: WebGL Editor
 
-> **Last Updated:** 2026-01-22T10:32:00Z  
-> **Version:** 0.1.1
+> **Last Updated:** 2026-01-22T23:06:00Z
+> **Version:** 0.1.2
 
 ---
 
@@ -108,6 +108,97 @@ else if (object.type === 'light') { renderLight(object); }
 // ✅ REQUIRED
 object.render(context); // Polymorphism
 ```
+
+### 6. Industry-Standard Terminology (MANDATORY)
+
+**All naming for editor features, engine concepts, and shading languages MUST use industry-standard terminology.**
+
+When multiple naming conventions exist across different engines/tools, **follow Unity's terminology** as the canonical reference.
+
+#### Why This Matters
+
+- **Transferable knowledge:** Users familiar with Unity, Unreal, Blender, or other tools should recognize concepts immediately
+- **Documentation alignment:** Industry tutorials, papers, and resources use standard terms
+
+#### Reference Hierarchy
+
+When naming concepts, follow this priority:
+
+1. **Unity terminology** (primary reference when variances exist)
+2. **Industry-wide standard** (e.g., GLSL/HLSL conventions for shaders)
+3. **Academic/research standard** (for advanced rendering concepts)
+
+#### Examples
+
+| Category | ✅ CORRECT (Industry Standard) | ❌ WRONG (Non-standard) |
+|----------|-------------------------------|------------------------|
+| **Scene Graph** | GameObject, Transform, Component | Entity, Node, Module |
+| **Components** | MeshRenderer, MeshFilter, Material | RenderComponent, GeometryHolder |
+| **Hierarchy** | Parent, Child, Root | Owner, Member, Top |
+| **Transform** | Position, Rotation, Scale | Location, Orientation, Size |
+| **Lighting** | Directional Light, Point Light, Spot Light | Sun Light, Omni Light, Cone Light |
+| **Camera** | Field of View (FOV), Near Clip, Far Clip | View Angle, Near Plane, Far Plane |
+| **Materials** | Albedo, Normal Map, Roughness, Metallic | Diffuse Color, Bump Map, Smoothness, Metalness |
+| **Shaders** | Vertex Shader, Fragment Shader | Vertex Program, Pixel Shader (WebGL context) |
+| **Rendering** | Forward Rendering, Deferred Rendering | Forward Shading, Deferred Shading |
+| **Buffers** | G-Buffer, Frame Buffer, Depth Buffer | Geometry Buffer, Render Target, Z-Buffer |
+| **Texture** | Texture2D, Cubemap, RenderTexture | Image, SkyboxTexture, TargetTexture |
+| **Animation** | Animator, Animation Clip, Keyframe | AnimationController, Animation, Frame |
+| **Physics** | Rigidbody, Collider, Raycast | PhysicsBody, HitBox, RayTrace |
+| **UI Panels** | Hierarchy, Inspector, Project, Scene, Game | Tree View, Properties, Assets, Viewport, Preview |
+
+#### Shader/GLSL Terminology
+
+For shader code and GPU concepts, use standard GLSL/graphics terminology:
+
+| ✅ CORRECT | ❌ WRONG |
+|-----------|---------|
+| `uniform` | `constant`, `parameter` |
+| `attribute` / `in` (vertex) | `input`, `vertexData` |
+| `varying` / `out` (vertex) | `interpolated`, `output` |
+| `sampler2D` | `texture`, `image` |
+| `vec3`, `vec4`, `mat4` | `Vector3`, `Vector4`, `Matrix4` (in shader code) |
+| `gl_Position` | `outputPosition` |
+| `gl_FragColor` / `out vec4` | `pixelColor` |
+
+#### Applying This Rule
+
+```typescript
+// ❌ FORBIDDEN: Non-standard naming
+interface IEntity {
+  node: INode;
+  modules: IModule[];
+}
+
+class RenderModule implements IModule {
+  diffuseColor: Vec3;
+  bumpMap: Texture;
+}
+
+// ✅ REQUIRED: Industry-standard naming
+interface IGameObject {
+  transform: ITransform;
+  components: IComponent[];
+}
+
+class MeshRenderer implements IComponent {
+  material: IMaterial;
+}
+
+interface IMaterial {
+  albedo: Vec3;
+  normalMap: Texture;
+  roughness: number;
+  metallic: number;
+}
+```
+
+#### When In Doubt
+
+1. **Search Unity documentation** for the official term
+2. **Check GLSL specification** for shader terms
+3. **Reference Khronos/OpenGL wiki** for WebGL-specific concepts
+4. **Ask owner** if multiple valid standards exist
 
 ---
 

@@ -1,7 +1,7 @@
 # Code Patterns: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:08:00Z  
-> **Version:** 0.1.0
+> **Last Updated:** 2026-01-22T23:06:00Z
+> **Version:** 0.1.1
 
 ---
 
@@ -350,7 +350,7 @@ class ShaderCompilationError extends Error {
 }
 
 // Use Result types for operations that can fail
-type Result<T, E = Error> = 
+type Result<T, E = Error> =
   | { success: true; value: T }
   | { success: false; error: E };
 
@@ -368,12 +368,12 @@ function loadShader(source: string): Result<WebGLShader, ShaderCompilationError>
 ```typescript
 /**
  * Renders the scene using the forward rendering pipeline.
- * 
+ *
  * @param scene - The scene to render
  * @param camera - The camera to render from
  * @param options - Optional render settings
  * @returns The rendered frame as a texture, or null if rendering failed
- * 
+ *
  * @example
  * ```typescript
  * const frame = renderer.render(scene, camera, { antialiasing: true });
@@ -407,6 +407,55 @@ function extractFrustumPlanes(viewProjection: Mat4): Plane[] {
 | Utility file | 200 | Split by functionality |
 | Interface file | 100 | Split into multiple interfaces |
 | Test file | 500 | Split into multiple test files |
+
+---
+
+## Terminology Quick Reference
+
+This section provides quick lookup for industry-standard naming. For full details, see [GUIDELINES.md § Industry-Standard Terminology](./GUIDELINES.md#6-industry-standard-terminology-mandatory).
+
+**Primary Reference:** Unity terminology when variances exist between engines.
+
+### Core Concepts
+
+| Concept | Standard Term | Notes |
+|---------|---------------|-------|
+| Scene node | **GameObject** | Not "Entity", "Node", or "Actor" |
+| Spatial data | **Transform** | Contains Position, Rotation, Scale |
+| Feature attachment | **Component** | Not "Module", "Behaviour", or "Script" |
+| Object tree | **Hierarchy** | Not "Scene Tree" or "Outliner" |
+| Property viewer | **Inspector** | Not "Properties Panel" or "Details" |
+
+### Rendering
+
+| Concept | Standard Term | Notes |
+|---------|---------------|-------|
+| Base color | **Albedo** | Not "Diffuse" (PBR context) |
+| Surface detail map | **Normal Map** | Not "Bump Map" (different technique) |
+| Surface smoothness | **Roughness** | Unity uses Smoothness (inverse); we use Roughness |
+| Metal surface | **Metallic** | Not "Metalness" |
+| Render output target | **RenderTexture** | Not "FrameBuffer" (that's the GL object) |
+
+### Shaders (GLSL)
+
+| Context | Standard Term | Notes |
+|---------|---------------|-------|
+| Global parameter | `uniform` | Not "constant" or "parameter" |
+| Per-vertex input | `in` (or `attribute`) | WebGL2 uses `in` |
+| Vertex output | `out` (or `varying`) | WebGL2 uses `out` |
+| Texture sampler | `sampler2D` | Not "texture" |
+| Math types | `vec3`, `mat4` | Lowercase in GLSL, PascalCase in TS (`Vec3`) |
+
+### UI Panel Names
+
+| Purpose | Standard Term |
+|---------|---------------|
+| Object tree view | **Hierarchy** |
+| Selected object properties | **Inspector** |
+| 3D render view | **Scene View** |
+| Asset library | **Project** |
+| Runtime preview | **Game View** |
+| Console output | **Console** |
 
 ---
 

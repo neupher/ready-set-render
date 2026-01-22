@@ -13,6 +13,7 @@ import type {
   IEntity,
   IMeshComponent,
   IMaterialComponent,
+  IInitializable,
 } from '@core/interfaces';
 import { createDefaultTransform } from '@core/interfaces';
 import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
@@ -304,6 +305,15 @@ export class Cube implements IRenderable, IEntity {
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.LINES, 0, this.edges.length);
     gl.bindVertexArray(null);
+  }
+
+/**
+   * Check if GPU resources have been initialized.
+   *
+   * @returns True if GPU resources are ready for rendering
+   */
+  isInitialized(): boolean {
+    return this.vao !== null && this.program !== null;
   }
 
   /**
