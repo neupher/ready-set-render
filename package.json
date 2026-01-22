@@ -11,7 +11,8 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
-    "lint": "eslint src --ext ts"
+    "typecheck": "tsc --noEmit",
+    "validate": "npm run typecheck && npm run test -- --run"
   },
   "keywords": [
     "webgl",

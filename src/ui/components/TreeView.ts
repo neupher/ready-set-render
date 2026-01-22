@@ -228,7 +228,7 @@ export class TreeView {
     name.addEventListener('dblclick', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      
+
       if (this.onRename) {
         this.startEditing(node, name);
       }
@@ -238,16 +238,16 @@ export class TreeView {
     item.addEventListener('click', () => {
       // If we're editing, don't handle clicks
       if (this.editingId) return;
-      
+
       // Update selection state
       this.selectedId = node.id;
-      
+
       // Update visual state directly without full re-render
       this.container.querySelectorAll('.tree-item.selected').forEach(el => {
         el.classList.remove('selected');
       });
       item.classList.add('selected');
-      
+
       // Notify listeners
       if (this.onSelect) {
         this.onSelect(node.id, node);

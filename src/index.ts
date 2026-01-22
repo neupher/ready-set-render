@@ -14,6 +14,7 @@ import '@ui/theme/theme.css';
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
 import { Camera } from '@core/Camera';
+import { isInitializable } from '@core/interfaces';
 
 // UI system
 import { EditorLayout } from '@ui/panels/EditorLayout';
@@ -92,7 +93,21 @@ async function main(): Promise<void> {
       canvas: layout.getViewport()!.getCanvas()
     });
 
-    console.log('Line renderer initialized');
+console.log('Line renderer initialized');
+
+    // Listen for new objects added to scene and initialize their GPU resources
+    eventBus.on('scene:objectAdded', (data: { object: unknown; parent: unknown }) => {
+      const obj = data.object;
+      if (isInitializable(obj) && !obj.isInitialized()) {
+        const program = lineRenderer.getProgram();
+        if (program) {
+          obj.initializeGPUResources(gl, program);
+          console.log(`Initialized GPU resources for: ${(obj as { name?: string }).name || 'unknown'}`);
+        }
+      }
+    });
+
+    console.log('Scene object initialization listener registered');
 
     // Setup render loop
     eventBus.on('viewport:resized', (data: { width: number; height: number; aspectRatio: number }) => {

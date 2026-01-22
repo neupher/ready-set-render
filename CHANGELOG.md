@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-01-22
+
+### Added
+
+- **Phase 6 Implementation Plan** (`.llms/PHASE_6_PLAN.md` - NEW)
+  - Comprehensive 14 sub-phase plan for Functional Editor
+  - Camera architecture clarification: Composition pattern with RenderCameraAdapter (not inheritance)
+  - Moved Undo/Redo and Settings from backlog into Phase 6
+  - Added Grid, Settings Window, Context Menu phases
+  - ~60-80 hours estimated effort
+
+- **IInitializable Interface** (`src/core/interfaces/ISceneObject.ts`)
+  - Interface for objects requiring GPU resource initialization
+  - `initializeGPUResources()`, `isInitialized()`, `dispose()` methods
+  - `isInitializable()` type guard function
+
+- **Industry-Standard Terminology Guidelines** (`.llms/GUIDELINES.md`)
+  - New mandatory section requiring Unity terminology for editor/engine concepts
+  - Comprehensive terminology reference tables (Scene Graph, Components, Transform, Lighting, etc.)
+  - GLSL shader terminology guide (uniform, sampler2D, vec3/mat4, etc.)
+  - "When In Doubt" guidance pointing to Unity docs, GLSL spec, Khronos wiki
+
+- **Terminology Quick Reference** (`.llms/PATTERNS.md`)
+  - Quick lookup tables for industry-standard naming
+  - Core Concepts, Rendering, Shaders (GLSL), UI Panel Names sections
+
+### Fixed
+
+- **Critical Render Bug** (Phase 6.1)
+  - Objects created via Create menu now render immediately
+  - Added `scene:objectAdded` event listener to initialize GPU resources
+  - `Cube.isInitialized()` method to check GPU resource state
+  - Root cause: `Cube.initializeGPUResources()` was never called after instantiation
+
+### Changed
+
+- **PROJECT_CONTEXT.md**
+  - Updated Next Steps to reference PHASE_6_PLAN.md
+  - Moved Undo/Redo System from backlog to Phase 6.11
+  - Moved Settings System from backlog to Phase 6.13
+  - Simplified backlog to Color Themes and Hotkeys Configuration
+
+---
+
 ## [0.5.1] - 2026-01-22
 
 ### Added

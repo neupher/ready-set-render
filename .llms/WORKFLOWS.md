@@ -226,9 +226,9 @@ This document defines automated workflows triggered by specific phrases. When Cl
 
 **Steps:**
 
-1. **Run full test suite**
+1. **Run full validation (typecheck + tests)**
    ```bash
-   npm test
+   npm run validate
    ```
 
 2. **Report results**

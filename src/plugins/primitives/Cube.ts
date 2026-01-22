@@ -13,6 +13,7 @@ import type {
   IEntity,
   IMeshComponent,
   IMaterialComponent,
+  IInitializable,
 } from '@core/interfaces';
 import { createDefaultTransform } from '@core/interfaces';
 import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
@@ -33,7 +34,7 @@ import {
  * Edges define the 12 wireframe lines.
  * Implements IEntity for component-based property display.
  */
-export class Cube implements IRenderable, IEntity {
+export class Cube implements IRenderable, IEntity, IInitializable {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -304,6 +305,15 @@ export class Cube implements IRenderable, IEntity {
     gl.bindVertexArray(this.vao);
     gl.drawArrays(gl.LINES, 0, this.edges.length);
     gl.bindVertexArray(null);
+  }
+
+/**
+   * Check if GPU resources have been initialized.
+   *
+   * @returns True if GPU resources are ready for rendering
+   */
+  isInitialized(): boolean {
+    return this.vao !== null && this.program !== null;
   }
 
   /**
