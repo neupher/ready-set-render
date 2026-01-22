@@ -23,3 +23,10 @@ export type {
 } from './ISceneObject';
 export { createDefaultTransform } from './ISceneObject';
 export type { IImporter, ImportResult } from './IImporter';
+
+// Entity Component System
+export type { IComponent } from './IComponent';
+export type { IEntity } from './IEntity';
+export { isEntity } from './IEntity';
+export type { IMeshComponent } from './IMeshComponent';
+export type { IMaterialComponent } from './IMaterialComponent';

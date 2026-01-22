@@ -1,15 +1,22 @@
 /**
  * Cube Primitive
  *
- * A basic cube primitive that implements IRenderable.
+ * A basic cube primitive that implements IRenderable and IEntity.
  * Used for testing the line renderer and as a building block for scenes.
+ * Supports the Entity Component System for property display.
  */
 
 import type {
   IRenderable,
   Transform,
+  IComponent,
+  IEntity,
+  IMeshComponent,
+  IMaterialComponent,
 } from '@core/interfaces';
 import { createDefaultTransform } from '@core/interfaces';
+import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
+import { EntityIdGenerator } from '@utils/EntityIdGenerator';
 import {
   mat4Multiply,
   mat4Translation,
@@ -24,9 +31,11 @@ import {
  * A cube primitive with wireframe rendering capability.
  * Vertices define the 8 corners of a unit cube centered at origin.
  * Edges define the 12 wireframe lines.
+ * Implements IEntity for component-based property display.
  */
-export class Cube implements IRenderable {
+export class Cube implements IRenderable, IEntity {
   readonly id: string;
+  readonly entityId: number;
   name: string;
   parent: IRenderable | null = null;
   children: IRenderable[] = [];
@@ -34,6 +43,7 @@ export class Cube implements IRenderable {
 
   private readonly vertices: Float32Array;
   private readonly edges: Uint16Array;
+  private readonly components: Map<string, IComponent> = new Map();
 
   private gl: WebGL2RenderingContext | null = null;
   private vao: WebGLVertexArrayObject | null = null;
@@ -49,6 +59,7 @@ export class Cube implements IRenderable {
    */
   constructor(id?: string, name?: string) {
     this.id = id ?? crypto.randomUUID();
+    this.entityId = EntityIdGenerator.next();
     this.name = name ?? 'Cube';
     this.transform = createDefaultTransform();
 
@@ -76,6 +87,68 @@ export class Cube implements IRenderable {
       // Side edges connecting front and back
       0, 4,  1, 5,  2, 6,  3, 7,
     ]);
+
+    // Initialize components
+    this.initializeComponents();
+  }
+
+  /**
+   * Initialize default components for the cube.
+   */
+  private initializeComponents(): void {
+    // Mesh component
+    const meshComponent: IMeshComponent = {
+      type: 'mesh',
+      vertexCount: this.vertices.length / 3,
+      edgeCount: this.edges.length / 2,
+      triangleCount: 12, // 6 faces * 2 triangles
+      doubleSided: false
+    };
+    this.components.set('mesh', meshComponent);
+
+    // Material component
+    const materialComponent: IMaterialComponent = {
+      type: 'material',
+      shaderName: 'LineShader',
+      color: [1, 1, 1],
+      opacity: 1,
+      transparent: false
+    };
+    this.components.set('material', materialComponent);
+  }
+
+  // =========================================
+  // IEntity Implementation
+  // =========================================
+
+  /**
+   * Get all components attached to this entity.
+   *
+   * @returns Array of all components
+   */
+  getComponents(): IComponent[] {
+    return Array.from(this.components.values());
+  }
+
+  /**
+   * Get a specific component by type.
+   *
+   * @param type - The component type to retrieve
+   * @returns The component if found, null otherwise
+   */
+  getComponent<T extends IComponent>(type: string): T | null {
+    const component = this.components.get(type);
+    return component ? (component as T) : null;
+  }
+
+  /**
+   * Check if this entity has a specific component type.
+   *
+   * @param type - The component type to check
+   * @returns True if the component exists
+   */
+  hasComponent(type: string): boolean {
+    return this.components.has(type);
   }
 
   /**
@@ -251,5 +324,25 @@ export class Cube implements IRenderable {
     this.gl = null;
     this.program = null;
     this.mvpLocation = null;
+  }
+}
+
+/**
+ * Factory for creating Cube primitives.
+ * Implements IPrimitiveFactory for registration with PrimitiveRegistry.
+ */
+export class CubeFactory implements IPrimitiveFactory {
+  readonly type = 'Cube';
+  readonly category = 'Mesh' as const;
+  readonly icon = 'cube';
+
+  /**
+   * Create a new Cube instance.
+   *
+   * @param name - Optional name for the cube
+   * @returns A new Cube instance
+   */
+  create(name?: string): Cube {
+    return new Cube(undefined, name);
   }
 }

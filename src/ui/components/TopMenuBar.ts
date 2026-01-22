@@ -1,16 +1,19 @@
 /**
  * TopMenuBar Component
  *
- * A horizontal menu bar with dropdown menus.
- * Used at the top of the editor for File, Rendering, Help menus.
+ * A horizontal menu bar with dropdown menus and nested submenus.
+ * Used at the top of the editor for File, Create, Rendering, Help menus.
  *
  * @example
  * ```ts
  * const menuBar = new TopMenuBar({
  *   menus: [
- *     { name: 'File', items: [{ label: 'New' }, { label: 'Open' }] }
+ *     { name: 'File', items: [{ label: 'New' }, { label: 'Open' }] },
+ *     { name: 'Create', items: [
+ *       { label: 'Primitives', children: [{ label: 'Cube' }, { label: 'Sphere' }] }
+ *     ]}
  *   ],
- *   onItemClick: (menuName, itemLabel) => console.log(menuName, itemLabel)
+ *   onItemClick: (menuName, itemLabel, parentLabel) => console.log(menuName, itemLabel)
  * });
  * container.appendChild(menuBar.element);
  * ```
@@ -25,6 +28,8 @@ export interface MenuItem {
   disabled?: boolean;
   /** Separator after this item */
   separator?: boolean;
+  /** Nested submenu items (creates a flyout menu on hover) */
+  children?: MenuItem[];
 }
 
 export interface Menu {
@@ -130,52 +135,115 @@ export class TopMenuBar {
       const dropdown = document.createElement('div');
       dropdown.className = 'dropdown-menu hidden';
 
-      for (const item of menu.items) {
-        const menuItem = document.createElement('button');
-        menuItem.className = `dropdown-item ${item.disabled ? 'disabled' : ''}`;
-
-        const labelSpan = document.createElement('span');
-        labelSpan.textContent = item.label;
-        menuItem.appendChild(labelSpan);
-
-        if (item.shortcut) {
-          const shortcutSpan = document.createElement('span');
-          shortcutSpan.className = 'shortcut';
-          shortcutSpan.textContent = item.shortcut;
-          shortcutSpan.style.marginLeft = 'auto';
-          shortcutSpan.style.color = 'var(--text-muted)';
-          shortcutSpan.style.fontSize = 'var(--font-size-xs)';
-          menuItem.appendChild(shortcutSpan);
-          menuItem.style.display = 'flex';
-          menuItem.style.justifyContent = 'space-between';
-        }
-
-        if (!item.disabled) {
-          menuItem.addEventListener('click', () => {
-            this.closeAll();
-            if (this.onItemClick) {
-              this.onItemClick(menu.name, item.label);
-            }
-          });
-        }
-
-        dropdown.appendChild(menuItem);
-
-        if (item.separator) {
-          const separator = document.createElement('div');
-          separator.className = 'menu-separator';
-          separator.style.height = '1px';
-          separator.style.background = 'var(--border-primary)';
-          separator.style.margin = 'var(--spacing-xs) 0';
-          dropdown.appendChild(separator);
-        }
-      }
+      this.renderMenuItems(dropdown, menu.items, menu.name);
 
       this.dropdowns.set(menu.name, dropdown);
 
       menuContainer.appendChild(trigger);
       menuContainer.appendChild(dropdown);
       this.container.appendChild(menuContainer);
+    }
+  }
+
+  /**
+   * Render menu items, supporting nested submenus.
+   */
+  private renderMenuItems(
+    container: HTMLElement,
+    items: MenuItem[],
+    menuName: string,
+    parentLabel?: string
+  ): void {
+    for (const item of items) {
+      const hasChildren = item.children && item.children.length > 0;
+
+      const menuItem = document.createElement('div');
+      menuItem.className = `dropdown-item ${item.disabled ? 'disabled' : ''} ${hasChildren ? 'has-submenu' : ''}`;
+      menuItem.style.position = 'relative';
+
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = item.label;
+      menuItem.appendChild(labelSpan);
+
+      if (item.shortcut) {
+        const shortcutSpan = document.createElement('span');
+        shortcutSpan.className = 'shortcut';
+        shortcutSpan.textContent = item.shortcut;
+        shortcutSpan.style.marginLeft = 'auto';
+        shortcutSpan.style.color = 'var(--text-muted)';
+        shortcutSpan.style.fontSize = 'var(--font-size-xs)';
+        menuItem.appendChild(shortcutSpan);
+        menuItem.style.display = 'flex';
+        menuItem.style.justifyContent = 'space-between';
+      }
+
+      // Add submenu arrow indicator
+      if (hasChildren) {
+        const arrowSpan = document.createElement('span');
+        arrowSpan.className = 'submenu-arrow';
+        arrowSpan.textContent = '▶';
+        arrowSpan.style.marginLeft = 'auto';
+        arrowSpan.style.fontSize = '8px';
+        arrowSpan.style.opacity = '0.7';
+        menuItem.appendChild(arrowSpan);
+        menuItem.style.display = 'flex';
+        menuItem.style.justifyContent = 'space-between';
+        menuItem.style.alignItems = 'center';
+        menuItem.style.gap = 'var(--spacing-md)';
+
+        // Create submenu container
+        const submenu = document.createElement('div');
+        submenu.className = 'submenu hidden';
+        submenu.style.position = 'absolute';
+        submenu.style.left = '100%';
+        submenu.style.top = '0';
+        submenu.style.marginLeft = '0';
+
+        // Recursively render child items
+        this.renderMenuItems(submenu, item.children!, menuName, item.label);
+
+        menuItem.appendChild(submenu);
+
+        // Show/hide submenu on hover
+        menuItem.addEventListener('mouseenter', () => {
+          // Hide any other open submenus at this level
+          const siblings = container.querySelectorAll('.has-submenu > .submenu');
+          siblings.forEach(s => s.classList.add('hidden'));
+          submenu.classList.remove('hidden');
+        });
+
+        menuItem.addEventListener('mouseleave', (e) => {
+          const relatedTarget = e.relatedTarget as HTMLElement;
+          if (!menuItem.contains(relatedTarget)) {
+            submenu.classList.add('hidden');
+          }
+        });
+      } else if (!item.disabled) {
+        // Leaf item - handle click
+        menuItem.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.closeAll();
+          if (this.onItemClick) {
+            // Pass the full path for nested items
+            if (parentLabel) {
+              this.onItemClick(menuName, `${parentLabel}/${item.label}`);
+            } else {
+              this.onItemClick(menuName, item.label);
+            }
+          }
+        });
+      }
+
+      container.appendChild(menuItem);
+
+      if (item.separator) {
+        const separator = document.createElement('div');
+        separator.className = 'menu-separator';
+        separator.style.height = '1px';
+        separator.style.background = 'var(--border-primary)';
+        separator.style.margin = 'var(--spacing-xs) 0';
+        container.appendChild(separator);
+      }
     }
   }
 
@@ -232,6 +300,33 @@ export const DEFAULT_MENUS: Menu[] = [
       { label: 'Save', shortcut: 'Ctrl+S' },
       { label: 'Save As', shortcut: 'Ctrl+Shift+S', separator: true },
       { label: 'Exit' }
+    ]
+  },
+  {
+    name: 'Create',
+    items: [
+      {
+        label: 'Primitives',
+        children: [
+          { label: 'Cube' },
+          { label: 'Sphere', disabled: true },
+          { label: 'Plane', disabled: true },
+          { label: 'Cylinder', disabled: true },
+          { label: 'Cone', disabled: true },
+          { label: 'Torus', disabled: true }
+        ]
+      },
+      {
+        label: 'Lights',
+        disabled: true,
+        children: [
+          { label: 'Point Light', disabled: true },
+          { label: 'Directional Light', disabled: true },
+          { label: 'Spot Light', disabled: true }
+        ]
+      },
+      { label: 'Camera', disabled: true },
+      { label: 'Empty', disabled: true }
     ]
   },
   {

@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-01-22
+
+### Added
+
+- **Phase 5: Scene Instantiation System**
+  - Complete system for creating primitives via Create menu and displaying entity components
+
+- **Nested Submenu Support** (`src/ui/components/TopMenuBar.ts`)
+  - Extended `MenuItem` interface with `children` property for nested menus
+  - Added "Create" menu with "Primitives" submenu containing "Cube"
+  - Hover-triggered flyout menus with proper positioning
+  - CSS styles for submenu rendering
+
+- **PrimitiveRegistry Plugin** (`src/plugins/primitives/`)
+  - `IPrimitiveFactory` interface for factory pattern
+  - `PrimitiveRegistry` class with register/unregister/create methods
+  - Auto-generated unique names (e.g., "Cube.001", "Cube.002")
+  - Open/Closed principle - new primitives registered without modifying existing code
+
+- **Entity Component System** (`src/core/interfaces/`)
+  - `IComponent`: Base interface for all components
+  - `IEntity`: Extends ISceneObject with component support and entityId
+  - `IMeshComponent`: Vertex count, edge count, triangle count
+  - `IMaterialComponent`: Shader name, color, opacity
+  - `isEntity()` type guard function
+
+- **EntityIdGenerator Utility** (`src/utils/EntityIdGenerator.ts`)
+  - Static class for auto-incrementing entity IDs
+  - `next()`, `current()`, `reset()` methods
+
+- **Barrel Exports**
+  - `src/utils/index.ts` - Utils entry point
+  - Updated `src/plugins/primitives/index.ts` with new exports
+  - Updated `src/core/interfaces/index.ts` with ECS interfaces
+
+### Changed
+
+- **Cube Primitive** (`src/plugins/primitives/Cube.ts`)
+  - Now implements both `IRenderable` and `IEntity` interfaces
+  - Added `entityId` using EntityIdGenerator
+  - Added mesh component (8 vertices, 12 edges, 12 triangles)
+  - Added material component (LineShader, white color)
+  - Added `CubeFactory` implementing `IPrimitiveFactory`
+
+- **PropertiesPanel** (`src/ui/panels/PropertiesPanel.ts`)
+  - Enhanced to display Entity ID for entities
+  - Shows Mesh component section (Vertices, Edges, Triangles)
+  - Shows Material component section (Shader, Color picker, Opacity)
+  - Uses `isEntity()` type guard for dynamic component display
+
+- **EditorLayout** (`src/ui/panels/EditorLayout.ts`)
+  - Now receives `PrimitiveRegistry` via dependency injection
+  - Handles "Create → Primitives/Cube" menu clicks
+  - Creates primitives at world origin (0,0,0)
+  - Auto-selects newly created objects
+
+- **Application Entry** (`src/index.ts`)
+  - Scene starts empty by default (removed hardcoded cube)
+  - Initializes PrimitiveRegistry with CubeFactory
+  - Passes primitiveRegistry to EditorLayout
+
+- **Theme** (`src/ui/theme/theme.css`)
+  - Added submenu styles for nested dropdown menus
+
+---
+
 ## [0.4.0] - 2026-01-22
 
 ### Added

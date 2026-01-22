@@ -3,6 +3,7 @@
  *
  * Main layout manager that assembles all editor panels.
  * Handles dependency injection and panel arrangement.
+ * Manages primitive registry and menu-to-scene connections.
  *
  * @example
  * ```ts
@@ -10,7 +11,8 @@
  *   container: document.getElementById('app'),
  *   gl,
  *   eventBus,
- *   sceneGraph
+ *   sceneGraph,
+ *   primitiveRegistry
  * });
  * layout.initialize();
  * ```
@@ -18,6 +20,7 @@
 
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
+import { PrimitiveRegistry } from '@plugins/primitives';
 import { TopMenuBar, DEFAULT_MENUS } from '../components/TopMenuBar';
 import { ResizablePanel } from '../components/ResizablePanel';
 import { HierarchyPanel } from './HierarchyPanel';
@@ -33,6 +36,8 @@ export interface EditorLayoutOptions {
   eventBus: EventBus;
   /** Scene graph */
   sceneGraph: SceneGraph;
+  /** Primitive registry for creating objects */
+  primitiveRegistry: PrimitiveRegistry;
 }
 
 /**
@@ -44,6 +49,7 @@ export class EditorLayout {
   private readonly gl: WebGL2RenderingContext;
   private readonly eventBus: EventBus;
   private readonly sceneGraph: SceneGraph;
+  private readonly primitiveRegistry: PrimitiveRegistry;
 
   private root: HTMLDivElement | null = null;
   private menuBar: TopMenuBar | null = null;
@@ -58,6 +64,7 @@ export class EditorLayout {
     this.gl = options.gl;
     this.eventBus = options.eventBus;
     this.sceneGraph = options.sceneGraph;
+    this.primitiveRegistry = options.primitiveRegistry;
   }
 
   /**
@@ -175,6 +182,13 @@ export class EditorLayout {
   private handleMenuClick(menuName: string, itemLabel: string): void {
     this.eventBus.emit('menu:click', { menu: menuName, item: itemLabel });
 
+    // Handle Create menu - Primitives submenu
+    if (menuName === 'Create' && itemLabel.startsWith('Primitives/')) {
+      const primitiveType = itemLabel.replace('Primitives/', '');
+      this.createPrimitive(primitiveType);
+      return;
+    }
+
     // Handle common menu actions
     switch (itemLabel) {
       case 'New':
@@ -204,6 +218,25 @@ export class EditorLayout {
       case 'About':
         this.eventBus.emit('command:about');
         break;
+    }
+  }
+
+  /**
+   * Create a new primitive from the registry and add it to the scene.
+   */
+  private createPrimitive(type: string): void {
+    const primitive = this.primitiveRegistry.create(type);
+
+    if (primitive) {
+      // Add to scene at world origin (transform is already 0,0,0 by default)
+      this.sceneGraph.add(primitive);
+
+      // Auto-select the newly created object
+      this.eventBus.emit('selection:changed', { id: primitive.id });
+
+      console.log(`Created ${type}: ${primitive.name}`);
+    } else {
+      console.warn(`Failed to create primitive: ${type}`);
     }
   }
 }

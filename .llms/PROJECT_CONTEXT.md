@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-22T14:52:00Z
-> **Version:** 0.4.0
-> **Status:** Phase 4 Complete - UI Layer Built
+> **Last Updated:** 2026-01-22T15:35:00Z
+> **Version:** 0.5.0
+> **Status:** Phase 5 Complete - Scene Instantiation System
 
 ---
 
@@ -146,7 +146,27 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 - **Tests**: 267 total tests passing (61 new UI tests)
 
-### 📋 Next Steps (Phase 5: Testing Infrastructure)
+### ✅ Completed - Phase 5: Scene Instantiation System
+
+**Goal:** Enable users to instantiate primitives from the Create menu and see them in the hierarchy with proper component display.
+
+**Key Features Implemented:**
+1. **Nested Submenu Support** - Create → Primitives → Cube menu structure
+2. **PrimitiveRegistry Plugin** - Registry pattern for instantiating primitives
+3. **Entity Component System Foundation** - Display Name, Transform, Mesh, Material
+4. **Clean Scene Initialization** - Empty scene by default, no hardcoded cube
+5. **Menu-to-Scene Connection** - Clicking Cube creates and renders a new cube
+
+**Sub-phases (all complete):**
+- [x] Phase 5.1: Extend TopMenuBar for nested submenus
+- [x] Phase 5.2: Create PrimitiveRegistry plugin
+- [x] Phase 5.3: Add Entity/Component interfaces
+- [x] Phase 5.4: Update Cube to implement IEntity with components
+- [x] Phase 5.5: Update PropertiesPanel for component-based display
+- [x] Phase 5.6: Connect menu to scene operations, clean scene init
+- [x] Phase 5.7: Add EntityIdGenerator utility
+
+### 📋 Next Steps (Phase 6: Testing Infrastructure)
 
 1. **WebGL Mock Enhancements** - Expand mock coverage for integration tests
 2. **Integration Tests** - Test full render pipeline with scene graph

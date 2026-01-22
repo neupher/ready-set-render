@@ -1,7 +1,7 @@
 # Implementation Plan: WebGL Editor
 
-> **Last Updated:** 2026-01-22T14:53:00Z
-> **Status:** Phase 4 Complete ✓ | Phase 5 Ready
+> **Last Updated:** 2026-01-22T15:35:00Z
+> **Status:** Phase 5 Complete ✓ | Phase 6 Ready
 
 ---
 
@@ -1298,7 +1298,61 @@ export class EditorLayout {
 
 ---
 
-## Phase 5: Testing Infrastructure
+## Phase 5: Scene Instantiation System ✅ COMPLETE
+
+### Goal
+Enable users to instantiate primitives from the Create menu and see them in the hierarchy with proper component display.
+
+### Completed Items:
+- ✅ **Nested Submenu Support** (`src/ui/components/TopMenuBar.ts`)
+  - Extended `MenuItem` interface with `children` property
+  - Added "Create" menu with "Primitives" submenu
+  - Hover-triggered flyout menus with proper positioning
+
+- ✅ **PrimitiveRegistry Plugin** (`src/plugins/primitives/`)
+  - `IPrimitiveFactory` interface for factory pattern
+  - `PrimitiveRegistry` class with register/unregister/create methods
+  - Auto-generated unique names (e.g., "Cube.001", "Cube.002")
+
+- ✅ **Entity Component System** (`src/core/interfaces/`)
+  - `IComponent`: Base interface for all components
+  - `IEntity`: Extends ISceneObject with component support and entityId
+  - `IMeshComponent`: Vertex count, edge count, triangle count
+  - `IMaterialComponent`: Shader name, color, opacity
+  - `isEntity()` type guard function
+
+- ✅ **Cube with Components** (`src/plugins/primitives/Cube.ts`)
+  - Implements both `IRenderable` and `IEntity` interfaces
+  - Added `entityId` using EntityIdGenerator
+  - Added mesh component (8 vertices, 12 edges, 12 triangles)
+  - Added material component (LineShader, white color)
+  - Added `CubeFactory` implementing `IPrimitiveFactory`
+
+- ✅ **Enhanced Properties Panel** (`src/ui/panels/PropertiesPanel.ts`)
+  - Shows Entity ID for entities (e.g., "#1")
+  - Shows Mesh component section: Vertices, Edges, Triangles
+  - Shows Material component section: Shader name, Color picker, Opacity
+
+- ✅ **Menu-to-Scene Connection** (`src/ui/panels/EditorLayout.ts`, `src/index.ts`)
+  - Handles "Create → Primitives/Cube" menu clicks
+  - Creates primitives at world origin (0,0,0)
+  - Auto-selects newly created objects
+  - Scene starts empty by default
+
+- ✅ **EntityIdGenerator Utility** (`src/utils/EntityIdGenerator.ts`)
+  - Static class for auto-incrementing entity IDs
+
+### Success Criteria (All Met):
+- [x] "Create" menu appears in top bar with "Primitives" submenu on hover
+- [x] Clicking "Cube" in submenu creates a new cube at world origin (0,0,0)
+- [x] Hierarchy shows empty "Scene" by default, new cubes appear as children
+- [x] Each cube gets unique entity ID (Cube.001, Cube.002, etc.)
+- [x] Properties panel shows: Name (with ID), Transform, Mesh component, Material component
+- [x] All changes validated with no errors
+
+---
+
+## Phase 6: Testing Infrastructure
 
 ### 5.1 WebGL Mock
 

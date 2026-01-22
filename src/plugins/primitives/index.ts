@@ -1,7 +1,8 @@
 /**
- * Primitives
- *
- * Re-exports all primitive types.
+ * Primitives module barrel exports.
  */
 
-export { Cube } from './Cube';
+export { Cube, CubeFactory } from './Cube';
+export { PrimitiveRegistry } from './PrimitiveRegistry';
+export type { PrimitiveRegistryOptions } from './PrimitiveRegistry';
+export type { IPrimitiveFactory, PrimitiveCategory } from './interfaces/IPrimitiveFactory';

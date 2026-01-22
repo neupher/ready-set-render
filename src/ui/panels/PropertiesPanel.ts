@@ -3,6 +3,7 @@
  *
  * Displays properties of the selected object with tabbed interface.
  * Includes Details tab and Shader Editor tab.
+ * Supports Entity Component System for dynamic property display.
  * NOT a plugin - standard UI panel.
  *
  * @example
@@ -16,7 +17,9 @@
  */
 
 import { EventBus } from '@core/EventBus';
-import { SceneGraph, SceneObject } from '@core/SceneGraph';
+import { SceneGraph } from '@core/SceneGraph';
+import type { ISceneObject, IMeshComponent, IMaterialComponent } from '@core/interfaces';
+import { isEntity } from '@core/interfaces';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { DraggableNumberInput } from '../components/DraggableNumberInput';
 
@@ -43,7 +46,7 @@ export class PropertiesPanel {
   private readonly detailsContent: HTMLDivElement;
   private readonly shaderContent: HTMLDivElement;
 
-  private selectedObject: SceneObject | null = null;
+  private selectedObject: ISceneObject | null = null;
 
   constructor(options: PropertiesPanelOptions) {
     this.eventBus = options.eventBus;
@@ -208,7 +211,18 @@ export class PropertiesPanel {
     contentWrapper.style.padding = '0';
 
     // Object Name Section
-    const nameSection = new CollapsibleSection({ title: 'Object Name', defaultOpen: true });
+    const nameSection = new CollapsibleSection({ title: 'Object', defaultOpen: true });
+    const nameContent = document.createElement('div');
+    nameContent.style.display = 'flex';
+    nameContent.style.flexDirection = 'column';
+    nameContent.style.gap = 'var(--spacing-sm)';
+
+    // Name input
+    const nameLabel = document.createElement('label');
+    nameLabel.className = 'label';
+    nameLabel.textContent = 'Name';
+    nameContent.appendChild(nameLabel);
+
     const nameInput = document.createElement('input');
     nameInput.type = 'text';
     nameInput.className = 'input';
@@ -216,7 +230,24 @@ export class PropertiesPanel {
     nameInput.addEventListener('change', () => {
       this.emitPropertyChange('name', nameInput.value);
     });
-    nameSection.setContent(nameInput);
+    nameContent.appendChild(nameInput);
+
+    // Entity ID (if it's an entity)
+    if (isEntity(obj)) {
+      const idLabel = document.createElement('label');
+      idLabel.className = 'label';
+      idLabel.textContent = 'Entity ID';
+      nameContent.appendChild(idLabel);
+
+      const idDisplay = document.createElement('div');
+      idDisplay.className = 'input';
+      idDisplay.style.backgroundColor = 'var(--bg-tertiary)';
+      idDisplay.style.cursor = 'default';
+      idDisplay.textContent = `#${obj.entityId}`;
+      nameContent.appendChild(idDisplay);
+    }
+
+    nameSection.setContent(nameContent);
     contentWrapper.appendChild(nameSection.element);
 
     // Transform Section
@@ -251,52 +282,139 @@ export class PropertiesPanel {
     transformSection.setContent(transformContent);
     contentWrapper.appendChild(transformSection.element);
 
-    // Material Section (placeholder)
-    const materialSection = new CollapsibleSection({ title: 'Material', defaultOpen: true });
-    const materialInput = document.createElement('input');
-    materialInput.type = 'text';
-    materialInput.className = 'input';
-    materialInput.value = 'DefaultMaterial';
-    materialInput.addEventListener('change', () => {
-      this.emitPropertyChange('material', materialInput.value);
-    });
-    materialSection.setContent(materialInput);
-    contentWrapper.appendChild(materialSection.element);
+    // Mesh Component Section (if entity has mesh component)
+    if (isEntity(obj) && obj.hasComponent('mesh')) {
+      const meshComponent = obj.getComponent<IMeshComponent>('mesh');
+      if (meshComponent) {
+        const meshSection = new CollapsibleSection({ title: 'Mesh', defaultOpen: true });
+        const meshContent = document.createElement('div');
+        meshContent.style.display = 'flex';
+        meshContent.style.flexDirection = 'column';
+        meshContent.style.gap = 'var(--spacing-sm)';
 
-    // Color Section (placeholder)
-    const colorSection = new CollapsibleSection({ title: 'Color', defaultOpen: true });
-    const colorContent = document.createElement('div');
-    colorContent.style.display = 'flex';
-    colorContent.style.gap = 'var(--spacing-sm)';
+        // Vertex Count
+        meshContent.appendChild(this.createReadonlyField('Vertices', meshComponent.vertexCount.toString()));
 
-    const colorPicker = document.createElement('input');
-    colorPicker.type = 'color';
-    colorPicker.className = 'input';
-    colorPicker.style.width = '64px';
-    colorPicker.value = '#ff6b6b';
+        // Edge Count
+        meshContent.appendChild(this.createReadonlyField('Edges', meshComponent.edgeCount.toString()));
 
-    const colorText = document.createElement('input');
-    colorText.type = 'text';
-    colorText.className = 'input';
-    colorText.style.flex = '1';
-    colorText.value = '#ff6b6b';
+        // Triangle Count
+        meshContent.appendChild(this.createReadonlyField('Triangles', meshComponent.triangleCount.toString()));
 
-    colorPicker.addEventListener('change', () => {
-      colorText.value = colorPicker.value;
-      this.emitPropertyChange('color', colorPicker.value);
-    });
+        // Double Sided
+        if (meshComponent.doubleSided !== undefined) {
+          meshContent.appendChild(this.createReadonlyField('Double Sided', meshComponent.doubleSided ? 'Yes' : 'No'));
+        }
 
-    colorText.addEventListener('change', () => {
-      colorPicker.value = colorText.value;
-      this.emitPropertyChange('color', colorText.value);
-    });
+        meshSection.setContent(meshContent);
+        contentWrapper.appendChild(meshSection.element);
+      }
+    }
 
-    colorContent.appendChild(colorPicker);
-    colorContent.appendChild(colorText);
-    colorSection.setContent(colorContent);
-    contentWrapper.appendChild(colorSection.element);
+    // Material Component Section (if entity has material component)
+    if (isEntity(obj) && obj.hasComponent('material')) {
+      const materialComponent = obj.getComponent<IMaterialComponent>('material');
+      if (materialComponent) {
+        const materialSection = new CollapsibleSection({ title: 'Material', defaultOpen: true });
+        const materialContent = document.createElement('div');
+        materialContent.style.display = 'flex';
+        materialContent.style.flexDirection = 'column';
+        materialContent.style.gap = 'var(--spacing-sm)';
+
+        // Shader Name
+        materialContent.appendChild(this.createReadonlyField('Shader', materialComponent.shaderName));
+
+        // Color
+        if (materialComponent.color) {
+          const colorGroup = document.createElement('div');
+
+          const colorLabel = document.createElement('label');
+          colorLabel.className = 'label';
+          colorLabel.textContent = 'Color';
+          colorGroup.appendChild(colorLabel);
+
+          const colorRow = document.createElement('div');
+          colorRow.style.display = 'flex';
+          colorRow.style.gap = 'var(--spacing-sm)';
+
+          const colorPicker = document.createElement('input');
+          colorPicker.type = 'color';
+          colorPicker.className = 'input';
+          colorPicker.style.width = '64px';
+
+          // Convert [0-1] RGB to hex
+          const r = Math.round(materialComponent.color[0] * 255);
+          const g = Math.round(materialComponent.color[1] * 255);
+          const b = Math.round(materialComponent.color[2] * 255);
+          const hexColor = `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+          colorPicker.value = hexColor;
+
+          const colorText = document.createElement('input');
+          colorText.type = 'text';
+          colorText.className = 'input';
+          colorText.style.flex = '1';
+          colorText.value = hexColor;
+
+          colorPicker.addEventListener('change', () => {
+            colorText.value = colorPicker.value;
+            this.emitPropertyChange('material.color', colorPicker.value);
+          });
+
+          colorText.addEventListener('change', () => {
+            colorPicker.value = colorText.value;
+            this.emitPropertyChange('material.color', colorText.value);
+          });
+
+          colorRow.appendChild(colorPicker);
+          colorRow.appendChild(colorText);
+          colorGroup.appendChild(colorRow);
+          materialContent.appendChild(colorGroup);
+        }
+
+        // Opacity
+        if (materialComponent.opacity !== undefined) {
+          materialContent.appendChild(this.createReadonlyField('Opacity', materialComponent.opacity.toFixed(2)));
+        }
+
+        materialSection.setContent(materialContent);
+        contentWrapper.appendChild(materialSection.element);
+      }
+    } else {
+      // Fallback Material Section for non-entity objects
+      const materialSection = new CollapsibleSection({ title: 'Material', defaultOpen: true });
+      const materialInput = document.createElement('input');
+      materialInput.type = 'text';
+      materialInput.className = 'input';
+      materialInput.value = 'DefaultMaterial';
+      materialInput.addEventListener('change', () => {
+        this.emitPropertyChange('material', materialInput.value);
+      });
+      materialSection.setContent(materialInput);
+      contentWrapper.appendChild(materialSection.element);
+    }
 
     this.detailsContent.appendChild(contentWrapper);
+  }
+
+  /**
+   * Create a readonly field display.
+   */
+  private createReadonlyField(label: string, value: string): HTMLElement {
+    const group = document.createElement('div');
+
+    const labelEl = document.createElement('label');
+    labelEl.className = 'label';
+    labelEl.textContent = label;
+    group.appendChild(labelEl);
+
+    const display = document.createElement('div');
+    display.className = 'input';
+    display.style.backgroundColor = 'var(--bg-tertiary)';
+    display.style.cursor = 'default';
+    display.textContent = value;
+    group.appendChild(display);
+
+    return group;
   }
 
   private createVector3Group(

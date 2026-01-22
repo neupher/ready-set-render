@@ -4,7 +4,7 @@
  * A modular, extensible WebGL2-based 3D editor for learning
  * real-time and ray-tracing rendering techniques.
  *
- * @version 0.4.0
+ * @version 0.5.0
  */
 
 // Import theme CSS
@@ -19,11 +19,11 @@ import { Camera } from '@core/Camera';
 import { EditorLayout } from '@ui/panels/EditorLayout';
 
 // Plugins
-import { Cube } from '@plugins/primitives/Cube';
+import { CubeFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 
 // Math utilities
-import { degToRad } from '@utils/math/transforms';
+import { degToRad } from '@utils/math';
 
 console.log('WebGL Editor initializing...');
 
@@ -52,12 +52,14 @@ async function main(): Promise<void> {
 
     console.log('Core modules initialized');
 
-    // Add a default cube to the scene
-    const cube = new Cube('cube-001');
-    cube.name = 'Cube.001';
-    sceneGraph.add(cube);
+    // Initialize primitive registry and register built-in primitives
+    const primitiveRegistry = new PrimitiveRegistry({ eventBus });
+    primitiveRegistry.register(new CubeFactory());
 
-    console.log('Scene populated with default objects');
+    console.log('Primitive registry initialized with Cube factory');
+
+    // Scene starts empty - user can add objects via Create menu
+    console.log('Scene initialized (empty)');
 
     // Initialize camera
     const camera = new Camera({
@@ -70,12 +72,13 @@ async function main(): Promise<void> {
       far: 100,
     });
 
-    // Initialize UI layout
+    // Initialize UI layout (with primitive registry for Create menu)
     const layout = new EditorLayout({
       container: appContainer,
       gl,
       eventBus,
-      sceneGraph
+      sceneGraph,
+      primitiveRegistry
     });
     layout.initialize();
 
@@ -124,7 +127,8 @@ async function main(): Promise<void> {
     layout.getViewport()?.resize();
 
     console.log('WebGL Editor initialized successfully');
-    console.log('Phase 4: UI Layer - Complete');
+    console.log('Phase 5: Scene Instantiation System - Complete');
+    console.log('Use Create → Primitives → Cube to add objects to the scene');
 
   } catch (error) {
     console.error('Failed to initialize WebGL Editor:', error);
