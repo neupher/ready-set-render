@@ -18,7 +18,7 @@
 
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
-import type { ISceneObject, IMeshComponent, IMaterialComponent } from '@core/interfaces';
+import type { ISceneObject, IMeshComponent, IMaterialComponent, ICameraComponent, CameraClearFlags } from '@core/interfaces';
 import { isEntity } from '@core/interfaces';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { DraggableNumberInput } from '../components/DraggableNumberInput';
@@ -327,7 +327,7 @@ export class PropertiesPanel {
       }
     }
 
-    // Material Component Section (if entity has material component)
+// Material Component Section (if entity has material component)
     if (isEntity(obj) && obj.hasComponent('material')) {
       const materialComponent = obj.getComponent<IMaterialComponent>('material');
       if (materialComponent) {
@@ -395,8 +395,146 @@ export class PropertiesPanel {
         materialSection.setContent(materialContent);
         contentWrapper.appendChild(materialSection.element);
       }
-    } else {
-      // Fallback Material Section for non-entity objects
+    }
+
+    // Camera Component Section (if entity has camera component)
+    if (isEntity(obj) && obj.hasComponent('camera')) {
+      const cameraComponent = obj.getComponent<ICameraComponent>('camera');
+      if (cameraComponent) {
+        const cameraSection = new CollapsibleSection({ title: 'Camera', defaultOpen: true });
+        const cameraContent = document.createElement('div');
+        cameraContent.style.display = 'flex';
+        cameraContent.style.flexDirection = 'column';
+        cameraContent.style.gap = 'var(--spacing-sm)';
+
+        // Field of View
+        const fovGroup = document.createElement('div');
+        const fovLabel = document.createElement('label');
+        fovLabel.className = 'label';
+        fovLabel.textContent = 'Field of View';
+        fovGroup.appendChild(fovLabel);
+
+        const fovInput = new DraggableNumberInput({
+          value: cameraComponent.fieldOfView,
+          step: 1,
+          min: 1,
+          max: 179,
+          precision: 0,
+          onChange: (value) => this.emitPropertyChange('camera.fieldOfView', value)
+        });
+        fovGroup.appendChild(fovInput.element);
+        cameraContent.appendChild(fovGroup);
+
+        // Near Clip Plane
+        const nearGroup = document.createElement('div');
+        const nearLabel = document.createElement('label');
+        nearLabel.className = 'label';
+        nearLabel.textContent = 'Near Clip Plane';
+        nearGroup.appendChild(nearLabel);
+
+        const nearInput = new DraggableNumberInput({
+          value: cameraComponent.nearClipPlane,
+          step: 0.01,
+          min: 0.001,
+          precision: 3,
+          onChange: (value) => this.emitPropertyChange('camera.nearClipPlane', value)
+        });
+        nearGroup.appendChild(nearInput.element);
+        cameraContent.appendChild(nearGroup);
+
+        // Far Clip Plane
+        const farGroup = document.createElement('div');
+        const farLabel = document.createElement('label');
+        farLabel.className = 'label';
+        farLabel.textContent = 'Far Clip Plane';
+        farGroup.appendChild(farLabel);
+
+        const farInput = new DraggableNumberInput({
+          value: cameraComponent.farClipPlane,
+          step: 10,
+          min: 1,
+          precision: 0,
+          onChange: (value) => this.emitPropertyChange('camera.farClipPlane', value)
+        });
+        farGroup.appendChild(farInput.element);
+        cameraContent.appendChild(farGroup);
+
+        // Clear Flags dropdown
+        const clearFlagsGroup = document.createElement('div');
+        const clearFlagsLabel = document.createElement('label');
+        clearFlagsLabel.className = 'label';
+        clearFlagsLabel.textContent = 'Clear Flags';
+        clearFlagsGroup.appendChild(clearFlagsLabel);
+
+        const clearFlagsSelect = document.createElement('select');
+        clearFlagsSelect.className = 'input';
+        const clearFlagsOptions: CameraClearFlags[] = ['skybox', 'solidColor', 'depthOnly', 'none'];
+        clearFlagsOptions.forEach(flag => {
+          const option = document.createElement('option');
+          option.value = flag;
+          option.textContent = flag.charAt(0).toUpperCase() + flag.slice(1).replace(/([A-Z])/g, ' $1');
+          if (flag === cameraComponent.clearFlags) {
+            option.selected = true;
+          }
+          clearFlagsSelect.appendChild(option);
+        });
+        clearFlagsSelect.addEventListener('change', () => {
+          this.emitPropertyChange('camera.clearFlags', clearFlagsSelect.value);
+        });
+        clearFlagsGroup.appendChild(clearFlagsSelect);
+        cameraContent.appendChild(clearFlagsGroup);
+
+        // Background Color
+        const bgColorGroup = document.createElement('div');
+        const bgColorLabel = document.createElement('label');
+        bgColorLabel.className = 'label';
+        bgColorLabel.textContent = 'Background Color';
+        bgColorGroup.appendChild(bgColorLabel);
+
+        const bgColorRow = document.createElement('div');
+        bgColorRow.style.display = 'flex';
+        bgColorRow.style.gap = 'var(--spacing-sm)';
+
+        const bgColorPicker = document.createElement('input');
+        bgColorPicker.type = 'color';
+        bgColorPicker.className = 'input';
+        bgColorPicker.style.width = '64px';
+
+        // Convert [0-1] RGB to hex
+        const bgR = Math.round(cameraComponent.backgroundColor[0] * 255);
+        const bgG = Math.round(cameraComponent.backgroundColor[1] * 255);
+        const bgB = Math.round(cameraComponent.backgroundColor[2] * 255);
+        const bgHexColor = `#${bgR.toString(16).padStart(2, '0')}${bgG.toString(16).padStart(2, '0')}${bgB.toString(16).padStart(2, '0')}`;
+        bgColorPicker.value = bgHexColor;
+
+        const bgColorText = document.createElement('input');
+        bgColorText.type = 'text';
+        bgColorText.className = 'input';
+        bgColorText.style.flex = '1';
+        bgColorText.value = bgHexColor;
+
+        bgColorPicker.addEventListener('change', () => {
+          bgColorText.value = bgColorPicker.value;
+          this.emitPropertyChange('camera.backgroundColor', bgColorPicker.value);
+        });
+
+        bgColorText.addEventListener('change', () => {
+          bgColorPicker.value = bgColorText.value;
+          this.emitPropertyChange('camera.backgroundColor', bgColorText.value);
+        });
+
+        bgColorRow.appendChild(bgColorPicker);
+        bgColorRow.appendChild(bgColorText);
+        bgColorGroup.appendChild(bgColorRow);
+        cameraContent.appendChild(bgColorGroup);
+
+        cameraSection.setContent(cameraContent);
+        contentWrapper.appendChild(cameraSection.element);
+      }
+    }
+
+    // Fallback Material Section (for non-entity objects without material component)
+    if (!isEntity(obj) || !obj.hasComponent('material')) {
       const materialSection = new CollapsibleSection({ title: 'Material', defaultOpen: true });
       const materialInput = document.createElement('input');
       materialInput.type = 'text';

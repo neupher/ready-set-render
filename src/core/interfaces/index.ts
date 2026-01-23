@@ -31,3 +31,5 @@ export type { IEntity } from './IEntity';
 export { isEntity } from './IEntity';
 export type { IMeshComponent } from './IMeshComponent';
 export type { IMaterialComponent } from './IMaterialComponent';
+export type { ICameraComponent, CameraClearFlags } from './ICameraComponent';
+export { createDefaultCameraComponent } from './ICameraComponent';

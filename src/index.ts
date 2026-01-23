@@ -13,7 +13,7 @@ import '@ui/theme/theme.css';
 // Core modules
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
-import { Camera } from '@core/Camera';
+import { CameraEntity } from '@core/CameraEntity';
 import { isInitializable } from '@core/interfaces';
 
 // UI system
@@ -22,9 +22,6 @@ import { EditorLayout } from '@ui/panels/EditorLayout';
 // Plugins
 import { CubeFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
-
-// Math utilities
-import { degToRad } from '@utils/math';
 
 console.log('WebGL Editor initializing...');
 
@@ -62,16 +59,18 @@ async function main(): Promise<void> {
     // Scene starts empty - user can add objects via Create menu
     console.log('Scene initialized (empty)');
 
-    // Initialize camera
-    const camera = new Camera({
+    // Initialize camera as scene entity
+    const cameraEntity = new CameraEntity({
       position: [3, 3, 3],
       target: [0, 0, 0],
-      up: [0, 1, 0],
-      fov: degToRad(60),
-      aspect: 1,
-      near: 0.1,
-      far: 100,
+      fieldOfView: 60,
+      nearClipPlane: 0.1,
+      farClipPlane: 100,
     });
+
+    // Add camera to scene graph so it appears in hierarchy
+    sceneGraph.add(cameraEntity);
+    console.log('Camera entity added to scene');
 
     // Initialize UI layout (with primitive registry for Create menu)
     const layout = new EditorLayout({
@@ -109,16 +108,19 @@ console.log('Line renderer initialized');
 
     console.log('Scene object initialization listener registered');
 
+    // Create render camera adapter for rendering (aspect will be updated on resize)
+    let renderCamera = cameraEntity.asRenderCamera(1);
+
     // Setup render loop
     eventBus.on('viewport:resized', (data: { width: number; height: number; aspectRatio: number }) => {
-      camera.setAspect(data.aspectRatio);
+      renderCamera.setAspect(data.aspectRatio);
       lineRenderer.resize(data.width, data.height);
     });
 
     // Render function
     function render(): void {
-      // Begin frame with camera
-      lineRenderer.beginFrame(camera);
+      // Begin frame with camera (using adapter)
+      lineRenderer.beginFrame(renderCamera);
 
       // Render scene
       lineRenderer.render(sceneGraph);

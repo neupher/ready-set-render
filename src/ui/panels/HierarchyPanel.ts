@@ -16,6 +16,7 @@
 
 import { EventBus } from '@core/EventBus';
 import { SceneGraph, SceneObject } from '@core/SceneGraph';
+import { isEntity } from '@core/interfaces';
 import { TreeView, TreeNode } from '../components/TreeView';
 
 export interface HierarchyPanelOptions {
@@ -154,6 +155,22 @@ export class HierarchyPanel {
     // Determine type based on object properties
     if (obj.id === 'root') {
       return 'group';
+    }
+
+    // Check if it's an entity with specific component types
+    if (isEntity(obj)) {
+      // Camera entity
+      if (obj.hasComponent('camera')) {
+        return 'camera';
+      }
+      // Light entity (for future use)
+      if (obj.hasComponent('light')) {
+        return 'light';
+      }
+      // Mesh entity
+      if (obj.hasComponent('mesh')) {
+        return 'mesh';
+      }
     }
 
     // Check for children (group)
