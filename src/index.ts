@@ -14,6 +14,7 @@ import '@ui/theme/theme.css';
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
 import { CameraEntity } from '@core/CameraEntity';
+import { SelectionManager } from '@core/SelectionManager';
 import { isInitializable } from '@core/interfaces';
 
 // UI system
@@ -26,6 +27,14 @@ import { OrbitController } from '@plugins/navigation';
 
 // Core systems
 import { InputManager } from '@core/InputManager';
+
+// Math utilities
+import {
+  unprojectScreenToRay,
+  rayAABBIntersection,
+  createAABBFromTransform,
+  mat4Inverse,
+} from '@utils/math';
 
 console.log('WebGL Editor initializing...');
 
@@ -106,10 +115,14 @@ async function main(): Promise<void> {
     console.log('Input manager initialized');
 
     // Initialize orbit controller for camera navigation
-    // OrbitController is instantiated for its side effects (event listener setup)
-    new OrbitController(cameraEntity, eventBus);
+    const orbitController = new OrbitController(cameraEntity, eventBus, viewportCanvas);
 
     console.log('Orbit controller initialized (Alt+LMB=orbit, Alt+MMB=pan, Alt+RMB=dolly, Scroll=zoom)');
+
+    // Initialize selection manager
+    const selectionManager = new SelectionManager(eventBus);
+
+    console.log('Selection manager initialized');
 
     // Listen for new objects added to scene and initialize their GPU resources
     eventBus.on('scene:objectAdded', (data: { object: unknown; parent: unknown }) => {
@@ -126,13 +139,147 @@ async function main(): Promise<void> {
     console.log('Scene object initialization listener registered');
 
     // Create render camera adapter for rendering (aspect will be updated on resize)
-    let renderCamera = cameraEntity.asRenderCamera(1);
+    const renderCamera = cameraEntity.asRenderCamera(1);
 
     // Setup render loop
     eventBus.on('viewport:resized', (data: { width: number; height: number; aspectRatio: number }) => {
       renderCamera.setAspect(data.aspectRatio);
       lineRenderer.resize(data.width, data.height);
     });
+
+    // =============================================
+    // Selection System Integration
+    // =============================================
+
+    // Track viewport dimensions for ray casting
+    let viewportWidth = viewportCanvas.width;
+    let viewportHeight = viewportCanvas.height;
+
+    eventBus.on('viewport:resized', (data: { width: number; height: number }) => {
+      viewportWidth = data.width;
+      viewportHeight = data.height;
+    });
+
+    // Auto-pivot on selection change
+    eventBus.on('selection:changed', () => {
+      const center = selectionManager.getSelectionCenter();
+      if (center) {
+        orbitController.setPivot(center[0], center[1], center[2]);
+        console.log(`Camera pivot set to selection center: [${center[0].toFixed(2)}, ${center[1].toFixed(2)}, ${center[2].toFixed(2)}]`);
+      }
+    });
+
+    // F key to focus on selection
+    eventBus.on('input:keyDown', (data: { key: string; code: string }) => {
+      if (data.key === 'f' || data.key === 'F') {
+        const center = selectionManager.getSelectionCenter();
+        if (center) {
+          // Calculate appropriate distance based on selection bounds
+          const bounds = selectionManager.getSelectionBounds();
+          let distance = 5; // Default distance
+          if (bounds) {
+            const sizeX = bounds.max[0] - bounds.min[0];
+            const sizeY = bounds.max[1] - bounds.min[1];
+            const sizeZ = bounds.max[2] - bounds.min[2];
+            const maxSize = Math.max(sizeX, sizeY, sizeZ);
+            distance = maxSize * 2.5; // Zoom out to fit object
+            distance = Math.max(2, Math.min(20, distance)); // Clamp
+          }
+          orbitController.framePoint(center, distance);
+          console.log(`Camera framed to selection at distance ${distance.toFixed(2)}`);
+        } else {
+          // No selection - frame origin
+          orbitController.framePoint([0, 0, 0], 5);
+          console.log('No selection - camera framed to origin');
+        }
+      }
+    });
+
+    // Viewport click handling for selection (when NOT using Alt modifier)
+    eventBus.on('input:mouseUp', (data: { button: number; x: number; y: number; modifiers: { alt: boolean; ctrl: boolean } }) => {
+      // Only handle left click without Alt (Alt is for navigation)
+      if (data.button !== 0 || data.modifiers.alt) return;
+
+      // Get inverse view-projection matrix for ray casting
+      const viewProjection = renderCamera.getViewProjectionMatrix();
+      const invViewProjection = mat4Inverse(viewProjection);
+
+      if (!invViewProjection) {
+        console.warn('Could not invert view-projection matrix for picking');
+        return;
+      }
+
+      // Cast ray from mouse position
+      const ray = unprojectScreenToRay(
+        data.x,
+        data.y,
+        viewportWidth,
+        viewportHeight,
+        invViewProjection
+      );
+
+      // Find closest intersection with scene objects
+      interface HitResult {
+        object: { id: string; name: string };
+        distance: number;
+      }
+      let closestHit: HitResult | null = null;
+
+      sceneGraph.traverse((obj) => {
+        // Skip root and camera
+        if (obj.id === 'root') return;
+        if ((obj as { hasComponent?: (type: string) => boolean }).hasComponent?.('camera')) return;
+
+        // Create AABB from object's transform
+        const transform = (obj as { transform: { position: [number, number, number]; scale: [number, number, number] } }).transform;
+        const aabb = createAABBFromTransform(transform.position, transform.scale);
+
+        // Test intersection
+        const hit = rayAABBIntersection(ray, aabb);
+
+        if (hit.hit && (!closestHit || hit.distance < closestHit.distance)) {
+          closestHit = { object: { id: obj.id, name: obj.name }, distance: hit.distance };
+        }
+      });
+
+      // Update selection
+      if (closestHit) {
+        const hitObject = (closestHit as HitResult).object;
+        if (data.modifiers.ctrl) {
+          // Ctrl+click: toggle selection
+          const sceneObj = sceneGraph.find(hitObject.id);
+          if (sceneObj) {
+            selectionManager.toggle(sceneObj);
+          }
+        } else {
+          // Normal click: select single object
+          const sceneObj = sceneGraph.find(hitObject.id);
+          if (sceneObj) {
+            selectionManager.select(sceneObj);
+          }
+        }
+        console.log(`Selected: ${hitObject.name}`);
+      } else {
+        // Click on nothing: clear selection
+        if (!data.modifiers.ctrl) {
+          selectionManager.clear();
+          // Reset pivot to origin when nothing selected
+          orbitController.setPivot(0, 0, 0);
+        }
+      }
+    });
+
+    // Sync selection from hierarchy panel clicks
+    eventBus.on('selection:changed', (data: { id: string }) => {
+      if (data.id && !selectionManager.isSelectedById(data.id)) {
+        const obj = sceneGraph.find(data.id);
+        if (obj) {
+          selectionManager.select(obj);
+        }
+      }
+    });
+
+    console.log('Selection system initialized (Click=select, Ctrl+Click=toggle, F=focus)');
 
     // Render function
     function render(): void {

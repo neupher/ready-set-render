@@ -1,7 +1,8 @@
 /**
  * Math Utilities
  *
- * Re-exports all math utilities for convenient importing.
+ * Re-exports all math utility functions.
  */
 
 export * from './transforms';
+export * from './ray';

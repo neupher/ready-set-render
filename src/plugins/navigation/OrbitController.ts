@@ -6,20 +6,30 @@
  * - Alt + MMB drag: Pan (move camera and target together)
  * - Alt + RMB drag: Dolly (zoom in/out)
  * - Scroll wheel: Zoom
- * - F key: Frame selection (future)
+ * - F key: Frame selection (focus on selected objects)
  * - Shift + F: Frame all (future)
  *
  * Uses spherical coordinates for smooth orbital movement.
+ * Automatically pivots around the active selection when selection changes.
  *
  * @example
  * ```typescript
- * const orbitController = new OrbitController(cameraEntity, eventBus);
+ * const orbitController = new OrbitController(cameraEntity, eventBus, canvas);
  * ```
  */
 
 import type { EventBus } from '@core/EventBus';
 import type { CameraEntity } from '@core/CameraEntity';
 import { MouseButton, type DragEvent, type WheelEvent as InputWheelEvent } from '@core/InputManager';
+
+/**
+ * Cursor data URIs for navigation modes
+ */
+const CURSORS = {
+  orbit: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="8" stroke-dasharray="4 2"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/><path d="M12 9l-2 3 2 3 2-3-2-3z" fill="white"/></svg>') 12 12, crosshair`,
+  pan: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>') 12 12, move`,
+  zoom: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="M14 14l6 6"/><path d="M7 10h6M10 7v6"/></svg>') 12 12, zoom-in`,
+};
 
 /**
  * Spherical coordinates for orbital camera.
@@ -47,7 +57,7 @@ export interface OrbitControllerOptions {
   maxPhi?: number;
   /** Orbit sensitivity. Default: 0.005 */
   orbitSensitivity?: number;
-  /** Pan sensitivity. Default: 0.01 */
+  /** Pan sensitivity. Default: 0.001 */
   panSensitivity?: number;
   /** Dolly sensitivity. Default: 0.01 */
   dollySensitivity?: number;
@@ -61,6 +71,7 @@ export interface OrbitControllerOptions {
 export class OrbitController {
   private readonly camera: CameraEntity;
   private readonly eventBus: EventBus;
+  private readonly canvas: HTMLCanvasElement;
 
   // Spherical coordinates for orbit
   private spherical: SphericalCoordinates;
@@ -80,17 +91,21 @@ export class OrbitController {
 
   // State
   private isEnabled: boolean = true;
+  private originalCursor: string = '';
+  private isNavigating: boolean = false;
 
   /**
    * Create a new OrbitController.
    *
    * @param camera - The CameraEntity to control
    * @param eventBus - Event bus for input events
+   * @param canvas - The canvas element for cursor changes
    * @param options - Configuration options
    */
-  constructor(camera: CameraEntity, eventBus: EventBus, options: OrbitControllerOptions = {}) {
+  constructor(camera: CameraEntity, eventBus: EventBus, canvas: HTMLCanvasElement, options: OrbitControllerOptions = {}) {
     this.camera = camera;
     this.eventBus = eventBus;
+    this.canvas = canvas;
 
     // Configuration with defaults
     this.minRadius = options.minRadius ?? 0.5;
@@ -98,7 +113,7 @@ export class OrbitController {
     this.minPhi = options.minPhi ?? 0.1;
     this.maxPhi = options.maxPhi ?? Math.PI - 0.1;
     this.orbitSensitivity = options.orbitSensitivity ?? 0.005;
-    this.panSensitivity = options.panSensitivity ?? 0.01;
+    this.panSensitivity = options.panSensitivity ?? 0.002;
     this.dollySensitivity = options.dollySensitivity ?? 0.01;
     this.zoomSensitivity = options.zoomSensitivity ?? 0.1;
 
@@ -161,15 +176,46 @@ export class OrbitController {
    */
   dispose(): void {
     this.eventBus.off('input:drag', this.handleDrag);
+    this.eventBus.off('input:dragStart', this.handleDragStart);
+    this.eventBus.off('input:dragEnd', this.handleDragEnd);
     this.eventBus.off('input:wheel', this.handleWheel);
   }
 
   private setupEventListeners(): void {
     this.handleDrag = this.handleDrag.bind(this);
+    this.handleDragStart = this.handleDragStart.bind(this);
+    this.handleDragEnd = this.handleDragEnd.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
 
     this.eventBus.on('input:drag', this.handleDrag);
+    this.eventBus.on('input:dragStart', this.handleDragStart);
+    this.eventBus.on('input:dragEnd', this.handleDragEnd);
     this.eventBus.on('input:wheel', this.handleWheel);
+  }
+
+  private handleDragStart(event: DragEvent): void {
+    if (!this.isEnabled) return;
+    if (!event.modifiers.alt) return;
+
+    const { button } = event;
+    this.isNavigating = true;
+    this.originalCursor = this.canvas.style.cursor;
+
+    // Set cursor based on navigation mode
+    if (button === MouseButton.LEFT) {
+      this.canvas.style.cursor = CURSORS.orbit;
+    } else if (button === MouseButton.MIDDLE) {
+      this.canvas.style.cursor = CURSORS.pan;
+    } else if (button === MouseButton.RIGHT) {
+      this.canvas.style.cursor = CURSORS.zoom;
+    }
+  }
+
+  private handleDragEnd(_event: DragEvent): void {
+    if (this.isNavigating) {
+      this.isNavigating = false;
+      this.canvas.style.cursor = this.originalCursor;
+    }
   }
 
   private handleDrag(event: DragEvent): void {
@@ -187,8 +233,8 @@ export class OrbitController {
       // Pan
       this.pan(deltaX, deltaY);
     } else if (button === MouseButton.RIGHT) {
-      // Dolly
-      this.dolly(deltaX + deltaY);
+      // Dolly - invert so mouse right = zoom in
+      this.dolly(-(deltaX + deltaY));
     }
   }
 
@@ -215,26 +261,35 @@ export class OrbitController {
 
   /**
    * Pan the camera (move camera and pivot together).
+   * Maya-style: drag direction moves the view opposite (inverted).
+   * Movement is constrained to the camera's local XY plane (perpendicular to look direction).
    */
   private pan(deltaX: number, deltaY: number): void {
-    // Calculate camera's right and up vectors
+    // Calculate camera's local coordinate system
     const position = this.camera.transform.position;
+
+    // Forward vector (camera look direction)
     const forward = this.normalize([
       this.pivot[0] - position[0],
       this.pivot[1] - position[1],
       this.pivot[2] - position[2],
     ]);
+
+    // Right vector (perpendicular to forward and world up)
     const worldUp: [number, number, number] = [0, 1, 0];
     const right = this.normalize(this.cross(forward, worldUp));
-    const up = this.cross(right, forward);
 
-    // Calculate pan amount based on distance
+    // Up vector (perpendicular to both forward and right - stays in camera's local plane)
+    const up = this.normalize(this.cross(right, forward));
+
+    // Calculate pan amount based on distance (reduced sensitivity)
     const panScale = this.spherical.radius * this.panSensitivity;
 
-    // Apply pan to pivot
-    this.pivot[0] -= right[0] * deltaX * panScale + up[0] * deltaY * panScale;
-    this.pivot[1] -= right[1] * deltaX * panScale + up[1] * deltaY * panScale;
-    this.pivot[2] -= right[2] * deltaX * panScale + up[2] * deltaY * panScale;
+    // Maya-style inverted for horizontal, inverted vertical for natural feel
+    // Only move in right/up plane (no forward component)
+    this.pivot[0] -= right[0] * deltaX * panScale - up[0] * deltaY * panScale;
+    this.pivot[1] -= right[1] * deltaX * panScale - up[1] * deltaY * panScale;
+    this.pivot[2] -= right[2] * deltaX * panScale - up[2] * deltaY * panScale;
 
     this.updateCameraPosition();
   }

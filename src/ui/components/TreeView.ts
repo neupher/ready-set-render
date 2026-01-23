@@ -370,11 +370,12 @@ export class TreeView {
           <path d="M8 2V3M8 13V14M2 8H3M13 8H14M4 4L4.7 4.7M11.3 11.3L12 12M4 12L4.7 11.3M11.3 4.7L12 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>`;
       case 'camera':
-        // Camera icon (viewfinder/film camera style)
+        // Movie camera icon
         return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="4" width="12" height="9" rx="1" stroke="currentColor" stroke-width="1.5"/>
-          <circle cx="8" cy="8.5" r="2.5" stroke="currentColor" stroke-width="1.5"/>
-          <rect x="10" y="2" width="3" height="2" rx="0.5" stroke="currentColor" stroke-width="1"/>
+          <rect x="1" y="5" width="10" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M11 7l4-2v6l-4-2" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <circle cx="4" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1"/>
         </svg>`;
       default:
         return '';
