@@ -1,7 +1,7 @@
 # Architecture: WebGL Editor
 
-> **Last Updated:** 2026-01-23T18:05:00Z
-> **Version:** 0.2.0
+> **Last Updated:** 2026-01-23T22:30:00Z
+> **Version:** 0.3.0
 
 ---
 
@@ -67,15 +67,65 @@ The core engine provides fundamental services that all plugins depend on.
 
 | Module | Responsibility | Dependencies |
 |--------|---------------|--------------|
+| `Application` | Core orchestration, module wiring, render loop | All modules |
 | `EventBus` | Pub/sub communication between modules | None |
 | `SceneGraph` | Hierarchical scene structure, transforms | EventBus |
-| `PropertyChangeHandler` | Routes UI property changes to entity data | EventBus, SceneGraph |
+| `PropertyChangeHandler` | Routes UI property changes to entity data | EventBus, SceneGraph, CommandHistory |
 | `SelectionManager` | Tracks selected objects, provides selection events | EventBus |
+| `CommandHistory` | Undo/Redo stack with coalescing (Command Pattern) | EventBus |
+| `KeyboardShortcutManager` | Global keyboard shortcut registration | EventBus |
+| `ShortcutRegistry` | Registers editor shortcuts (Delete, Shift+D) | KeyboardShortcutManager, CommandHistory |
 | `WebGLContext` | WebGL2 context management, capabilities | None |
 | `PluginManager` | Plugin lifecycle, dependency resolution | EventBus |
 | `CameraEntity` | Camera as ECS entity with composition pattern | None |
 | `RenderCameraAdapter` | Bridges CameraEntity to ICamera interface | CameraEntity |
 | `InputManager` | Centralized mouse/keyboard event tracking | EventBus |
+
+#### Application Architecture (v0.7.0)
+
+The Application class serves as the central orchestrator:
+
+```
+src/index.ts (98 lines - Clean Entry Point)
+       │
+       └─► Application (orchestration, render loop)
+               │
+               ├─► EventBus (pub/sub communication)
+               ├─► SceneGraph (hierarchy management)
+               ├─► CameraEntity (scene camera)
+               ├─► SelectionManager (selection state)
+               ├─► CommandHistory (undo/redo stack)
+               ├─► KeyboardShortcutManager (global shortcuts)
+               ├─► PropertyChangeHandler (UI ↔ Entity data)
+               ├─► PrimitiveRegistry (Create menu)
+               ├─► LineRenderer (current renderer)
+               ├─► OrbitController (camera navigation)
+               └─► EditorLayout (UI panels)
+
+Subsystems initialized via index.ts:
+       │
+       ├─► SelectionController (ray picking, viewport selection)
+       ├─► ShortcutRegistry (Delete, Shift+D, context menu handlers)
+       └─► registerUndoRedoShortcuts (Ctrl+Z, Ctrl+Y)
+```
+
+**Application Context Pattern:**
+```typescript
+// Application exposes context for subsystems
+interface ApplicationContext {
+  readonly eventBus: EventBus;
+  readonly sceneGraph: SceneGraph;
+  readonly selectionManager: SelectionManager;
+  readonly commandHistory: CommandHistory;
+  readonly primitiveRegistry: PrimitiveRegistry;
+  readonly cameraEntity: CameraEntity;
+  readonly orbitController: OrbitController;
+  readonly gl: WebGL2RenderingContext;
+  readonly canvas: HTMLCanvasElement;
+}
+
+const ctx = app.getContext();
+```
 
 #### Property Change Data Flow
 
@@ -183,9 +233,8 @@ editor.settings.set('renderer.pipeline', 'deferred');
 
 | Plugin | Description |
 |--------|-------------|
-| `SelectionTool` | Object picking and selection |
-| `CameraController` | Orbit, pan, zoom controls |
-| `TransformGizmo` | Move, rotate, scale handles |
+| `SelectionController` | Viewport ray picking, click-to-select, F key framing |
+| `TransformGizmo` | Move, rotate, scale handles (planned) |
 
 ---
 

@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T22:07:00Z
-> **Version:** 0.6.9
-> **Status:** Phase 6.5+ Complete - Undo/Redo System, Keyboard Shortcuts & Context Menus
+> **Last Updated:** 2026-01-23T22:30:00Z
+> **Version:** 0.6.10
+> **Status:** Phase 6.5+ Complete + Major Refactoring (Application, SelectionController, ShortcutRegistry)
 
 ---
 
@@ -337,6 +337,48 @@ Render loop reads entity.transform → Changes visible!
 - 307 total tests passing
 
 **MANDATORY RULE:** All future data-modifying features MUST integrate with CommandHistory for undo/redo support. See `.llms/GUIDELINES.md` Section 6 for details.
+
+### ✅ Completed - v0.7.0: Major Refactoring (index.ts → Application Architecture)
+
+**Goal:** Eliminate God Object anti-pattern in `index.ts` (was 455 lines, violated 300-line limit).
+
+**Key Files Created:**
+- `src/core/Application.ts` (~260 lines) - Core orchestration, module wiring, render loop
+- `src/core/ShortcutRegistry.ts` (~160 lines) - Keyboard shortcuts (Delete, Shift+D), context menu handlers
+- `src/plugins/tools/SelectionController.ts` (~230 lines) - Ray picking, viewport selection, F key framing
+- `src/plugins/tools/index.ts` - Barrel export for tools
+
+**New Architecture:**
+```
+src/index.ts (98 lines - Clean Entry Point)
+       │
+       └─► Application (orchestration)
+               │
+               ├─► SelectionController (ray picking, viewport selection)
+               ├─► ShortcutRegistry (Delete, Shift+D, context menu handlers)
+               └─► All other modules (EventBus, SceneGraph, etc.)
+```
+
+**Application Context Pattern:**
+```typescript
+// Application exposes context for subsystems
+const ctx = app.getContext();
+// ctx.eventBus, ctx.sceneGraph, ctx.selectionManager,
+// ctx.commandHistory, ctx.primitiveRegistry, ctx.cameraEntity,
+// ctx.orbitController, ctx.gl, ctx.canvas
+```
+
+**Benefits:**
+- `index.ts` reduced from **455 → 98 lines** (78% reduction)
+- Now compliant with 300-line file limit
+- Clear separation of concerns
+- Testable subsystems
+- Ready for Phase 6.9 (Transform Gizmos) complexity
+
+**Camera Behavior Fix (also in v0.7.0):**
+- Camera no longer auto-moves when selecting objects
+- Orbit pivot stays fixed until F key explicitly frames selection
+- Matches standard 3D editor behavior (Maya, Blender)
 
 ### 📋 Next Steps (Phase 6.6-6.14: Functional Editor Continued)
 

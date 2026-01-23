@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.10] - 2026-01-23
+
+### Changed
+
+- **Major Refactoring: Application Architecture** - Eliminated God Object anti-pattern
+  - Created `Application.ts` (~260 lines) - Core orchestration, module wiring, render loop
+  - Created `ShortcutRegistry.ts` (~160 lines) - Keyboard shortcuts (Delete, Shift+D), context menu handlers
+  - Created `SelectionController.ts` (~230 lines) - Ray picking, viewport selection, F key framing
+  - Created `src/plugins/tools/index.ts` - Barrel export for tools
+  - Simplified `index.ts` from **455 → 98 lines** (78% reduction)
+  - Now compliant with 300-line file limit per PATTERNS.md
+
+- **Application Context Pattern** - Subsystems access shared context
+  - `app.getContext()` provides EventBus, SceneGraph, SelectionManager, CommandHistory, etc.
+  - Clean separation between orchestration (Application) and feature logic (controllers)
+
+### Fixed
+
+- **Camera auto-pivot on selection** - Camera no longer moves when selecting objects
+  - Orbit pivot stays fixed until `F` key explicitly frames selection
+  - Clicking empty space (deselect) no longer resets pivot to origin
+  - Matches standard 3D editor behavior (Maya, Blender)
+
+### Technical Details
+
+- **Files created**: 4 new files (Application.ts, ShortcutRegistry.ts, SelectionController.ts, tools/index.ts)
+- **Files modified**: 3 files (index.ts, PROJECT_CONTEXT.md, ARCHITECTURE.md)
+- **Test coverage**: 307 tests passing (no new tests required - behavior unchanged)
+- **Architecture**: Follows PATTERNS.md file size guidelines and separation of concerns
+
+---
+
 ## [0.6.9] - 2026-01-23
 
 ### Added
