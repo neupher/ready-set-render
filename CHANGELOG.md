@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.9] - 2026-01-23
+
+### Added
+
+- **Nested Submenu Support for ContextMenu** - Full flyout menu system
+  - `ContextMenu` component now supports `children` array for nested submenus
+  - Submenu arrow indicator (▶) for parent items
+  - Viewport boundary detection (flips left/up if menu goes off-screen)
+  - Recursive rendering for unlimited nesting depth
+
+- **Create Context Menu** - Right-click on empty space in Hierarchy panel
+  - Shows nested Create menu matching TopMenuBar structure
+  - Primitives submenu: Cube (enabled), Sphere, Plane, Cylinder, Cone, Torus (disabled)
+  - Lights submenu: Point Light, Directional Light, Spot Light (all disabled for future)
+  - Camera and Empty items (disabled for future)
+  - Emits `hierarchy:createPrimitive` event handled by EditorLayout
+
+- **TreeView.startEditingById()** - Programmatic inline rename trigger
+  - New public method to initiate rename mode for any node by ID
+  - Used by context menu Rename action
+
+### Changed
+
+- **Entity Context Menu** - Improved mesh entity context menu
+  - Removed emoji icons from Delete, Rename, Duplicate items
+  - Rename now triggers inline editing (same as double-click)
+  - Delete and Duplicate properly emit events for command execution
+
+### Fixed
+
+- **hasComponent() context loss** - Fixed `this` binding issue in event handlers
+  - When calling `hasComponent()` on entities, the method was losing its `this` context
+  - Fixed by using `.call(entity, ...)` to preserve proper binding
+  - Affected: Delete and Duplicate operations from context menu
+
+### Technical Details
+
+- **Files modified**: 5 files, +302/-81 lines
+- **Test coverage**: 307 tests passing
+- **Architecture**: ContextMenu now supports recursive nested menus
+
+---
+
 ## [0.6.8] - 2026-01-23
 
 ### Added

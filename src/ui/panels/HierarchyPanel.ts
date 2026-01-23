@@ -28,6 +28,34 @@ export interface HierarchyPanelOptions {
 }
 
 /**
+ * Available primitives for the Create context menu.
+ * Matches the Create menu structure in TopMenuBar.
+ */
+const CREATE_MENU_ITEMS: ContextMenuItem[] = [
+  {
+    label: 'Primitives',
+    children: [
+      { label: 'Cube', action: undefined }, // Action set dynamically
+      { label: 'Sphere', disabled: true },
+      { label: 'Plane', disabled: true },
+      { label: 'Cylinder', disabled: true },
+      { label: 'Cone', disabled: true },
+      { label: 'Torus', disabled: true }
+    ]
+  },
+  {
+    label: 'Lights',
+    children: [
+      { label: 'Point Light', disabled: true },
+      { label: 'Directional Light', disabled: true },
+      { label: 'Spot Light', disabled: true }
+    ]
+  },
+  { label: 'Camera', disabled: true },
+  { label: 'Empty', disabled: true }
+];
+
+/**
  * Scene hierarchy panel displaying the scene tree.
  * NOT a plugin - receives dependencies via constructor.
  */
@@ -71,6 +99,9 @@ export class HierarchyPanel {
     this.content.appendChild(this.treeView.element);
     this.container.appendChild(this.header);
     this.container.appendChild(this.content);
+
+    // Add right-click handler for empty space (Create menu)
+    this.content.addEventListener('contextmenu', this.handleEmptySpaceContextMenu.bind(this));
 
     // Setup event listeners
     this.setupEvents();
@@ -158,30 +189,30 @@ export class HierarchyPanel {
     const sceneObj = this.sceneGraph.find(node.id);
     if (!sceneObj) return;
 
+    // Capture eventBus reference for closures
+    const eventBus = this.eventBus;
+    const treeView = this.treeView;
+
     // Build context menu items
     const items: ContextMenuItem[] = [
       {
         label: 'Delete',
-        icon: '🗑',
         action: () => {
-          this.eventBus.emit('entity:requestDelete', { id: node.id });
+          eventBus.emit('entity:requestDelete', { id: node.id });
         }
       },
       {
         label: 'Rename',
-        icon: '✏',
         action: () => {
           // Trigger inline rename via the tree view
-          // Re-emit as a double-click on the current selection
-          this.eventBus.emit('hierarchy:rename', { id: node.id });
+          treeView.startEditingById(node.id);
         }
       },
       { type: 'separator' },
       {
         label: 'Duplicate',
-        icon: '📋',
         action: () => {
-          this.eventBus.emit('entity:requestDuplicate', { id: node.id });
+          eventBus.emit('entity:requestDuplicate', { id: node.id });
         }
       }
     ];
@@ -235,5 +266,56 @@ export class HierarchyPanel {
 
     // Default to mesh for objects without children
     return 'mesh';
+  }
+
+  /**
+   * Handle right-click on empty space in the hierarchy panel.
+   * Shows the Create context menu for adding new objects.
+   */
+  private handleEmptySpaceContextMenu(e: MouseEvent): void {
+    // Only handle if clicking directly on the content area (empty space)
+    // not on a tree item (which has its own context menu)
+    const target = e.target as HTMLElement;
+    const isTreeItem = target.closest('.tree-item');
+
+    if (isTreeItem) {
+      // Let the tree item handle its own context menu
+      return;
+    }
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Build Create context menu items with actions bound
+    const items = this.buildCreateMenuItems();
+
+    // Show the context menu
+    const menu = new ContextMenu();
+    menu.show({ x: e.clientX, y: e.clientY, items });
+  }
+
+  /**
+   * Build the Create context menu items with proper actions.
+   * Creates a deep copy of CREATE_MENU_ITEMS with actions bound to emit events.
+   */
+  private buildCreateMenuItems(): ContextMenuItem[] {
+    const bindActions = (items: ContextMenuItem[]): ContextMenuItem[] => {
+      return items.map(item => {
+        const newItem: ContextMenuItem = { ...item };
+
+        if (item.children) {
+          newItem.children = bindActions(item.children);
+        } else if (!item.disabled && item.label) {
+          // Leaf item - bind action to emit create event
+          newItem.action = () => {
+            this.eventBus.emit('hierarchy:createPrimitive', { type: item.label });
+          };
+        }
+
+        return newItem;
+      });
+    };
+
+    return bindActions(CREATE_MENU_ITEMS);
   }
 }

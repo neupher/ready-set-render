@@ -169,6 +169,25 @@ export class TreeView {
   }
 
   /**
+   * Start inline editing of a node by ID.
+   * This triggers the rename mode for the specified node.
+   */
+  startEditingById(id: string): void {
+    const node = this.nodeMap.get(id);
+    if (!node) return;
+
+    // Find the tree item element
+    const itemElement = this.container.querySelector(`[data-id="${id}"]`);
+    if (!itemElement) return;
+
+    // Find the name span within the item
+    const nameElement = itemElement.querySelector('.tree-name') as HTMLSpanElement;
+    if (nameElement && this.onRename) {
+      this.startEditing(node, nameElement);
+    }
+  }
+
+  /**
    * Clean up.
    */
   dispose(): void {

@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T21:40:00Z
-> **Version:** 0.6.8
-> **Status:** Phase 6.5+ Complete - Undo/Redo System & Keyboard Shortcuts
+> **Last Updated:** 2026-01-23T22:07:00Z
+> **Version:** 0.6.9
+> **Status:** Phase 6.5+ Complete - Undo/Redo System, Keyboard Shortcuts & Context Menus
 
 ---
 

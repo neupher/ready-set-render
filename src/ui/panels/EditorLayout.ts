@@ -142,6 +142,11 @@ export class EditorLayout {
     // Setup property change handler for name changes
     this.eventBus.on('object:propertyChanged', this.handlePropertyChanged.bind(this));
 
+    // Setup hierarchy context menu handler for Create primitives
+    this.eventBus.on('hierarchy:createPrimitive', (data: { type: string }) => {
+      this.createPrimitive(data.type);
+    });
+
     // Trigger initial viewport resize after layout is attached to DOM
     requestAnimationFrame(() => {
       this.viewportPanel?.resize();

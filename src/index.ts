@@ -214,9 +214,11 @@ async function main(): Promise<void> {
     eventBus.on('entity:requestDelete', (data: { id: string }) => {
       const entity = sceneGraph.find(data.id);
       if (entity) {
-        // Check if it's a mesh entity (not camera)
-        const hasComponent = (entity as { hasComponent?: (type: string) => boolean }).hasComponent;
-        if (hasComponent && hasComponent('mesh') && !hasComponent('camera')) {
+        // Check if it's a mesh entity (not camera) using proper method call
+        const typedEntity = entity as unknown as { hasComponent?: (type: string) => boolean };
+        if (typedEntity.hasComponent &&
+            typedEntity.hasComponent.call(entity, 'mesh') &&
+            !typedEntity.hasComponent.call(entity, 'camera')) {
           const deleteCmd = new DeleteEntityCommand({
             entity,
             sceneGraph,
@@ -230,9 +232,11 @@ async function main(): Promise<void> {
     eventBus.on('entity:requestDuplicate', (data: { id: string }) => {
       const entity = sceneGraph.find(data.id);
       if (entity) {
-        // Check if it's a mesh entity (not camera)
-        const hasComponent = (entity as { hasComponent?: (type: string) => boolean }).hasComponent;
-        if (hasComponent && hasComponent('mesh') && !hasComponent('camera')) {
+        // Check if it's a mesh entity (not camera) using proper method call
+        const typedEntity = entity as unknown as { hasComponent?: (type: string) => boolean };
+        if (typedEntity.hasComponent &&
+            typedEntity.hasComponent.call(entity, 'mesh') &&
+            !typedEntity.hasComponent.call(entity, 'camera')) {
           const duplicateCmd = new DuplicateEntityCommand({
             entity,
             sceneGraph,
