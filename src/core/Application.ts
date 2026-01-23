@@ -31,7 +31,10 @@ import { EditorLayout } from '@ui/panels/EditorLayout';
 
 import { CubeFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
+import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { OrbitController } from '@plugins/navigation';
+import { DirectionalLight } from '@plugins/lights/DirectionalLight';
+import { LightManager } from '@core/LightManager';
 
 import type { RenderCameraAdapter } from '@core/RenderCameraAdapter';
 
@@ -75,8 +78,13 @@ export class Application {
   // Rendering
   private gl!: WebGL2RenderingContext;
   private lineRenderer!: LineRenderer;
+  private forwardRenderer!: ForwardRenderer;
+  private lightManager!: LightManager;
   private renderCamera!: RenderCameraAdapter;
   private cameraEntity!: CameraEntity;
+
+  // Scene entities
+  private directionalLight!: DirectionalLight;
 
   // Navigation
   private orbitController!: OrbitController;
@@ -144,7 +152,7 @@ export class Application {
     this.layout.initialize();
     console.log('UI layout initialized');
 
-    // Initialize line renderer
+    // Initialize line renderer (for wireframe mode)
     this.lineRenderer = new LineRenderer();
     await this.lineRenderer.initialize({
       gl: this.gl,
@@ -152,6 +160,34 @@ export class Application {
       canvas: this.layout.getViewport()!.getCanvas(),
     });
     console.log('Line renderer initialized');
+
+    // Initialize light manager
+    this.lightManager = new LightManager({
+      eventBus: this.eventBus,
+      sceneGraph: this.sceneGraph,
+    });
+    console.log('Light manager initialized');
+
+    // Initialize forward renderer (for solid shaded mode)
+    this.forwardRenderer = new ForwardRenderer();
+    this.forwardRenderer.setLightManager(this.lightManager);
+    await this.forwardRenderer.initialize({
+      gl: this.gl,
+      eventBus: this.eventBus,
+      canvas: this.layout.getViewport()!.getCanvas(),
+    });
+    console.log('Forward renderer initialized');
+
+    // Create default directional light
+    this.directionalLight = new DirectionalLight({
+      name: 'Directional Light',
+      direction: [-0.5, -1.0, -0.3],
+      color: [1, 0.98, 0.95],
+      intensity: 1.0,
+      enabled: true,
+    });
+    this.sceneGraph.add(this.directionalLight);
+    console.log('Directional light added to scene');
 
     // Initialize input manager
     const viewportCanvas = this.layout.getViewport()!.getCanvas();
@@ -250,9 +286,10 @@ export class Application {
     }
 
     const render = (): void => {
-      this.lineRenderer.beginFrame(this.renderCamera);
-      this.lineRenderer.render(this.sceneGraph);
-      this.lineRenderer.endFrame();
+      // Use Forward Renderer for solid shaded rendering
+      this.forwardRenderer.beginFrame(this.renderCamera);
+      this.forwardRenderer.render(this.sceneGraph);
+      this.forwardRenderer.endFrame();
       this.animationFrameId = requestAnimationFrame(render);
     };
 
@@ -304,6 +341,7 @@ export class Application {
     this.eventBus.on('viewport:resized', (data: { width: number; height: number; aspectRatio: number }) => {
       this.renderCamera.setAspect(data.aspectRatio);
       this.lineRenderer.resize(data.width, data.height);
+      this.forwardRenderer.resize(data.width, data.height);
     });
   }
 }

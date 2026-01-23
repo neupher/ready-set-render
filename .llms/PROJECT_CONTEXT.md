@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T22:30:00Z
-> **Version:** 0.6.10
-> **Status:** Phase 6.5+ Complete + Major Refactoring (Application, SelectionController, ShortcutRegistry)
+> **Last Updated:** 2026-01-23T22:51:00Z
+> **Version:** 0.6.11
+> **Status:** Phase 6.6+6.7 Complete (Directional Light + Forward Renderer)
 
 ---
 
@@ -380,7 +380,42 @@ const ctx = app.getContext();
 - Orbit pivot stays fixed until F key explicitly frames selection
 - Matches standard 3D editor behavior (Maya, Blender)
 
-### 📋 Next Steps (Phase 6.6-6.14: Functional Editor Continued)
+### ✅ Completed - Phase 6.6+6.7: Directional Light + Forward Renderer
+
+**Key Files Created:**
+- `src/core/interfaces/ILightComponent.ts` - Light component interface (LightType, color, intensity, direction)
+- `src/plugins/lights/DirectionalLight.ts` - Directional light entity implementing IEntity
+- `src/plugins/lights/index.ts` - Barrel export for lights
+- `src/core/LightManager.ts` - Collects active lights for shader uniforms
+- `src/plugins/renderers/forward/ForwardRenderer.ts` - Forward renderer with embedded GLSL shaders
+- `src/plugins/renderers/forward/index.ts` - Barrel export
+
+**Key Files Modified:**
+- `src/plugins/primitives/Cube.ts` - Added solid geometry (24 verts, 36 indices, per-face normals)
+- `src/utils/math/transforms.ts` - Added vec3Normalize, mat4Inverse, mat3FromMat4, normalMatrix
+- `src/core/Application.ts` - Integrated ForwardRenderer, LightManager, DirectionalLight
+- `src/plugins/tools/SelectionController.ts` - Changed mat4Inverse to mat4InverseNullable
+
+**Lighting Model (ForwardRenderer GLSL):**
+- Lambertian diffuse (N·L clamped)
+- Hemisphere ambient approximation (sky/ground interpolation)
+- Rim lighting for edge definition
+- Gamma correction (2.2)
+
+**Test Coverage:** 307 tests passing
+
+### ⚠️ NEXT SESSION: Architectural Refactoring Required
+
+**See detailed plan:** [REFACTOR_MESH_RENDERING.md](./REFACTOR_MESH_RENDERING.md)
+
+**Problem:** `Cube.ts` (~500 lines) contains mesh data + GPU resources + rendering logic, which will cause duplication when adding more primitives or importers.
+
+**Solution (3 classes):**
+1. `IMeshData` interface - Common geometry data (vertices, indices, normals, uvs)
+2. `MeshGPUCache` - Centralized GPU resource management
+3. Cube/Sphere/ImportedMesh - Only provide mesh data, no rendering logic
+
+### 📋 Remaining Steps (Phase 6.8-6.14: Functional Editor Continued)
 
 **See detailed plan:** [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)
 

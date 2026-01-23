@@ -25,7 +25,7 @@ import {
   unprojectScreenToRay,
   rayAABBIntersection,
   createAABBFromTransform,
-  mat4Inverse,
+  mat4InverseNullable,
 } from '@utils/math';
 
 /**
@@ -124,7 +124,7 @@ export class SelectionController {
 
     const camera = this.getCamera();
     const viewProjection = camera.getViewProjectionMatrix();
-    const invViewProjection = mat4Inverse(viewProjection);
+    const invViewProjection = mat4InverseNullable(viewProjection);
 
     if (!invViewProjection) {
       console.warn('Could not invert view-projection matrix for picking');

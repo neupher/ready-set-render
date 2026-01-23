@@ -256,7 +256,7 @@ describe('Cube', () => {
 
       expect(() => {
         cube.initializeGPUResources(mockGL, mockProgram);
-      }).toThrow('Failed to create VAO for Cube');
+      }).toThrow('Failed to create wireframe VAO for Cube');
     });
 
     it('should throw if buffer creation fails', () => {
@@ -265,7 +265,7 @@ describe('Cube', () => {
 
       expect(() => {
         cube.initializeGPUResources(mockGL, mockProgram);
-      }).toThrow('Failed to create VBO for Cube');
+      }).toThrow('Failed to create wireframe VBO for Cube');
     });
   });
 

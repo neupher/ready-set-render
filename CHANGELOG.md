@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.11] - 2026-01-23
+
+### Added
+
+- **Phase 6.6+6.7: Directional Light + Forward Renderer** - Combined implementation
+
+  - **Light System** (`src/core/interfaces/ILightComponent.ts`, `src/plugins/lights/DirectionalLight.ts`)
+    - `ILightComponent` interface with LightType, color, intensity, direction
+    - `DirectionalLight` entity implementing IEntity with light component
+    - Factory function `createDirectionalLightComponent()`
+    - Methods: getDirection, setDirection, getColor, setColor, getIntensity, setIntensity, isEnabled, setEnabled, getEffectiveColor
+
+  - **Light Manager** (`src/core/LightManager.ts`)
+    - Collects active lights from scene for shader uniforms
+    - Event-driven cache invalidation (`scene:objectAdded`, `scene:objectRemoved`)
+    - Methods: `getActiveLights()`, `getPrimaryDirectionalLight()`, `getAmbientColor()`
+
+  - **Forward Renderer** (`src/plugins/renderers/forward/ForwardRenderer.ts`)
+    - Implements `IRenderPipeline` with embedded GLSL shaders
+    - **Lighting Model:**
+      - Lambertian diffuse (N·L clamped)
+      - Hemisphere ambient approximation (sky/ground interpolation)
+      - Rim lighting for edge definition
+      - Gamma correction (2.2)
+    - Uniform locations: model, viewProjection, normalMatrix, lightDirection, lightColor, ambientColor, objectColor, cameraPosition
+    - `setLightManager(lightManager)` for light data injection
+
+  - **Cube Solid Geometry** (`src/plugins/primitives/Cube.ts`)
+    - Added 24 vertices (4 per face for correct per-face normals)
+    - Added 36 indices for solid rendering
+    - Added `renderSolid()`, `initializeSolidGPUResources()`, `getNormalMatrix()` methods
+    - Wireframe rendering preserved as `renderWireframe()`
+
+  - **Math Utilities** (`src/utils/math/transforms.ts`)
+    - `vec3Normalize(v)` - Vector normalization
+    - `mat4Inverse(m)` - Full 4x4 matrix inversion (Gauss-Jordan)
+    - `mat3FromMat4(m)` - Extract upper-left 3x3 from Mat4
+    - `normalMatrix(model)` - Compute transpose of inverse of upper-left 3x3
+
+### Changed
+
+- **Application** (`src/core/Application.ts`)
+  - Added ForwardRenderer, LightManager, DirectionalLight initialization
+  - Render loop now uses ForwardRenderer instead of LineRenderer
+  - Default light direction: [-0.5, -1.0, -0.3] (normalized)
+
+- **SelectionController** (`src/plugins/tools/SelectionController.ts`)
+  - Changed `mat4Inverse` import to `mat4InverseNullable` to resolve export conflict
+
+- **Math Index** (`src/utils/math/index.ts`)
+  - Added exports for new transforms: vec3Normalize, mat4Inverse, mat3FromMat4, normalMatrix, Mat3
+  - Renamed ray's mat4Inverse to mat4InverseNullable for disambiguation
+
+### Fixed
+
+- **Cube Test** (`tests/unit/plugins/Cube.test.ts`)
+  - Updated error message expectation from "Failed to create VAO for Cube" to "Failed to create wireframe VAO for Cube"
+
+### Technical Details
+
+- **Files created**: 6 new files (ILightComponent.ts, DirectionalLight.ts, lights/index.ts, LightManager.ts, ForwardRenderer.ts, forward/index.ts)
+- **Files modified**: 9 files
+- **Test coverage**: 307 tests passing
+- **Lines changed**: +605/-121
+
+### Documentation
+
+- **Architectural Refactoring Plan** (`.llms/REFACTOR_MESH_RENDERING.md`) - NEW
+  - Documents plan to separate mesh data from GPU resources and rendering
+  - IMeshData interface for common geometry data
+  - MeshGPUCache pattern for centralized GPU resource management
+  - Scheduled for next session
+
+---
+
 ## [0.6.10] - 2026-01-23
 
 ### Changed

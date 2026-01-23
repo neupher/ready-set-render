@@ -1,7 +1,8 @@
 /**
- * Renderer Plugins
+ * Renderers Module
  *
  * Re-exports all render pipeline plugins.
  */
 
-export { LineRenderer } from './line';
+export { LineRenderer } from './line/LineRenderer';
+export { ForwardRenderer } from './forward/ForwardRenderer';
