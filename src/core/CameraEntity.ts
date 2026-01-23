@@ -9,6 +9,11 @@
  *
  * This follows Unity's pattern where Camera is a Component on a GameObject.
  *
+ * Property editing is handled centrally by PropertyChangeHandler,
+ * which manipulates the transform and components directly. No need to
+ * implement IPropertyEditable - the handler uses hasComponent('camera')
+ * to detect and edit camera-specific properties.
+ *
  * @example
  * ```typescript
  * const cameraEntity = new CameraEntity();
@@ -20,7 +25,7 @@
  * ```
  */
 
-import type { ISceneObject, Transform, IComponent, IEntity, IPropertyEditable } from './interfaces';
+import type { ISceneObject, Transform, IComponent, IEntity } from './interfaces';
 import type { ICameraComponent } from './interfaces/ICameraComponent';
 import { createDefaultTransform } from './interfaces';
 import { createDefaultCameraComponent } from './interfaces/ICameraComponent';
@@ -48,9 +53,12 @@ interface ITransformComponent extends IComponent {
 /**
  * Camera entity that appears in the scene hierarchy.
  * Uses composition pattern - NOT inheriting from Camera.
- * Implements IPropertyEditable for live property editing from UI.
+ *
+ * Note: No IPropertyEditable implementation needed - PropertyChangeHandler
+ * handles transforms and camera component properties centrally by checking
+ * hasComponent('camera').
  */
-export class CameraEntity implements IEntity, IPropertyEditable {
+export class CameraEntity implements IEntity {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -212,158 +220,5 @@ export class CameraEntity implements IEntity, IPropertyEditable {
    */
   asRenderCamera(aspect: number): RenderCameraAdapter {
     return new RenderCameraAdapter(this, aspect);
-  }
-
-  // =========================================
-  // IPropertyEditable Implementation
-  // =========================================
-
-  /**
-   * Set a property value using dot notation path.
-   * Supports transform and camera component properties.
-   *
-   * @param path - Property path (e.g., 'position.x', 'camera.fieldOfView')
-   * @param value - The new value
-   * @returns True if the property was successfully set
-   */
-  setProperty(path: string, value: unknown): boolean {
-    const parts = path.split('.');
-
-    // Handle transform properties: position.x, rotation.y, scale.z
-    if (parts.length === 2) {
-      const [transformProp, axis] = parts;
-      const axisIndex = { x: 0, y: 1, z: 2 }[axis];
-
-      if (axisIndex !== undefined && typeof value === 'number') {
-        switch (transformProp) {
-          case 'position':
-            this.transform.position[axisIndex] = value;
-            return true;
-          case 'rotation':
-            this.transform.rotation[axisIndex] = value;
-            return true;
-          case 'scale':
-            this.transform.scale[axisIndex] = value;
-            return true;
-        }
-      }
-
-      // Handle camera component properties: camera.fieldOfView, etc.
-      if (transformProp === 'camera') {
-        return this.setCameraProperty(axis, value);
-      }
-    }
-
-    return false;
-  }
-
-  /**
-   * Set a camera component property.
-   *
-   * @param property - Camera property name (fieldOfView, nearClipPlane, etc.)
-   * @param value - The new value
-   * @returns True if the property was successfully set
-   */
-  private setCameraProperty(property: string, value: unknown): boolean {
-    switch (property) {
-      case 'fieldOfView':
-        if (typeof value === 'number') {
-          this.cameraComponent.fieldOfView = value;
-          return true;
-        }
-        break;
-      case 'nearClipPlane':
-        if (typeof value === 'number') {
-          this.cameraComponent.nearClipPlane = value;
-          return true;
-        }
-        break;
-      case 'farClipPlane':
-        if (typeof value === 'number') {
-          this.cameraComponent.farClipPlane = value;
-          return true;
-        }
-        break;
-      case 'clearFlags':
-        if (
-          value === 'skybox' ||
-          value === 'solidColor' ||
-          value === 'depthOnly' ||
-          value === 'none'
-        ) {
-          this.cameraComponent.clearFlags = value;
-          return true;
-        }
-        break;
-      case 'backgroundColor':
-        // Handle hex color string
-        if (typeof value === 'string' && value.startsWith('#')) {
-          const hex = value.slice(1);
-          const r = parseInt(hex.substring(0, 2), 16) / 255;
-          const g = parseInt(hex.substring(2, 4), 16) / 255;
-          const b = parseInt(hex.substring(4, 6), 16) / 255;
-          this.cameraComponent.backgroundColor = [r, g, b];
-          return true;
-        }
-        break;
-    }
-    return false;
-  }
-
-  /**
-   * Get a property value using dot notation path.
-   *
-   * @param path - Property path (e.g., 'position.x', 'camera.fieldOfView')
-   * @returns The property value, or undefined if not found
-   */
-  getProperty(path: string): unknown {
-    const parts = path.split('.');
-
-    // Handle transform properties
-    if (parts.length === 2) {
-      const [transformProp, axis] = parts;
-      const axisIndex = { x: 0, y: 1, z: 2 }[axis];
-
-      if (axisIndex !== undefined) {
-        switch (transformProp) {
-          case 'position':
-            return this.transform.position[axisIndex];
-          case 'rotation':
-            return this.transform.rotation[axisIndex];
-          case 'scale':
-            return this.transform.scale[axisIndex];
-        }
-      }
-
-      // Handle camera component properties
-      if (transformProp === 'camera') {
-        return this.getCameraComponentProperty(axis);
-      }
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Get a camera component property value.
-   *
-   * @param property - Camera property name
-   * @returns The property value, or undefined if not found
-   */
-  private getCameraComponentProperty(property: string): unknown {
-    switch (property) {
-      case 'fieldOfView':
-        return this.cameraComponent.fieldOfView;
-      case 'nearClipPlane':
-        return this.cameraComponent.nearClipPlane;
-      case 'farClipPlane':
-        return this.cameraComponent.farClipPlane;
-      case 'clearFlags':
-        return this.cameraComponent.clearFlags;
-      case 'backgroundColor':
-        return this.cameraComponent.backgroundColor;
-      default:
-        return undefined;
-    }
   }
 }

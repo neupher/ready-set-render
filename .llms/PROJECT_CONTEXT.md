@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T18:06:00Z
-> **Version:** 0.6.5
-> **Status:** Phase 6.4+ Complete - Property System with Bidirectional Data Binding
+> **Last Updated:** 2026-01-23T20:57:00Z
+> **Version:** 0.6.6
+> **Status:** Phase 6.4+ Complete - Centralized Property System Architecture
 
 ---
 
@@ -226,14 +226,30 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **Auto-pivot**: Camera automatically pivots around active selection
 - **Selection sync**: Hierarchy panel syncs with viewport selection
 
-### ✅ Completed - Phase 6.4+: Property System with Bidirectional Data Binding
+### ✅ Completed - Phase 6.4+: Centralized Property System Architecture
 
 **Key Files Created/Modified:**
-- `src/core/PropertyChangeHandler.ts` - Routes property change events from UI to entity data
-- `src/core/interfaces/IPropertyEditable.ts` - Interface for entities that support property editing
-- `src/plugins/primitives/Cube.ts` - Now implements `IPropertyEditable`
-- `src/core/CameraEntity.ts` - Now implements `IPropertyEditable`
+- `src/core/PropertyChangeHandler.ts` - **Centralized** handler for ALL entity property changes
+- `src/core/interfaces/IPropertyEditable.ts` - Now **optional** interface for custom properties only
+- `src/plugins/primitives/Cube.ts` - Removed IPropertyEditable (~50 lines), works automatically
+- `src/core/CameraEntity.ts` - Removed IPropertyEditable (~100 lines), camera props via component handler
 - `src/ui/panels/PropertiesPanel.ts` - Listens for `entity:propertyUpdated` for bidirectional sync
+
+**Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PropertyChangeHandler (CENTRALIZED)               │
+│                                                                      │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐     │
+│  │ Transform Props │  │  Camera Props   │  │ Material Props  │     │
+│  │ (ALL entities)  │  │ (has camera?)   │  │ (has material?) │     │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘     │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+            entity.transform.position[0] = value
+            (Direct manipulation - no IPropertyEditable needed!)
+```
 
 **Data Flow:**
 ```
@@ -243,7 +259,10 @@ EventBus: 'object:propertyChanged'
        ↓
 PropertyChangeHandler.handlePropertyChange()
        ↓
-entity.setProperty(path, value)
+PropertyChangeHandler manipulates entity data directly
+  - Transforms: entity.transform.position/rotation/scale
+  - Camera: entity.getComponent('camera').fieldOfView
+  - Material: entity.getComponent('material').color
        ↓
 EventBus: 'entity:propertyUpdated'
        ↓
@@ -252,11 +271,12 @@ PropertiesPanel refreshes (for external updates like gizmos)
 Render loop reads entity.transform → Changes visible!
 ```
 
-**Features:**
-- **Live property editing**: Editing transform values in Properties Panel updates objects in viewport
-- **IPropertyEditable interface**: Entities implement `setProperty(path, value)` and `getProperty(path)`
-- **Bidirectional sync**: Future gizmos can emit `object:propertyChanged` and UI will update automatically
-- **Camera property support**: FOV, near/far clip planes editable through Properties Panel
+**Benefits:**
+- **Zero code in entities**: Cube, Sphere, imported meshes all work automatically
+- **Component-based handlers**: Uses `hasComponent('camera')` to route to camera handler
+- **~150 lines removed**: From Cube (~50) and CameraEntity (~100)
+- **IPropertyEditable optional**: Only for entities with truly custom properties
+- **Future-proof**: New primitives and importers automatically editable
 
 **Also Fixed (Properties Panel UX):**
 - Focus management: Clicking text fields immediately focuses them

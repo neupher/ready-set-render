@@ -1,19 +1,39 @@
 /**
  * IPropertyEditable Interface
  *
- * Interface for entities that support property editing from the Properties Panel
- * or other sources (like transform gizmos, scripting, etc.).
+ * OPTIONAL interface for entities that need CUSTOM property handling.
  *
- * This enables bidirectional data binding:
- * - UI → Entity: PropertiesPanel emits changes, handler calls setProperty()
- * - Entity → UI: Changes from gizmos/scripts emit events, UI updates displayed values
+ * IMPORTANT: Most entities do NOT need to implement this interface!
+ *
+ * The PropertyChangeHandler handles standard properties centrally:
+ * - Transform (position, rotation, scale) - handled for ALL entities
+ * - Camera component - handled if hasComponent('camera')
+ * - Material component - handled if hasComponent('material')
+ *
+ * Only implement IPropertyEditable when:
+ * - Your entity has truly custom properties not covered above
+ * - You need special validation or transformation of values
+ * - You have computed/derived properties
+ *
+ * For standard entities (Cube, Sphere, Plane, imported meshes), the
+ * PropertyChangeHandler works automatically with zero code needed.
  *
  * @example
  * ```typescript
- * // Check if entity supports property editing
- * if (isPropertyEditable(entity)) {
- *   entity.setProperty('position.x', 5.0);
- *   const value = entity.getProperty('position.x');
+ * // Most entities: NO implementation needed - works automatically!
+ * class Cube implements IEntity {
+ *   // transform editing just works via PropertyChangeHandler
+ * }
+ *
+ * // Only for special cases:
+ * class SpecialEntity implements IEntity, IPropertyEditable {
+ *   setProperty(path: string, value: unknown): boolean {
+ *     if (path === 'customProp') {
+ *       this.customProp = validate(value);
+ *       return true;
+ *     }
+ *     return false; // Let PropertyChangeHandler handle the rest
+ *   }
  * }
  * ```
  */

@@ -4,6 +4,9 @@
  * A basic cube primitive that implements IRenderable and IEntity.
  * Used for testing the line renderer and as a building block for scenes.
  * Supports the Entity Component System for property display.
+ *
+ * Property editing is handled centrally by PropertyChangeHandler,
+ * which manipulates the transform and components directly.
  */
 
 import type {
@@ -14,7 +17,6 @@ import type {
   IMeshComponent,
   IMaterialComponent,
   IInitializable,
-  IPropertyEditable,
 } from '@core/interfaces';
 import { createDefaultTransform } from '@core/interfaces';
 import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
@@ -34,9 +36,11 @@ import {
  * Vertices define the 8 corners of a unit cube centered at origin.
  * Edges define the 12 wireframe lines.
  * Implements IEntity for component-based property display.
- * Implements IPropertyEditable for live property editing.
+ *
+ * Note: No IPropertyEditable implementation needed - PropertyChangeHandler
+ * handles transforms and component properties centrally for all entities.
  */
-export class Cube implements IRenderable, IEntity, IInitializable, IPropertyEditable {
+export class Cube implements IRenderable, IEntity, IInitializable {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -316,83 +320,6 @@ export class Cube implements IRenderable, IEntity, IInitializable, IPropertyEdit
    */
   isInitialized(): boolean {
     return this.vao !== null && this.program !== null;
-  }
-
-  // =========================================
-  // IPropertyEditable Implementation
-  // =========================================
-
-  /**
-   * Set a property value using dot notation path.
-   * Supports transform properties (position, rotation, scale).
-   *
-   * @param path - Property path (e.g., 'position.x', 'rotation.y')
-   * @param value - The new value
-   * @returns True if the property was successfully set
-   */
-  setProperty(path: string, value: unknown): boolean {
-    const parts = path.split('.');
-
-    if (parts.length !== 2) {
-      return false;
-    }
-
-    const [transformProp, axis] = parts;
-    const axisIndex = { x: 0, y: 1, z: 2 }[axis];
-
-    if (axisIndex === undefined) {
-      return false;
-    }
-
-    if (typeof value !== 'number') {
-      return false;
-    }
-
-    switch (transformProp) {
-      case 'position':
-        this.transform.position[axisIndex] = value;
-        return true;
-      case 'rotation':
-        this.transform.rotation[axisIndex] = value;
-        return true;
-      case 'scale':
-        this.transform.scale[axisIndex] = value;
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  /**
-   * Get a property value using dot notation path.
-   *
-   * @param path - Property path (e.g., 'position.x', 'rotation.y')
-   * @returns The property value, or undefined if not found
-   */
-  getProperty(path: string): unknown {
-    const parts = path.split('.');
-
-    if (parts.length !== 2) {
-      return undefined;
-    }
-
-    const [transformProp, axis] = parts;
-    const axisIndex = { x: 0, y: 1, z: 2 }[axis];
-
-    if (axisIndex === undefined) {
-      return undefined;
-    }
-
-    switch (transformProp) {
-      case 'position':
-        return this.transform.position[axisIndex];
-      case 'rotation':
-        return this.transform.rotation[axisIndex];
-      case 'scale':
-        return this.transform.scale[axisIndex];
-      default:
-        return undefined;
-    }
   }
 
   /**

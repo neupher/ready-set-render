@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.6] - 2026-01-23
+
+### Changed
+
+- **PropertyChangeHandler** - Refactored to centralized architecture
+  - Now handles ALL transform properties (position, rotation, scale) centrally for ANY entity
+  - Uses component-based handlers: checks `hasComponent('camera')` or `hasComponent('material')`
+  - Entities no longer need to implement `IPropertyEditable` for standard properties
+  - New primitives and imported meshes automatically editable without code changes
+
+- **Cube** - Removed `IPropertyEditable` implementation (~50 lines)
+  - Transform editing now handled automatically by PropertyChangeHandler
+  - Zero boilerplate needed for standard property editing
+
+- **CameraEntity** - Removed `IPropertyEditable` implementation (~100 lines)
+  - Camera component properties handled via PropertyChangeHandler's component handlers
+  - Simplified from 300+ lines to ~200 lines
+
+- **IPropertyEditable** - Now optional for custom properties only
+  - Updated documentation clarifying when to use (rarely!)
+  - Standard entities (Cube, Sphere, imported meshes) don't need it
+
+### Technical Details
+
+- **Architecture**: PropertyChangeHandler is now single source of truth
+- **Data flow**: `PropertiesPanel → EventBus → PropertyChangeHandler → entity.transform/components → EventBus → PropertiesPanel refresh`
+- **Benefits**: ~150 lines removed from entities, new primitives work automatically
+
+---
+
 ## [0.6.5] - 2026-01-23
 
 ### Added
