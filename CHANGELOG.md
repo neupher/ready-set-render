@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.4] - 2026-01-23
+
+### Added
+
+- **Phase 6.2: Camera as Scene Entity** (Commit: `21f038ab`)
+  - `ICameraComponent` interface with Unity terminology (fieldOfView, nearClipPlane, farClipPlane, clearFlags, backgroundColor)
+  - `CameraEntity` class implementing IEntity using composition pattern (not inheritance)
+  - `RenderCameraAdapter` bridging CameraEntity to ICamera interface for render pipelines
+  - Camera appears in Hierarchy panel with movie camera icon
+  - Camera properties editable in Inspector (FOV, clip planes, clear flags, background color)
+
+- **Phase 6.3: Input System & Scene Navigation** (Commit: `40caac34`)
+  - `InputManager` for centralized mouse/keyboard event tracking
+  - `OrbitController` for Maya-style camera navigation
+  - Navigation controls: Alt+LMB=orbit, Alt+MMB=pan, Alt+RMB=dolly, Scroll=zoom
+  - F key to frame selection
+  - Custom SVG cursor icons for orbit, pan, and zoom modes
+
+- **Phase 6.4: Selection System** (Commit: `fc54a5fe`)
+  - `SelectionManager` for selection state management
+  - Ray casting utilities (`src/utils/math/ray.ts`) with AABB intersection
+  - Click to select objects in viewport
+  - Ctrl+Click to toggle selection
+  - F key frames camera on current selection
+  - Auto-pivot: Camera automatically pivots around active selection
+  - Selection syncs with Hierarchy panel
+
+### Changed
+
+- **Camera icon** updated to movie camera style in TreeView
+- **OrbitController** now accepts canvas parameter for cursor management
+- **Pan sensitivity** tuned to 0.002 for Maya-like feel
+- **Dolly direction** inverted so mouse right = zoom in (Maya standard)
+- **Pan direction** matches Maya (inverted horizontal, corrected vertical)
+
+### Fixed
+
+- Pan movement now constrained to camera's local XY plane (perpendicular to look direction)
+- Forward direction remains constant when panning
+
+---
+
 ## [0.6.0] - 2026-01-22
 
 ### Added

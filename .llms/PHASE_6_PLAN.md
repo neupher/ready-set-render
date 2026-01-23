@@ -1,7 +1,7 @@
 # Phase 6: Functional WebGL Editor (Revised)
 
-> **Last Updated:** 2026-01-23T15:24:00Z
-> **Version:** 0.6.1
+> **Last Updated:** 2026-01-23T16:14:00Z
+> **Version:** 0.6.4
 
 ## Goal
 
@@ -109,86 +109,72 @@ class RenderCameraAdapter implements ICamera {
 
 ---
 
-### Phase 6.2: Default Camera as Scene Entity (REVISED)
+### Phase 6.2: Default Camera as Scene Entity ✅ COMPLETE
+
+**Commit:** `21f038ab`
 
 **Goal**: Camera appears in Hierarchy as "Main Camera", is selectable, editable.
 
 **Architecture**: Composition + Adapter Pattern (NOT inheritance)
 
-**Tasks**:
-1. Create `ICameraComponent` interface (pure data):
-   ```typescript
-   interface ICameraComponent extends IComponent {
-     type: 'camera';
-     fieldOfView: number;      // Degrees (default: 60)
-     nearClipPlane: number;    // Default: 0.3
-     farClipPlane: number;     // Default: 1000
-     clearFlags: 'skybox' | 'solidColor' | 'depthOnly' | 'none';
-     backgroundColor: Vec3;
-   }
-   ```
-2. Create `CameraEntity` class implementing `IEntity` (NOT extending Camera)
-3. Create `RenderCameraAdapter` implementing `ICamera` (bridges to pipeline)
-4. Position default camera at `[7, 5, 7]` looking at `[0, 0, 0]`
-5. Add camera icon to `TreeView`
-6. Update `PropertiesPanel` for Camera component editing
+**Files Created**:
+- `src/core/interfaces/ICameraComponent.ts` - Camera component interface
+- `src/core/CameraEntity.ts` - Entity with camera component
+- `src/core/RenderCameraAdapter.ts` - Bridge to render pipeline
 
-**Files**:
-- `src/core/interfaces/ICameraComponent.ts` (new)
-- `src/core/CameraEntity.ts` (new)
-- `src/core/RenderCameraAdapter.ts` (new)
-- `src/ui/components/TreeView.ts` - camera icon
-- `src/ui/panels/PropertiesPanel.ts` - camera editor
-- `src/index.ts` - use CameraEntity
+**Features**:
+- CameraEntity implements IEntity (NOT extends Camera)
+- Transform is single source of truth
+- Movie camera icon in hierarchy
+- Camera properties editable in Inspector
 
 ---
 
-### Phase 6.3: Input System & Scene Navigation (Maya-style)
+### Phase 6.3: Input System & Scene Navigation ✅ COMPLETE
 
-**Goal**: Navigate viewport with industry-standard controls.
+**Commit:** `40caac34`
+
+**Goal**: Navigate viewport with industry-standard Maya-style controls.
 
 **Controls**:
 | Input | Action |
 |-------|--------|
 | Alt + LMB drag | Orbit/tumble |
-| Alt + MMB drag | Pan |
-| Alt + RMB drag | Dolly/zoom |
+| Alt + MMB drag | Pan (Maya-style inverted) |
+| Alt + RMB drag | Dolly/zoom (right = zoom in) |
 | Scroll wheel | Zoom |
 | F key | Frame selection |
-| Shift + F | Frame all |
 
-**Tasks**:
-1. Create `InputManager` singleton - track mouse, modifiers, emit events
-2. Create `OrbitController` plugin - spherical coordinates, pivot, damping
-3. Add spherical coordinate math utilities
-4. Create `bounds.ts` - AABB type and operations
+**Files Created**:
+- `src/core/InputManager.ts` - Centralized mouse/keyboard tracking
+- `src/plugins/navigation/OrbitController.ts` - Maya-style navigation
+- `src/plugins/navigation/index.ts` - Barrel export
 
-**Files**:
-- `src/core/InputManager.ts` (new)
-- `src/plugins/navigation/OrbitController.ts` (new)
-- `src/utils/math/transforms.ts` - spherical functions
-- `src/utils/math/bounds.ts` (new)
+**Features**:
+- Spherical coordinates for smooth orbital movement
+- Custom SVG cursors for orbit, pan, zoom modes
+- Configurable sensitivity values (pan: 0.002)
+- Proper Maya-style direction matching
 
 ---
 
-### Phase 6.4: Selection System
+### Phase 6.4: Selection System ✅ COMPLETE
+
+**Commit:** `fc54a5fe`
 
 **Goal**: Click to select objects; highlight and show in Inspector.
 
-**Tasks**:
-1. Create `SelectionManager` - select, deselect, clear, toggle, isSelected
-2. Implement ray-picking: unprojectScreenToRay, rayAABBIntersection
-3. ViewportPanel click handler - LMB select, Ctrl+LMB toggle
-4. Selection highlight (orange wireframe overlay)
-5. Events: `selection:changed`, `selection:cleared`
-6. Sync with Hierarchy panel
+**Files Created**:
+- `src/core/SelectionManager.ts` - Selection state management
+- `src/utils/math/ray.ts` - Ray casting and AABB intersection
 
-**Files**:
-- `src/core/SelectionManager.ts` (new)
-- `src/core/interfaces/ISelectable.ts` (new)
-- `src/utils/math/ray.ts` (new)
-- `src/ui/panels/ViewportPanel.ts` - click handler
-- `src/ui/panels/HierarchyPanel.ts` - selection sync
+**Features**:
+- Click to select with ray picking
+- Ctrl+Click to toggle selection
+- F key frames camera on selection
+- Auto-pivot: Camera pivots around active selection
+- Selection syncs with Hierarchy panel
+- Movie camera icon for camera entity
 
 ---
 

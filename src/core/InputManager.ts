@@ -258,8 +258,11 @@ export class InputManager {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
+    // Only process if drag started on canvas (isDragging means mousedown was on canvas)
+    const wasCanvasDrag = this.isDragging && e.button === this.dragButton;
+
     // End dragging if this was the drag button
-    if (this.isDragging && e.button === this.dragButton) {
+    if (wasCanvasDrag) {
       this.eventBus.emit('input:dragEnd', {
         button: this.dragButton,
         startX: this.dragStartPosition.x,
@@ -273,14 +276,15 @@ export class InputManager {
 
       this.isDragging = false;
       this.dragButton = -1;
-    }
 
-    this.eventBus.emit('input:mouseUp', {
-      button: e.button,
-      x,
-      y,
-      modifiers: { ...this.modifiers },
-    });
+      // Only emit mouseUp for canvas interactions (not clicks elsewhere in the UI)
+      this.eventBus.emit('input:mouseUp', {
+        button: e.button,
+        x,
+        y,
+        modifiers: { ...this.modifiers },
+      });
+    }
   }
 
   private handleWheel(e: globalThis.WheelEvent): void {

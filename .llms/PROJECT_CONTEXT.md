@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T15:25:00Z
-> **Version:** 0.6.1
-> **Status:** Phase 6.1 Complete - Render Pipeline Fixed
+> **Last Updated:** 2026-01-23T16:13:00Z
+> **Version:** 0.6.4
+> **Status:** Phase 6.4 Complete - Selection System with Navigation Fixes
 
 ---
 
@@ -166,7 +166,67 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - [x] Phase 5.6: Connect menu to scene operations, clean scene init
 - [x] Phase 5.7: Add EntityIdGenerator utility
 
-### 📋 Next Steps (Phase 6: Functional Editor)
+### ✅ Completed - Phase 6.1: Fix Rendering Pipeline
+
+**Commit:** `d9d03dc865c9f37a7d6b9b1f970f65e72bda5dab`
+
+**Changes:**
+- Added `scene:objectAdded` event listener in `src/index.ts` that calls `initializeGPUResources()` on new renderables
+- Created `IInitializable` interface with `initializeGPUResources()` and `isInitialized()` methods
+- Added type guard `isInitializable(obj)` for runtime checking
+- Updated Cube to implement `isInitialized()`
+
+**Result:** Create Cube via menu → renders as white wireframe immediately ✅
+
+### ✅ Completed - Phase 6.2: Camera as Scene Entity
+
+**Commit:** `21f038ab` (Phase 6.2)
+
+**Key Files Created:**
+- `src/core/interfaces/ICameraComponent.ts` - Camera component interface with Unity terminology (fieldOfView, nearClipPlane, farClipPlane, clearFlags, backgroundColor)
+- `src/core/CameraEntity.ts` - Entity with camera component using composition pattern (not inheritance)
+- `src/core/RenderCameraAdapter.ts` - Bridges CameraEntity to ICamera interface for render pipelines
+
+**Architecture:**
+- CameraEntity implements IEntity (NOT extends Camera)
+- Transform is single source of truth for position
+- RenderCameraAdapter provides ICamera compatibility for existing render pipeline
+- Camera appears in Hierarchy panel with movie camera icon
+
+### ✅ Completed - Phase 6.3: Input System & Scene Navigation
+
+**Commit:** `40caac34` (Phase 6.3)
+
+**Key Files Created:**
+- `src/core/InputManager.ts` - Centralized mouse/keyboard event tracking
+- `src/plugins/navigation/OrbitController.ts` - Maya-style camera navigation
+- `src/plugins/navigation/index.ts` - Barrel export
+
+**Features:**
+- **Alt + LMB drag**: Orbit/tumble around pivot
+- **Alt + MMB drag**: Pan (Maya-style inverted)
+- **Alt + RMB drag**: Dolly/zoom (mouse right = zoom in)
+- **Scroll wheel**: Zoom
+- **F key**: Frame selection
+- **Cursor icons**: Custom SVG cursors for orbit, pan, zoom modes
+
+### ✅ Completed - Phase 6.4: Selection System
+
+**Commit:** `fc54a5fe` (Phase 6.4)
+
+**Key Files Created:**
+- `src/core/SelectionManager.ts` - Selection state management
+- `src/utils/math/ray.ts` - Ray casting and AABB intersection utilities
+
+**Features:**
+- **Click to select**: Left-click selects objects in viewport
+- **Ctrl+Click**: Toggle selection
+- **Ray picking**: Screen-to-world ray casting with AABB intersection
+- **F key focus**: Frames camera on current selection
+- **Auto-pivot**: Camera automatically pivots around active selection
+- **Selection sync**: Hierarchy panel syncs with viewport selection
+
+### 📋 Next Steps (Phase 6.5-6.14: Functional Editor Continued)
 
 **See detailed plan:** [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)
 

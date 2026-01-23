@@ -26,7 +26,7 @@ import { MouseButton, type DragEvent, type WheelEvent as InputWheelEvent } from 
  * Cursor data URIs for navigation modes
  */
 const CURSORS = {
-  orbit: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="8" stroke-dasharray="4 2"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/><path d="M12 9l-2 3 2 3 2-3-2-3z" fill="white"/></svg>') 12 12, crosshair`,
+  orbit: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"><circle cx="12" cy="12" r="7" stroke-opacity="0.6"/><path d="M5 12a7 7 0 0 1 7-7" stroke-linecap="round"/><path d="M12 5l-2 2M12 5l2 2" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 12a7 7 0 0 1-7 7" stroke-linecap="round"/><path d="M12 19l2-2M12 19l-2-2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="12" r="2" fill="white"/></svg>') 12 12, crosshair`,
   pan: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3M22 12l-3-3M22 12l-3 3"/></svg>') 12 12, move`,
   zoom: `url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><circle cx="10" cy="10" r="6"/><path d="M14 14l6 6"/><path d="M7 10h6M10 7v6"/></svg>') 12 12, zoom-in`,
 };
