@@ -2,15 +2,15 @@
  * DuplicateEntityCommand
  *
  * Command for undoing/redoing entity duplication.
- * Creates a clone of the entity with offset position.
+ * Uses the ICloneable interface for polymorphic cloning -
+ * works with any entity type (Cube, Sphere, lights, imported meshes, etc.)
  *
  * @example
  * ```typescript
  * const command = new DuplicateEntityCommand({
  *   entity: selectedCube,
  *   sceneGraph,
- *   eventBus,
- *   primitiveRegistry
+ *   eventBus
  * });
  * commandHistory.execute(command);
  * ```
@@ -19,8 +19,8 @@
 import type { EventBus } from '../EventBus';
 import type { SceneGraph } from '../SceneGraph';
 import type { ICommand } from './ICommand';
-import type { ISceneObject, IEntity } from '../interfaces';
-import type { PrimitiveRegistry } from '@plugins/primitives';
+import type { ISceneObject } from '../interfaces';
+import { isCloneable } from '../interfaces';
 
 export interface DuplicateEntityCommandOptions {
   /** The entity to duplicate */
@@ -31,27 +31,11 @@ export interface DuplicateEntityCommandOptions {
 
   /** Event bus for emitting events */
   eventBus: EventBus;
-
-  /** Primitive registry for creating duplicates */
-  primitiveRegistry: PrimitiveRegistry;
-}
-
-/**
- * Type guard to check if object is an IEntity with mesh component.
- */
-function isMeshEntity(obj: unknown): obj is IEntity {
-  return (
-    typeof obj === 'object' &&
-    obj !== null &&
-    'hasComponent' in obj &&
-    typeof (obj as IEntity).hasComponent === 'function' &&
-    (obj as IEntity).hasComponent('mesh')
-  );
 }
 
 /**
  * Command for duplicating an entity.
- * Creates a new entity with the same type and offset position.
+ * Uses the entity's clone() method for polymorphic duplication.
  */
 export class DuplicateEntityCommand implements ICommand {
   readonly type = 'DuplicateEntity';
@@ -61,7 +45,6 @@ export class DuplicateEntityCommand implements ICommand {
   private readonly sourceEntity: ISceneObject;
   private readonly sceneGraph: SceneGraph;
   private readonly eventBus: EventBus;
-  private readonly primitiveRegistry: PrimitiveRegistry;
 
   /** The duplicated entity (created on first execute) */
   private duplicatedEntity: ISceneObject | null = null;
@@ -70,7 +53,6 @@ export class DuplicateEntityCommand implements ICommand {
     this.sourceEntity = options.entity;
     this.sceneGraph = options.sceneGraph;
     this.eventBus = options.eventBus;
-    this.primitiveRegistry = options.primitiveRegistry;
     this.timestamp = Date.now();
 
     this.description = `Duplicate ${this.sourceEntity.name}`;
@@ -87,30 +69,22 @@ export class DuplicateEntityCommand implements ICommand {
       return;
     }
 
-    // Determine the primitive type from the entity
-    // For now, we only support Cube duplication
-    const primitiveType = this.getPrimitiveType();
-    if (!primitiveType) {
-      console.warn('Cannot duplicate: unknown entity type');
+    // Check if entity supports cloning
+    if (!isCloneable(this.sourceEntity)) {
+      console.warn('Cannot duplicate: entity does not implement ICloneable');
       return;
     }
 
-    // Create a new entity of the same type
-    const duplicate = this.primitiveRegistry.create(primitiveType);
-    if (!duplicate) {
-      console.warn(`Cannot duplicate: failed to create ${primitiveType}`);
-      return;
-    }
+    // Clone the entity using its polymorphic clone() method
+    const duplicate = this.sourceEntity.clone();
 
-    // Copy transform with offset
-    const offset = 1.0; // Offset in X direction
+    // Apply position offset
+    const offset = 1.0;
     duplicate.transform.position = [
       this.sourceEntity.transform.position[0] + offset,
       this.sourceEntity.transform.position[1],
       this.sourceEntity.transform.position[2]
     ];
-    duplicate.transform.rotation = [...this.sourceEntity.transform.rotation];
-    duplicate.transform.scale = [...this.sourceEntity.transform.scale];
 
     // Generate a duplicate name
     duplicate.name = this.generateDuplicateName(this.sourceEntity.name);
@@ -143,27 +117,6 @@ export class DuplicateEntityCommand implements ICommand {
       // Select the original entity
       this.eventBus.emit('selection:changed', { id: this.sourceEntity.id });
     }
-  }
-
-  /**
-   * Determine the primitive type from the entity.
-   */
-  private getPrimitiveType(): string | null {
-    // Check if it's a mesh entity
-    if (!isMeshEntity(this.sourceEntity)) {
-      return null;
-    }
-
-    // For now, we assume all mesh entities are Cubes
-    // In the future, we could add a 'primitiveType' component
-    // or use the entity's constructor name
-    const name = this.sourceEntity.name.toLowerCase();
-    if (name.includes('cube')) {
-      return 'Cube';
-    }
-
-    // Default to Cube for any mesh entity
-    return 'Cube';
   }
 
   /**

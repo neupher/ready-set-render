@@ -19,6 +19,7 @@ import { SceneGraph, SceneObject } from '@core/SceneGraph';
 import { isEntity } from '@core/interfaces';
 import { TreeView, TreeNode, ContextMenuData } from '../components/TreeView';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
+import { buildContextMenuCreateItems } from '../shared/CreateMenuDefinitions';
 
 export interface HierarchyPanelOptions {
   /** Event bus for communication */
@@ -26,34 +27,6 @@ export interface HierarchyPanelOptions {
   /** Scene graph to display */
   sceneGraph: SceneGraph;
 }
-
-/**
- * Available primitives for the Create context menu.
- * Matches the Create menu structure in TopMenuBar.
- */
-const CREATE_MENU_ITEMS: ContextMenuItem[] = [
-  {
-    label: 'Primitives',
-    children: [
-      { label: 'Cube', action: undefined }, // Action set dynamically
-      { label: 'Sphere', disabled: true },
-      { label: 'Plane', disabled: true },
-      { label: 'Cylinder', disabled: true },
-      { label: 'Cone', disabled: true },
-      { label: 'Torus', disabled: true }
-    ]
-  },
-  {
-    label: 'Lights',
-    children: [
-      { label: 'Point Light', disabled: true },
-      { label: 'Directional Light', disabled: true },
-      { label: 'Spot Light', disabled: true }
-    ]
-  },
-  { label: 'Camera', disabled: true },
-  { label: 'Empty', disabled: true }
-];
 
 /**
  * Scene hierarchy panel displaying the scene tree.
@@ -296,7 +269,7 @@ export class HierarchyPanel {
 
   /**
    * Build the Create context menu items with proper actions.
-   * Creates a deep copy of CREATE_MENU_ITEMS with actions bound to emit events.
+   * Uses shared CreateMenuDefinitions with actions bound to emit events.
    */
   private buildCreateMenuItems(): ContextMenuItem[] {
     const bindActions = (items: ContextMenuItem[]): ContextMenuItem[] => {
@@ -316,6 +289,6 @@ export class HierarchyPanel {
       });
     };
 
-    return bindActions(CREATE_MENU_ITEMS);
+    return bindActions(buildContextMenuCreateItems());
   }
 }

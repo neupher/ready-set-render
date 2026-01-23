@@ -6,7 +6,7 @@
  *
  * Shortcuts registered:
  * - Delete: Delete selected mesh entities
- * - Shift+D: Duplicate selected mesh entities
+ * - Shift+D: Duplicate selected cloneable entities
  * - Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z: Undo/Redo (via KeyboardShortcutManager)
  *
  * @example
@@ -16,7 +16,6 @@
  *   commandHistory,
  *   selectionManager,
  *   sceneGraph,
- *   primitiveRegistry,
  *   eventBus,
  * });
  * ```
@@ -26,9 +25,9 @@ import type { KeyboardShortcutManager } from '@core/KeyboardShortcutManager';
 import type { CommandHistory } from '@core/commands/CommandHistory';
 import type { SelectionManager } from '@core/SelectionManager';
 import type { SceneGraph } from '@core/SceneGraph';
-import type { PrimitiveRegistry } from '@plugins/primitives';
 import type { EventBus } from '@core/EventBus';
 import type { ISceneObject } from '@core/interfaces';
+import { isCloneable } from '@core/interfaces';
 
 import { DeleteEntityCommand } from '@core/commands/DeleteEntityCommand';
 import { DuplicateEntityCommand } from '@core/commands/DuplicateEntityCommand';
@@ -45,8 +44,6 @@ export interface EditorShortcutOptions {
   selectionManager: SelectionManager;
   /** Scene graph for entity operations */
   sceneGraph: SceneGraph;
-  /** Primitive registry for duplication */
-  primitiveRegistry: PrimitiveRegistry;
   /** Event bus for notifications */
   eventBus: EventBus;
 }
@@ -61,10 +58,17 @@ function hasComponent(obj: unknown, componentType: string): boolean {
 }
 
 /**
- * Filter objects to only include deletable/duplicable mesh entities (not cameras).
+ * Filter objects to only include deletable mesh entities (not cameras).
  */
-function filterMeshEntities(objects: ISceneObject[]): ISceneObject[] {
+function filterDeletableEntities(objects: ISceneObject[]): ISceneObject[] {
   return objects.filter(obj => hasComponent(obj, 'mesh') && !hasComponent(obj, 'camera'));
+}
+
+/**
+ * Filter objects to only include cloneable entities (not cameras).
+ */
+function filterCloneableEntities(objects: ISceneObject[]): ISceneObject[] {
+  return objects.filter(obj => isCloneable(obj) && !hasComponent(obj, 'camera'));
 }
 
 /**
@@ -76,7 +80,6 @@ export function registerEditorShortcuts(options: EditorShortcutOptions): void {
     commandHistory,
     selectionManager,
     sceneGraph,
-    primitiveRegistry,
     eventBus,
   } = options;
 
@@ -85,7 +88,7 @@ export function registerEditorShortcuts(options: EditorShortcutOptions): void {
     key: 'Delete',
     action: () => {
       const selected = selectionManager.getSelected();
-      const deletableEntities = filterMeshEntities(selected);
+      const deletableEntities = filterDeletableEntities(selected);
 
       if (deletableEntities.length > 0) {
         commandHistory.beginBatch();
@@ -109,16 +112,15 @@ export function registerEditorShortcuts(options: EditorShortcutOptions): void {
     shift: true,
     action: () => {
       const selected = selectionManager.getSelected();
-      const duplicableEntities = filterMeshEntities(selected);
+      const cloneableEntities = filterCloneableEntities(selected);
 
-      if (duplicableEntities.length > 0) {
+      if (cloneableEntities.length > 0) {
         commandHistory.beginBatch();
-        for (const entity of duplicableEntities) {
+        for (const entity of cloneableEntities) {
           const duplicateCmd = new DuplicateEntityCommand({
             entity,
             sceneGraph,
             eventBus,
-            primitiveRegistry,
           });
           commandHistory.execute(duplicateCmd);
         }
@@ -139,7 +141,6 @@ export function registerContextMenuHandlers(options: EditorShortcutOptions): voi
   const {
     commandHistory,
     sceneGraph,
-    primitiveRegistry,
     eventBus,
   } = options;
 
@@ -159,12 +160,11 @@ export function registerContextMenuHandlers(options: EditorShortcutOptions): voi
   // Handle duplicate request from context menu
   eventBus.on('entity:requestDuplicate', (data: { id: string }) => {
     const entity = sceneGraph.find(data.id);
-    if (entity && hasComponent(entity, 'mesh') && !hasComponent(entity, 'camera')) {
+    if (entity && isCloneable(entity) && !hasComponent(entity, 'camera')) {
       const duplicateCmd = new DuplicateEntityCommand({
         entity,
         sceneGraph,
         eventBus,
-        primitiveRegistry,
       });
       commandHistory.execute(duplicateCmd);
     }

@@ -19,6 +19,8 @@
  * ```
  */
 
+import { buildTopMenuBarCreateItems } from '../shared/CreateMenuDefinitions';
+
 export interface MenuItem {
   /** Display label */
   label: string;
@@ -288,6 +290,7 @@ export class TopMenuBar {
 
 /**
  * Default menus for the WebGL Editor.
+ * Create menu items are sourced from shared CreateMenuDefinitions.
  */
 export const DEFAULT_MENUS: Menu[] = [
   {
@@ -303,30 +306,7 @@ export const DEFAULT_MENUS: Menu[] = [
   },
   {
     name: 'Create',
-    items: [
-      {
-        label: 'Primitives',
-        children: [
-          { label: 'Cube' },
-          { label: 'Sphere' },
-          { label: 'Plane', disabled: true },
-          { label: 'Cylinder', disabled: true },
-          { label: 'Cone', disabled: true },
-          { label: 'Torus', disabled: true }
-        ]
-      },
-      {
-        label: 'Lights',
-        disabled: true,
-        children: [
-          { label: 'Point Light', disabled: true },
-          { label: 'Directional Light', disabled: true },
-          { label: 'Spot Light', disabled: true }
-        ]
-      },
-      { label: 'Camera', disabled: true },
-      { label: 'Empty', disabled: true }
-    ]
+    items: buildTopMenuBarCreateItems()
   },
   {
     name: 'Rendering',

@@ -7,7 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.6.11] - 2026-01-23
+## [0.7.1] - 2026-01-23
+
+### Added
+- **ICloneable Interface** (`src/core/interfaces/ICloneable.ts`)
+  - `clone(): IEntity` method for polymorphic entity duplication
+  - `isCloneable()` type guard
+  - `cloneEntityBase()` helper function for copying common properties (transform, material)
+- **Shared Create Menu Definitions** (`src/ui/shared/CreateMenuDefinitions.ts`)
+  - Single source of truth for Create menu items
+  - `buildTopMenuBarCreateItems()` for TopMenuBar format
+  - `buildContextMenuCreateItems()` for ContextMenu format
+  - Both TopMenuBar and HierarchyPanel context menu now stay in sync automatically
+
+### Changed
+- **Entity Duplication** - Now works for all cloneable entities (Cube, Sphere, DirectionalLight), not just Cubes
+  - `DuplicateEntityCommand` uses `isCloneable()` and calls `entity.clone()` polymorphically
+  - Removed `primitiveRegistry` dependency from duplication logic
+  - Future entity types (OBJ/GLTF imports) just need to implement `ICloneable`
+- **Cube** - Implements `ICloneable` interface with `clone()` method
+- **Sphere** - Implements `ICloneable` interface with `clone()` method (preserves segments, rings, radius)
+- **DirectionalLight** - Implements `ICloneable` interface with `clone()` method (preserves color, intensity, direction)
+- **ShortcutRegistry** - Uses `isCloneable()` check for duplication instead of `isMeshEntity()`
+- **TopMenuBar** - Uses shared menu definitions from `CreateMenuDefinitions.ts`
+- **HierarchyPanel** - Uses shared menu definitions, removed local `CREATE_MENU_ITEMS` constant
+
+### Fixed
+- **Sphere duplication** - Duplicating a Sphere now creates a Sphere (was creating Cube)
+- **DirectionalLight duplication** - Lights can now be duplicated with Shift+D or context menu
+- **Menu sync** - Create menu in TopMenuBar and right-click context menu are now always in sync
+
+---
+
+## [0.7.0] - 2026-01-23
 
 ### Added
 

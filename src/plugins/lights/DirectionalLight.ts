@@ -14,7 +14,9 @@ import type {
   Transform,
   IComponent,
   IEntity,
+  ICloneable,
 } from '@core/interfaces';
+import { cloneEntityBase } from '@core/interfaces';
 import type { ILightComponent } from '@core/interfaces/ILightComponent';
 import { createDefaultTransform } from '@core/interfaces';
 import { createDefaultDirectionalLightComponent } from '@core/interfaces/ILightComponent';
@@ -44,7 +46,7 @@ export interface DirectionalLightConfig {
  * only direction matters. However, rotation can be used to visualize
  * light direction in the editor (future gizmo).
  */
-export class DirectionalLight implements IEntity {
+export class DirectionalLight implements IEntity, ICloneable {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -191,5 +193,25 @@ export class DirectionalLight implements IEntity {
       light.color[1] * intensity,
       light.color[2] * intensity,
     ];
+  }
+
+  // =========================================
+  // ICloneable Implementation
+  // =========================================
+
+  /**
+   * Create a deep copy of this DirectionalLight.
+   */
+  clone(): DirectionalLight {
+    const light = this.getLightComponent();
+    const cloned = new DirectionalLight({
+      name: this.name,
+      direction: light.direction ? [...light.direction] : undefined,
+      color: [...light.color],
+      intensity: light.intensity,
+      enabled: light.enabled,
+    });
+    cloneEntityBase(this, cloned);
+    return cloned;
   }
 }

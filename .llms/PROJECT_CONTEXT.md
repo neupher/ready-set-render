@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T23:09:00Z
-> **Version:** 0.7.0
-> **Status:** Mesh Rendering Refactor Complete + Sphere Primitive
+> **Last Updated:** 2026-01-23T23:40:00Z
+> **Version:** 0.7.1
+> **Status:** ICloneable Interface + Shared Menu Definitions
 
 ---
 
@@ -451,6 +451,66 @@ const ctx = app.getContext();
 - 52 comprehensive unit tests
 
 **Test Coverage:** 393 tests passing (341 → 393, +52 new)
+
+### ✅ Completed - v0.7.1: ICloneable Interface + Shared Menu Definitions
+
+**Goal:** Fix entity duplication (only worked for Cubes) and sync Create menus between TopMenuBar and context menu.
+
+**Key Files Created:**
+- `src/core/interfaces/ICloneable.ts` - ICloneable interface with `clone()`, `isCloneable()`, `cloneEntityBase()` helper
+- `src/ui/shared/CreateMenuDefinitions.ts` - Single source of truth for Create menu items
+- `src/ui/shared/index.ts` - Barrel export for shared UI utilities
+
+**Key Files Modified:**
+- `src/plugins/primitives/Cube.ts` - Implements `ICloneable` with `clone()` method
+- `src/plugins/primitives/Sphere.ts` - Implements `ICloneable` with `clone()` method (preserves segments, rings, radius)
+- `src/plugins/lights/DirectionalLight.ts` - Implements `ICloneable` with `clone()` method
+- `src/core/commands/DuplicateEntityCommand.ts` - Uses `isCloneable()` and polymorphic `clone()`, removed `primitiveRegistry` dependency
+- `src/core/ShortcutRegistry.ts` - Uses `isCloneable()` check, removed `primitiveRegistry` from options
+- `src/ui/components/TopMenuBar.ts` - Uses shared `buildTopMenuBarCreateItems()`
+- `src/ui/panels/HierarchyPanel.ts` - Uses shared `buildContextMenuCreateItems()`
+- `src/index.ts` - Removed `primitiveRegistry` from shortcut options
+
+**New Architecture - Polymorphic Cloning:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        ICloneable Interface                          │
+│                         clone(): IEntity                             │
+└─────────────────────────────────────────────────────────────────────┘
+           ▲                    ▲                       ▲
+           │                    │                       │
+     ┌─────┴─────┐       ┌──────┴──────┐       ┌───────┴────────┐
+     │   Cube    │       │   Sphere    │       │ DirectionalLight│
+     │  clone()  │       │   clone()   │       │     clone()     │
+     └───────────┘       └─────────────┘       └────────────────┘
+           │                    │                       │
+           └────────────────────┼───────────────────────┘
+                                ▼
+                  DuplicateEntityCommand.execute()
+                    └─► entity.clone() (polymorphic)
+```
+
+**Shared Menu Architecture:**
+```
+CreateMenuDefinitions.ts (Single Source of Truth)
+     ├── PRIMITIVE_ITEMS: [{label, enabled}, ...]
+     ├── LIGHT_ITEMS: [{label, enabled}, ...]
+     ├── buildTopMenuBarCreateItems() → TopMenuBar
+     └── buildContextMenuCreateItems() → HierarchyPanel context menu
+```
+
+**Adding New Cloneable Entity (Future OBJ/GLTF):**
+```typescript
+export class ImportedMesh implements IEntity, ICloneable {
+  clone(): ImportedMesh {
+    const cloned = new ImportedMesh(this.meshData, this.name);
+    cloneEntityBase(this, cloned);  // Helper copies transform + material
+    return cloned;
+  }
+}
+```
+
+**Test Coverage:** 393 tests passing (no new tests, existing tests pass)
 
 ### 📋 Remaining Steps (Phase 6.8-6.14: Functional Editor Continued)
 

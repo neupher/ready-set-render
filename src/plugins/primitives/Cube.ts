@@ -21,8 +21,9 @@ import type {
   IMeshData,
   IEdgeData,
   IMeshProvider,
+  ICloneable,
 } from '@core/interfaces';
-import { createDefaultTransform } from '@core/interfaces';
+import { createDefaultTransform, cloneEntityBase } from '@core/interfaces';
 import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
 import {
@@ -47,7 +48,7 @@ export type RenderMode = 'wireframe' | 'solid' | 'both';
  * Vertices define a unit cube centered at origin.
  * Implements IMeshProvider for renderer integration.
  */
-export class Cube implements IRenderable, IEntity, IMeshProvider {
+export class Cube implements IRenderable, IEntity, IMeshProvider, ICloneable {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -339,7 +340,7 @@ export class Cube implements IRenderable, IEntity, IMeshProvider {
     };
   }
 
-  /**
+/**
    * Initialize default components for the cube.
    */
   private initializeComponents(): void {
@@ -362,6 +363,20 @@ export class Cube implements IRenderable, IEntity, IMeshProvider {
       transparent: false,
     };
     this.components.set('material', materialComponent);
+  }
+
+  // =========================================
+  // ICloneable Implementation
+  // =========================================
+
+  /**
+   * Create a deep copy of this Cube.
+   */
+  clone(): Cube {
+    const cloned = new Cube(undefined, this.name);
+    cloneEntityBase(this, cloned);
+    cloned.setRenderMode(this.renderMode);
+    return cloned;
   }
 }
 

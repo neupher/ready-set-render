@@ -56,7 +56,6 @@ async function main(): Promise<void> {
       commandHistory: ctx.commandHistory,
       selectionManager: ctx.selectionManager,
       sceneGraph: ctx.sceneGraph,
-      primitiveRegistry: ctx.primitiveRegistry,
       eventBus: ctx.eventBus,
     });
 
@@ -66,7 +65,6 @@ async function main(): Promise<void> {
       commandHistory: ctx.commandHistory,
       selectionManager: ctx.selectionManager,
       sceneGraph: ctx.sceneGraph,
-      primitiveRegistry: ctx.primitiveRegistry,
       eventBus: ctx.eventBus,
     });
 
