@@ -25,11 +25,10 @@ import { PropertyChangeHandler } from '@core/PropertyChangeHandler';
 import { CommandHistory } from '@core/commands/CommandHistory';
 import { KeyboardShortcutManager, registerUndoRedoShortcuts } from '@core/KeyboardShortcutManager';
 import { InputManager } from '@core/InputManager';
-import { isInitializable } from '@core/interfaces';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
 
-import { CubeFactory, PrimitiveRegistry } from '@plugins/primitives';
+import { CubeFactory, SphereFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { OrbitController } from '@plugins/navigation';
@@ -128,7 +127,8 @@ export class Application {
     // Initialize primitive registry
     this.primitiveRegistry = new PrimitiveRegistry({ eventBus: this.eventBus });
     this.primitiveRegistry.register(new CubeFactory());
-    console.log('Primitive registry initialized with Cube factory');
+    this.primitiveRegistry.register(new SphereFactory());
+    console.log('Primitive registry initialized with Cube and Sphere factories');
 
     // Initialize camera as scene entity
     this.cameraEntity = new CameraEntity({
@@ -221,9 +221,6 @@ export class Application {
       commandHistory: this.commandHistory,
     });
     console.log('Property change handler initialized');
-
-    // Setup scene object initialization listener
-    this.setupSceneObjectListener();
 
     // Create render camera adapter
     this.renderCamera = this.cameraEntity.asRenderCamera(1);
@@ -321,20 +318,6 @@ export class Application {
     this.orbitController?.dispose?.();
     this.isInitialized = false;
     console.log('Application disposed');
-  }
-
-  private setupSceneObjectListener(): void {
-    this.eventBus.on('scene:objectAdded', (data: { object: unknown }) => {
-      const obj = data.object;
-      if (isInitializable(obj) && !obj.isInitialized()) {
-        const program = this.lineRenderer.getProgram();
-        if (program) {
-          obj.initializeGPUResources(this.gl, program);
-          console.log(`Initialized GPU resources for: ${(obj as { name?: string }).name || 'unknown'}`);
-        }
-      }
-    });
-    console.log('Scene object initialization listener registered');
   }
 
   private setupResizeHandling(): void {

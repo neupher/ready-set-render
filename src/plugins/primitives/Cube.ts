@@ -1,12 +1,14 @@
 /**
  * Cube Primitive
  *
- * A basic cube primitive that implements IRenderable and IEntity.
- * Supports both wireframe (LineRenderer) and solid (ForwardRenderer) rendering.
- * Implements Entity Component System for property display.
+ * A basic cube primitive that implements IEntity and IMeshProvider.
+ * Provides geometry data for renderers - does NOT manage GPU resources.
  *
- * Property editing is handled centrally by PropertyChangeHandler,
- * which manipulates the transform and components directly.
+ * GPU resources are managed centrally by MeshGPUCache in the renderers.
+ * This separation allows:
+ * - Multiple primitives (Cube, Sphere, etc.) without duplicating GPU code
+ * - Importers (OBJ, GLTF) to use the same rendering infrastructure
+ * - Clean entity lifecycle (no GPU cleanup needed in primitives)
  */
 
 import type {
@@ -16,7 +18,9 @@ import type {
   IEntity,
   IMeshComponent,
   IMaterialComponent,
-  IInitializable,
+  IMeshData,
+  IEdgeData,
+  IMeshProvider,
 } from '@core/interfaces';
 import { createDefaultTransform } from '@core/interfaces';
 import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
@@ -39,12 +43,11 @@ import type { Mat3 } from '@utils/math';
 export type RenderMode = 'wireframe' | 'solid' | 'both';
 
 /**
- * A cube primitive with wireframe and solid rendering capability.
- * Vertices define the 8 corners of a unit cube centered at origin.
- * Supports both GL_LINES (wireframe) and GL_TRIANGLES (solid) rendering.
- * Implements IEntity for component-based property display.
+ * A cube primitive that provides geometry data.
+ * Vertices define a unit cube centered at origin.
+ * Implements IMeshProvider for renderer integration.
  */
-export class Cube implements IRenderable, IEntity, IInitializable {
+export class Cube implements IRenderable, IEntity, IMeshProvider {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -54,26 +57,9 @@ export class Cube implements IRenderable, IEntity, IInitializable {
 
   private readonly components: Map<string, IComponent> = new Map();
 
-  // Geometry data
-  private readonly vertices: Float32Array;
-  private readonly edges: Uint16Array;
-  private readonly triangleVertices: Float32Array;
-  private readonly triangleNormals: Float32Array;
-  private readonly triangleIndices: Uint16Array;
-
-  // GPU resources for wireframe
-  private gl: WebGL2RenderingContext | null = null;
-  private wireframeVao: WebGLVertexArrayObject | null = null;
-  private wireframeVbo: WebGLBuffer | null = null;
-  private wireframeProgram: WebGLProgram | null = null;
-  private wireframeMvpLocation: WebGLUniformLocation | null = null;
-
-  // GPU resources for solid rendering
-  private solidVao: WebGLVertexArrayObject | null = null;
-  private solidVbo: WebGLBuffer | null = null;
-  private solidNormalVbo: WebGLBuffer | null = null;
-  private solidEbo: WebGLBuffer | null = null;
-  private solidProgram: WebGLProgram | null = null;
+  // Cached geometry data
+  private meshData: IMeshData;
+  private edgeData: IEdgeData;
 
   // Render mode
   private renderMode: RenderMode = 'solid';
@@ -90,50 +76,118 @@ export class Cube implements IRenderable, IEntity, IInitializable {
     this.name = name ?? 'Cube';
     this.transform = createDefaultTransform();
 
-    // 8 vertices of a unit cube centered at origin (for wireframe)
-    this.vertices = new Float32Array([
-      // Front face
-      -0.5, -0.5, 0.5, // v0 - front bottom left
-      0.5, -0.5, 0.5, // v1 - front bottom right
-      0.5, 0.5, 0.5, // v2 - front top right
-      -0.5, 0.5, 0.5, // v3 - front top left
-
-      // Back face
-      -0.5, -0.5, -0.5, // v4 - back bottom left
-      0.5, -0.5, -0.5, // v5 - back bottom right
-      0.5, 0.5, -0.5, // v6 - back top right
-      -0.5, 0.5, -0.5, // v7 - back top left
-    ]);
-
-    // 12 edges defined as pairs of vertex indices (for wireframe)
-    this.edges = new Uint16Array([
-      // Front face edges
-      0, 1, 1, 2, 2, 3, 3, 0,
-      // Back face edges
-      4, 5, 5, 6, 6, 7, 7, 4,
-      // Side edges connecting front and back
-      0, 4, 1, 5, 2, 6, 3, 7,
-    ]);
-
-    // Build solid geometry (24 vertices for proper normals per face)
-    const { positions, normals, indices } = this.buildSolidGeometry();
-    this.triangleVertices = positions;
-    this.triangleNormals = normals;
-    this.triangleIndices = indices;
+    // Build geometry data once in constructor
+    this.meshData = this.buildMeshData();
+    this.edgeData = this.buildEdgeData();
 
     // Initialize components
     this.initializeComponents();
   }
 
+  // =========================================
+  // IMeshProvider Implementation
+  // =========================================
+
   /**
-   * Build solid geometry with proper normals for each face.
-   * Each face has 4 vertices (not shared) so normals are correct.
+   * Get the mesh data for solid rendering.
+   * Returns cached geometry - no allocation on each call.
    */
-  private buildSolidGeometry(): {
-    positions: Float32Array;
-    normals: Float32Array;
-    indices: Uint16Array;
-  } {
+  getMeshData(): IMeshData {
+    return this.meshData;
+  }
+
+  /**
+   * Get edge data for wireframe rendering.
+   * Returns cached edge geometry - no allocation on each call.
+   */
+  getEdgeData(): IEdgeData {
+    return this.edgeData;
+  }
+
+  // =========================================
+  // IRenderable Implementation (legacy)
+  // =========================================
+
+  /**
+   * Legacy render method - now handled by ForwardRenderer.
+   * Kept for interface compatibility but does nothing.
+   * @deprecated Use ForwardRenderer which reads getMeshData() instead
+   */
+  render(_gl: WebGL2RenderingContext, _viewProjection: Float32Array): void {
+    // No-op: Rendering is now handled by ForwardRenderer using getMeshData()
+  }
+
+  // =========================================
+  // IEntity Implementation
+  // =========================================
+
+  getComponents(): IComponent[] {
+    return Array.from(this.components.values());
+  }
+
+  getComponent<T extends IComponent>(type: string): T | null {
+    const component = this.components.get(type);
+    return component ? (component as T) : null;
+  }
+
+  hasComponent(type: string): boolean {
+    return this.components.has(type);
+  }
+
+  // =========================================
+  // Render Mode
+  // =========================================
+
+  getRenderMode(): RenderMode {
+    return this.renderMode;
+  }
+
+  setRenderMode(mode: RenderMode): void {
+    this.renderMode = mode;
+  }
+
+  // =========================================
+  // Transform
+  // =========================================
+
+  /**
+   * Compute the model matrix from the transform.
+   */
+  getModelMatrix(): Float32Array {
+    const { position, rotation, scale } = this.transform;
+
+    // Build model matrix: Translation × RotationZ × RotationY × RotationX × Scale
+    const t = mat4Translation(position[0], position[1], position[2]);
+    const rx = mat4RotationX(degToRad(rotation[0]));
+    const ry = mat4RotationY(degToRad(rotation[1]));
+    const rz = mat4RotationZ(degToRad(rotation[2]));
+    const s = mat4Scale(scale[0], scale[1], scale[2]);
+
+    // Combine: T × Rz × Ry × Rx × S
+    let model = mat4Multiply(t, rz);
+    model = mat4Multiply(model, ry);
+    model = mat4Multiply(model, rx);
+    model = mat4Multiply(model, s);
+
+    return model;
+  }
+
+  /**
+   * Get the normal matrix for lighting calculations.
+   */
+  getNormalMatrix(): Mat3 {
+    return normalMatrix(this.getModelMatrix());
+  }
+
+  // =========================================
+  // Geometry Data (Internal)
+  // =========================================
+
+  /**
+   * Build mesh data for solid rendering.
+   * 6 faces × 4 vertices = 24 vertices (for correct per-face normals)
+   */
+  private buildMeshData(): IMeshData {
     // 6 faces × 4 vertices = 24 vertices
     const positions = new Float32Array([
       // Front face (+Z)
@@ -228,7 +282,61 @@ export class Cube implements IRenderable, IEntity, IInitializable {
       20, 21, 22, 20, 22, 23,
     ]);
 
-    return { positions, normals, indices };
+    return {
+      positions,
+      normals,
+      indices,
+      bounds: {
+        min: [-0.5, -0.5, -0.5],
+        max: [0.5, 0.5, 0.5],
+      },
+    };
+  }
+
+  /**
+   * Build edge data for wireframe rendering.
+   * 12 edges connecting the 8 corners of the cube.
+   */
+  private buildEdgeData(): IEdgeData {
+    // 8 vertices of a unit cube centered at origin
+    const vertices = [
+      [-0.5, -0.5, 0.5],  // v0 - front bottom left
+      [0.5, -0.5, 0.5],   // v1 - front bottom right
+      [0.5, 0.5, 0.5],    // v2 - front top right
+      [-0.5, 0.5, 0.5],   // v3 - front top left
+      [-0.5, -0.5, -0.5], // v4 - back bottom left
+      [0.5, -0.5, -0.5],  // v5 - back bottom right
+      [0.5, 0.5, -0.5],   // v6 - back top right
+      [-0.5, 0.5, -0.5],  // v7 - back top left
+    ];
+
+    // 12 edges defined as pairs of vertex indices
+    const edges = [
+      // Front face edges
+      [0, 1], [1, 2], [2, 3], [3, 0],
+      // Back face edges
+      [4, 5], [5, 6], [6, 7], [7, 4],
+      // Side edges connecting front and back
+      [0, 4], [1, 5], [2, 6], [3, 7],
+    ];
+
+    // Expand edges to line vertices
+    const lineVertices = new Float32Array(edges.length * 6);
+    for (let i = 0; i < edges.length; i++) {
+      const [v0, v1] = edges[i];
+      const offset = i * 6;
+      lineVertices[offset + 0] = vertices[v0][0];
+      lineVertices[offset + 1] = vertices[v0][1];
+      lineVertices[offset + 2] = vertices[v0][2];
+      lineVertices[offset + 3] = vertices[v1][0];
+      lineVertices[offset + 4] = vertices[v1][1];
+      lineVertices[offset + 5] = vertices[v1][2];
+    }
+
+    return {
+      lineVertices,
+      lineCount: edges.length,
+    };
   }
 
   /**
@@ -239,7 +347,7 @@ export class Cube implements IRenderable, IEntity, IInitializable {
     const meshComponent: IMeshComponent = {
       type: 'mesh',
       vertexCount: 24, // For solid rendering
-      edgeCount: this.edges.length / 2,
+      edgeCount: 12,
       triangleCount: 12, // 6 faces × 2 triangles
       doubleSided: false,
     };
@@ -254,346 +362,6 @@ export class Cube implements IRenderable, IEntity, IInitializable {
       transparent: false,
     };
     this.components.set('material', materialComponent);
-  }
-
-  // =========================================
-  // IEntity Implementation
-  // =========================================
-
-  getComponents(): IComponent[] {
-    return Array.from(this.components.values());
-  }
-
-  getComponent<T extends IComponent>(type: string): T | null {
-    const component = this.components.get(type);
-    return component ? (component as T) : null;
-  }
-
-  hasComponent(type: string): boolean {
-    return this.components.has(type);
-  }
-
-  // =========================================
-  // Geometry Accessors
-  // =========================================
-
-  getVertices(): Float32Array {
-    return this.vertices;
-  }
-
-  getEdges(): Uint16Array {
-    return this.edges;
-  }
-
-  getTriangleVertices(): Float32Array {
-    return this.triangleVertices;
-  }
-
-  getTriangleNormals(): Float32Array {
-    return this.triangleNormals;
-  }
-
-  getTriangleIndices(): Uint16Array {
-    return this.triangleIndices;
-  }
-
-  getVertexCount(): number {
-    return this.vertices.length / 3;
-  }
-
-  getEdgeCount(): number {
-    return this.edges.length / 2;
-  }
-
-  getTriangleCount(): number {
-    return this.triangleIndices.length / 3;
-  }
-
-  // =========================================
-  // Render Mode
-  // =========================================
-
-  getRenderMode(): RenderMode {
-    return this.renderMode;
-  }
-
-  setRenderMode(mode: RenderMode): void {
-    this.renderMode = mode;
-  }
-
-  // =========================================
-  // Transform
-  // =========================================
-
-  /**
-   * Compute the model matrix from the transform.
-   */
-  getModelMatrix(): Float32Array {
-    const { position, rotation, scale } = this.transform;
-
-    // Build model matrix: Translation × RotationZ × RotationY × RotationX × Scale
-    const t = mat4Translation(position[0], position[1], position[2]);
-    const rx = mat4RotationX(degToRad(rotation[0]));
-    const ry = mat4RotationY(degToRad(rotation[1]));
-    const rz = mat4RotationZ(degToRad(rotation[2]));
-    const s = mat4Scale(scale[0], scale[1], scale[2]);
-
-    // Combine: T × Rz × Ry × Rx × S
-    let model = mat4Multiply(t, rz);
-    model = mat4Multiply(model, ry);
-    model = mat4Multiply(model, rx);
-    model = mat4Multiply(model, s);
-
-    return model;
-  }
-
-  /**
-   * Get the normal matrix for lighting calculations.
-   */
-  getNormalMatrix(): Mat3 {
-    return normalMatrix(this.getModelMatrix());
-  }
-
-  // =========================================
-  // GPU Resource Initialization
-  // =========================================
-
-  /**
-   * Initialize GPU resources for wireframe rendering.
-   * Called by LineRenderer.
-   */
-  initializeGPUResources(
-    gl: WebGL2RenderingContext,
-    program: WebGLProgram
-  ): void {
-    this.gl = gl;
-    this.wireframeProgram = program;
-
-    // Convert edge indices to actual vertex positions for GL_LINES
-    const lineVerts = this.buildLineVertices();
-
-    // Create wireframe VAO
-    this.wireframeVao = gl.createVertexArray();
-    if (!this.wireframeVao) {
-      throw new Error('Failed to create wireframe VAO for Cube');
-    }
-
-    gl.bindVertexArray(this.wireframeVao);
-
-    // Create and fill wireframe VBO
-    this.wireframeVbo = gl.createBuffer();
-    if (!this.wireframeVbo) {
-      throw new Error('Failed to create wireframe VBO for Cube');
-    }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.wireframeVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, lineVerts, gl.STATIC_DRAW);
-
-    // Set up vertex attribute
-    const aPositionLoc = gl.getAttribLocation(program, 'aPosition');
-    if (aPositionLoc >= 0) {
-      gl.enableVertexAttribArray(aPositionLoc);
-      gl.vertexAttribPointer(aPositionLoc, 3, gl.FLOAT, false, 0, 0);
-    }
-
-    // Cache MVP uniform location
-    this.wireframeMvpLocation = gl.getUniformLocation(
-      program,
-      'uModelViewProjection'
-    );
-
-    // Unbind
-    gl.bindVertexArray(null);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  }
-
-  /**
-   * Initialize GPU resources for solid rendering.
-   * Called by ForwardRenderer.
-   */
-  initializeSolidGPUResources(
-    gl: WebGL2RenderingContext,
-    program: WebGLProgram
-  ): void {
-    this.gl = gl;
-    this.solidProgram = program;
-
-    // Create solid VAO
-    this.solidVao = gl.createVertexArray();
-    if (!this.solidVao) {
-      throw new Error('Failed to create solid VAO for Cube');
-    }
-
-    gl.bindVertexArray(this.solidVao);
-
-    // Create and fill position VBO
-    this.solidVbo = gl.createBuffer();
-    if (!this.solidVbo) {
-      throw new Error('Failed to create solid VBO for Cube');
-    }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.solidVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, this.triangleVertices, gl.STATIC_DRAW);
-
-    const aPositionLoc = gl.getAttribLocation(program, 'aPosition');
-    if (aPositionLoc >= 0) {
-      gl.enableVertexAttribArray(aPositionLoc);
-      gl.vertexAttribPointer(aPositionLoc, 3, gl.FLOAT, false, 0, 0);
-    }
-
-    // Create and fill normal VBO
-    this.solidNormalVbo = gl.createBuffer();
-    if (!this.solidNormalVbo) {
-      throw new Error('Failed to create solid normal VBO for Cube');
-    }
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.solidNormalVbo);
-    gl.bufferData(gl.ARRAY_BUFFER, this.triangleNormals, gl.STATIC_DRAW);
-
-    const aNormalLoc = gl.getAttribLocation(program, 'aNormal');
-    if (aNormalLoc >= 0) {
-      gl.enableVertexAttribArray(aNormalLoc);
-      gl.vertexAttribPointer(aNormalLoc, 3, gl.FLOAT, false, 0, 0);
-    }
-
-    // Create and fill index buffer
-    this.solidEbo = gl.createBuffer();
-    if (!this.solidEbo) {
-      throw new Error('Failed to create solid EBO for Cube');
-    }
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.solidEbo);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.triangleIndices, gl.STATIC_DRAW);
-
-    // Unbind VAO (but keep EBO bound to VAO)
-    gl.bindVertexArray(null);
-  }
-
-  /**
-   * Build line vertices from edge indices.
-   * Expands edge pairs into actual vertex positions for GL_LINES.
-   */
-  private buildLineVertices(): Float32Array {
-    const { vertices, edges } = this;
-    const lineVerts = new Float32Array(edges.length * 3);
-
-    for (let i = 0; i < edges.length; i++) {
-      const vertexIndex = edges[i];
-      lineVerts[i * 3 + 0] = vertices[vertexIndex * 3 + 0];
-      lineVerts[i * 3 + 1] = vertices[vertexIndex * 3 + 1];
-      lineVerts[i * 3 + 2] = vertices[vertexIndex * 3 + 2];
-    }
-
-    return lineVerts;
-  }
-
-  // =========================================
-  // Rendering
-  // =========================================
-
-  /**
-   * Render this cube as wireframe.
-   * Called by LineRenderer.
-   */
-  render(gl: WebGL2RenderingContext, viewProjection: Float32Array): void {
-    if (!this.wireframeVao || !this.wireframeProgram) {
-      return;
-    }
-
-    // Compute MVP matrix
-    const model = this.getModelMatrix();
-    const mvp = mat4Multiply(viewProjection, model);
-
-    // Draw
-    gl.useProgram(this.wireframeProgram);
-
-    if (this.wireframeMvpLocation) {
-      gl.uniformMatrix4fv(this.wireframeMvpLocation, false, mvp);
-    }
-
-    gl.bindVertexArray(this.wireframeVao);
-    gl.drawArrays(gl.LINES, 0, this.edges.length);
-    gl.bindVertexArray(null);
-  }
-
-  /**
-   * Render this cube as solid geometry.
-   * Called by ForwardRenderer.
-   */
-  renderSolid(gl: WebGL2RenderingContext): void {
-    if (!this.solidVao) {
-      return;
-    }
-
-    gl.bindVertexArray(this.solidVao);
-    gl.drawElements(gl.TRIANGLES, this.triangleIndices.length, gl.UNSIGNED_SHORT, 0);
-    gl.bindVertexArray(null);
-  }
-
-  // =========================================
-  // Lifecycle
-  // =========================================
-
-  /**
-   * Check if GPU resources have been initialized.
-   * Returns true if either wireframe or solid resources are ready.
-   */
-  isInitialized(): boolean {
-    return this.wireframeVao !== null || this.solidVao !== null;
-  }
-
-  /**
-   * Check if wireframe GPU resources are initialized.
-   */
-  isWireframeInitialized(): boolean {
-    return this.wireframeVao !== null && this.wireframeProgram !== null;
-  }
-
-  /**
-   * Check if solid GPU resources are initialized.
-   */
-  isSolidInitialized(): boolean {
-    return this.solidVao !== null && this.solidProgram !== null;
-  }
-
-  /**
-   * Dispose GPU resources.
-   */
-  dispose(): void {
-    if (this.gl) {
-      // Dispose wireframe resources
-      if (this.wireframeVao) {
-        this.gl.deleteVertexArray(this.wireframeVao);
-        this.wireframeVao = null;
-      }
-      if (this.wireframeVbo) {
-        this.gl.deleteBuffer(this.wireframeVbo);
-        this.wireframeVbo = null;
-      }
-
-      // Dispose solid resources
-      if (this.solidVao) {
-        this.gl.deleteVertexArray(this.solidVao);
-        this.solidVao = null;
-      }
-      if (this.solidVbo) {
-        this.gl.deleteBuffer(this.solidVbo);
-        this.solidVbo = null;
-      }
-      if (this.solidNormalVbo) {
-        this.gl.deleteBuffer(this.solidNormalVbo);
-        this.solidNormalVbo = null;
-      }
-      if (this.solidEbo) {
-        this.gl.deleteBuffer(this.solidEbo);
-        this.solidEbo = null;
-      }
-    }
-
-    this.gl = null;
-    this.wireframeProgram = null;
-    this.wireframeMvpLocation = null;
-    this.solidProgram = null;
   }
 }
 

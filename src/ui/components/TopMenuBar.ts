@@ -308,7 +308,7 @@ export const DEFAULT_MENUS: Menu[] = [
         label: 'Primitives',
         children: [
           { label: 'Cube' },
-          { label: 'Sphere', disabled: true },
+          { label: 'Sphere' },
           { label: 'Plane', disabled: true },
           { label: 'Cylinder', disabled: true },
           { label: 'Cone', disabled: true },

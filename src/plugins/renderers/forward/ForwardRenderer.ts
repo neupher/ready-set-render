@@ -19,8 +19,19 @@ import type {
   IRenderable,
   IMaterialComponent,
 } from '@core/interfaces';
+import { isMeshProvider } from '@core/interfaces';
 import type { LightManager, LightData } from '@core/LightManager';
-import type { Cube } from '@plugins/primitives/Cube';
+import {
+  mat4Multiply,
+  mat4Translation,
+  mat4RotationX,
+  mat4RotationY,
+  mat4RotationZ,
+  mat4Scale,
+  degToRad,
+  normalMatrix,
+} from '@utils/math';
+import { MeshGPUCache } from '../shared/MeshGPUCache';
 
 /**
  * Vertex shader for forward rendering with lighting.
@@ -101,6 +112,9 @@ void main() {
  * Renders all IRenderable objects in the scene as solid shaded meshes
  * with directional lighting and ambient contribution.
  *
+ * Uses MeshGPUCache for centralized GPU resource management.
+ * Entities only need to implement IMeshProvider to be rendered.
+ *
  * @example
  * ```typescript
  * const forwardRenderer = new ForwardRenderer();
@@ -124,6 +138,7 @@ export class ForwardRenderer implements IRenderPipeline {
   private program: WebGLProgram | null = null;
   private currentCamera: ICamera | null = null;
   private lightManager: LightManager | null = null;
+  private meshGPUCache: MeshGPUCache | null = null;
   private initialized = false;
 
   // Uniform locations
@@ -150,6 +165,9 @@ export class ForwardRenderer implements IRenderPipeline {
 
     // Compile and link shaders
     this.program = this.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+
+    // Create GPU resource cache
+    this.meshGPUCache = new MeshGPUCache(this.gl);
 
     // Cache uniform locations
     this.uModelMatrix = this.gl.getUniformLocation(this.program, 'uModelMatrix');
@@ -277,41 +295,83 @@ export class ForwardRenderer implements IRenderPipeline {
   }
 
   /**
-   * Render a single object.
+   * Render a single object using MeshGPUCache.
+   *
+   * Objects that implement IMeshProvider will be rendered.
+   * Objects without mesh data (cameras, lights) are skipped.
    */
   private renderObject(
     gl: WebGL2RenderingContext,
     renderable: IRenderable,
     _viewProjection: Float32Array
   ): void {
-    // Check if this is a solid-renderable object (like Cube)
-    const cube = renderable as unknown as Cube;
-    if (typeof cube.renderSolid !== 'function') {
-      return; // Skip non-solid renderables (like cameras)
+    // Check if this object provides mesh data
+    if (!isMeshProvider(renderable)) {
+      return; // Skip non-mesh objects (cameras, lights)
     }
 
-    // Initialize solid GPU resources if needed
-    if (typeof cube.isSolidInitialized === 'function' && !cube.isSolidInitialized()) {
-      if (this.program) {
-        cube.initializeSolidGPUResources(gl, this.program);
-      }
+    // Get mesh data from the provider
+    const meshData = renderable.getMeshData();
+    if (!meshData) {
+      return; // Entity exists but has no geometry
     }
 
-    // Get model matrix
-    const modelMatrix = cube.getModelMatrix();
+    // Get or create GPU resources via cache
+    if (!this.meshGPUCache || !this.program) {
+      return;
+    }
+
+    const gpuResources = this.meshGPUCache.getOrCreateSolid(
+      renderable.id,
+      meshData,
+      this.program
+    );
+
+    // Compute model matrix from transform
+    const modelMatrix = this.computeModelMatrix(renderable.transform);
     gl.uniformMatrix4fv(this.uModelMatrix, false, modelMatrix);
 
-    // Get normal matrix
-    const normalMat = cube.getNormalMatrix();
+    // Compute normal matrix for correct lighting
+    const normalMat = normalMatrix(modelMatrix);
     gl.uniformMatrix3fv(this.uNormalMatrix, false, normalMat);
 
-    // Get material color
-    const material = cube.getComponent<IMaterialComponent>('material');
-    const baseColor = material?.color ?? [0.8, 0.8, 0.8];
+    // Get material color from entity if available
+    let baseColor: [number, number, number] = [0.8, 0.8, 0.8];
+    const entityWithComponent = renderable as { getComponent?: <T>(type: string) => T | null };
+    if (typeof entityWithComponent.getComponent === 'function') {
+      const material = entityWithComponent.getComponent<IMaterialComponent>('material');
+      if (material?.color) {
+        baseColor = material.color;
+      }
+    }
     gl.uniform3fv(this.uBaseColor, baseColor);
 
-    // Render the solid geometry
-    cube.renderSolid(gl);
+    // Bind VAO and draw
+    gl.bindVertexArray(gpuResources.vao);
+    gl.drawElements(gl.TRIANGLES, gpuResources.indexCount, gl.UNSIGNED_SHORT, 0);
+    gl.bindVertexArray(null);
+  }
+
+  /**
+   * Compute model matrix from a transform.
+   * Order: Translation × RotationZ × RotationY × RotationX × Scale
+   */
+  private computeModelMatrix(transform: { position: [number, number, number]; rotation: [number, number, number]; scale: [number, number, number] }): Float32Array {
+    const { position, rotation, scale } = transform;
+
+    const t = mat4Translation(position[0], position[1], position[2]);
+    const rx = mat4RotationX(degToRad(rotation[0]));
+    const ry = mat4RotationY(degToRad(rotation[1]));
+    const rz = mat4RotationZ(degToRad(rotation[2]));
+    const s = mat4Scale(scale[0], scale[1], scale[2]);
+
+    // Combine: T × Rz × Ry × Rx × S
+    let model = mat4Multiply(t, rz);
+    model = mat4Multiply(model, ry);
+    model = mat4Multiply(model, rx);
+    model = mat4Multiply(model, s);
+
+    return model;
   }
 
   /**

@@ -2,11 +2,13 @@
  * Cube Primitive Tests
  *
  * Unit tests for the Cube primitive.
+ * Tests focus on geometry data and entity/component functionality.
+ * GPU resource tests are in MeshGPUCache.test.ts.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { Cube } from '@plugins/primitives/Cube';
-import { createMockGL } from '../../helpers/webgl-mock';
+import { describe, it, expect } from 'vitest';
+import { Cube, CubeFactory } from '@plugins/primitives/Cube';
+import { isMeshProvider } from '@core/interfaces';
 
 describe('Cube', () => {
   describe('constructor', () => {
@@ -52,78 +54,164 @@ describe('Cube', () => {
 
       expect(cube.children).toEqual([]);
     });
+
+    it('should assign unique entityId', () => {
+      const cube1 = new Cube();
+      const cube2 = new Cube();
+
+      expect(cube1.entityId).toBeDefined();
+      expect(cube2.entityId).toBeDefined();
+      expect(cube1.entityId).not.toBe(cube2.entityId);
+    });
   });
 
-  describe('getVertices', () => {
-    it('should return a Float32Array', () => {
+  describe('IMeshProvider', () => {
+    it('should implement IMeshProvider', () => {
       const cube = new Cube();
-      const vertices = cube.getVertices();
 
-      expect(vertices).toBeInstanceOf(Float32Array);
+      expect(isMeshProvider(cube)).toBe(true);
     });
 
-    it('should return 8 vertices (24 values)', () => {
+    it('should have getMeshData method', () => {
       const cube = new Cube();
-      const vertices = cube.getVertices();
 
-      expect(vertices.length).toBe(24); // 8 vertices × 3 components
+      expect(typeof cube.getMeshData).toBe('function');
+    });
+
+    it('should have getEdgeData method', () => {
+      const cube = new Cube();
+
+      expect(typeof cube.getEdgeData).toBe('function');
+    });
+  });
+
+  describe('getMeshData', () => {
+    it('should return valid mesh data', () => {
+      const cube = new Cube();
+      const meshData = cube.getMeshData();
+
+      expect(meshData).toBeDefined();
+      expect(meshData.positions).toBeInstanceOf(Float32Array);
+      expect(meshData.normals).toBeInstanceOf(Float32Array);
+      expect(meshData.indices).toBeInstanceOf(Uint16Array);
+      expect(meshData.bounds).toBeDefined();
+    });
+
+    it('should return 24 vertices (6 faces × 4 vertices)', () => {
+      const cube = new Cube();
+      const meshData = cube.getMeshData();
+
+      // 24 vertices × 3 components = 72 values
+      expect(meshData.positions.length).toBe(72);
+    });
+
+    it('should return matching number of normals', () => {
+      const cube = new Cube();
+      const meshData = cube.getMeshData();
+
+      expect(meshData.normals.length).toBe(meshData.positions.length);
+    });
+
+    it('should return 36 indices (12 triangles × 3 vertices)', () => {
+      const cube = new Cube();
+      const meshData = cube.getMeshData();
+
+      expect(meshData.indices.length).toBe(36);
+    });
+
+    it('should have valid index values', () => {
+      const cube = new Cube();
+      const meshData = cube.getMeshData();
+      const vertexCount = meshData.positions.length / 3;
+
+      for (let i = 0; i < meshData.indices.length; i++) {
+        expect(meshData.indices[i]).toBeGreaterThanOrEqual(0);
+        expect(meshData.indices[i]).toBeLessThan(vertexCount);
+      }
+    });
+
+    it('should have correct bounding box', () => {
+      const cube = new Cube();
+      const meshData = cube.getMeshData();
+
+      expect(meshData.bounds.min).toEqual([-0.5, -0.5, -0.5]);
+      expect(meshData.bounds.max).toEqual([0.5, 0.5, 0.5]);
     });
 
     it('should have vertices within unit cube bounds', () => {
       const cube = new Cube();
-      const vertices = cube.getVertices();
+      const meshData = cube.getMeshData();
 
-      for (let i = 0; i < vertices.length; i += 3) {
-        expect(vertices[i]).toBeGreaterThanOrEqual(-0.5);
-        expect(vertices[i]).toBeLessThanOrEqual(0.5);
-        expect(vertices[i + 1]).toBeGreaterThanOrEqual(-0.5);
-        expect(vertices[i + 1]).toBeLessThanOrEqual(0.5);
-        expect(vertices[i + 2]).toBeGreaterThanOrEqual(-0.5);
-        expect(vertices[i + 2]).toBeLessThanOrEqual(0.5);
+      for (let i = 0; i < meshData.positions.length; i += 3) {
+        expect(meshData.positions[i]).toBeGreaterThanOrEqual(-0.5);
+        expect(meshData.positions[i]).toBeLessThanOrEqual(0.5);
+        expect(meshData.positions[i + 1]).toBeGreaterThanOrEqual(-0.5);
+        expect(meshData.positions[i + 1]).toBeLessThanOrEqual(0.5);
+        expect(meshData.positions[i + 2]).toBeGreaterThanOrEqual(-0.5);
+        expect(meshData.positions[i + 2]).toBeLessThanOrEqual(0.5);
       }
     });
-  });
 
-  describe('getEdges', () => {
-    it('should return a Uint16Array', () => {
+    it('should have unit length normals', () => {
       const cube = new Cube();
-      const edges = cube.getEdges();
+      const meshData = cube.getMeshData();
 
-      expect(edges).toBeInstanceOf(Uint16Array);
-    });
-
-    it('should return 12 edges (24 indices)', () => {
-      const cube = new Cube();
-      const edges = cube.getEdges();
-
-      expect(edges.length).toBe(24); // 12 edges × 2 vertices per edge
-    });
-
-    it('should have valid vertex indices', () => {
-      const cube = new Cube();
-      const edges = cube.getEdges();
-      const vertexCount = cube.getVertexCount();
-
-      for (let i = 0; i < edges.length; i++) {
-        expect(edges[i]).toBeGreaterThanOrEqual(0);
-        expect(edges[i]).toBeLessThan(vertexCount);
+      for (let i = 0; i < meshData.normals.length; i += 3) {
+        const x = meshData.normals[i];
+        const y = meshData.normals[i + 1];
+        const z = meshData.normals[i + 2];
+        const length = Math.sqrt(x * x + y * y + z * z);
+        expect(length).toBeCloseTo(1);
       }
     });
-  });
 
-  describe('getVertexCount', () => {
-    it('should return 8', () => {
+    it('should return the same cached object on multiple calls', () => {
       const cube = new Cube();
+      const meshData1 = cube.getMeshData();
+      const meshData2 = cube.getMeshData();
 
-      expect(cube.getVertexCount()).toBe(8);
+      expect(meshData1).toBe(meshData2);
     });
   });
 
-  describe('getEdgeCount', () => {
-    it('should return 12', () => {
+  describe('getEdgeData', () => {
+    it('should return valid edge data', () => {
       const cube = new Cube();
+      const edgeData = cube.getEdgeData();
 
-      expect(cube.getEdgeCount()).toBe(12);
+      expect(edgeData).toBeDefined();
+      expect(edgeData.lineVertices).toBeInstanceOf(Float32Array);
+      expect(edgeData.lineCount).toBe(12); // 12 edges
+    });
+
+    it('should return 12 edges (72 vertex values)', () => {
+      const cube = new Cube();
+      const edgeData = cube.getEdgeData();
+
+      // 12 edges × 2 vertices × 3 components = 72 values
+      expect(edgeData.lineVertices.length).toBe(72);
+    });
+
+    it('should have vertices within unit cube bounds', () => {
+      const cube = new Cube();
+      const edgeData = cube.getEdgeData();
+
+      for (let i = 0; i < edgeData.lineVertices.length; i += 3) {
+        expect(edgeData.lineVertices[i]).toBeGreaterThanOrEqual(-0.5);
+        expect(edgeData.lineVertices[i]).toBeLessThanOrEqual(0.5);
+        expect(edgeData.lineVertices[i + 1]).toBeGreaterThanOrEqual(-0.5);
+        expect(edgeData.lineVertices[i + 1]).toBeLessThanOrEqual(0.5);
+        expect(edgeData.lineVertices[i + 2]).toBeGreaterThanOrEqual(-0.5);
+        expect(edgeData.lineVertices[i + 2]).toBeLessThanOrEqual(0.5);
+      }
+    });
+
+    it('should return the same cached object on multiple calls', () => {
+      const cube = new Cube();
+      const edgeData1 = cube.getEdgeData();
+      const edgeData2 = cube.getEdgeData();
+
+      expect(edgeData1).toBe(edgeData2);
     });
   });
 
@@ -161,8 +249,6 @@ describe('Cube', () => {
       const model = cube.getModelMatrix();
 
       // Scale affects diagonal elements
-      // Note: The matrix combines T * Rz * Ry * Rx * S
-      // With no rotation, scale should show on diagonal
       expect(model[0]).toBeCloseTo(2);
       expect(model[5]).toBeCloseTo(3);
       expect(model[10]).toBeCloseTo(4);
@@ -181,226 +267,96 @@ describe('Cube', () => {
     });
   });
 
-  describe('initializeGPUResources', () => {
-    let mockGL: WebGL2RenderingContext;
-    let mockProgram: WebGLProgram;
+  describe('getNormalMatrix', () => {
+    it('should return a 3x3 matrix', () => {
+      const cube = new Cube();
+      const normalMat = cube.getNormalMatrix();
 
-    beforeEach(() => {
-      mockGL = createMockGL();
-      mockProgram = {} as WebGLProgram;
+      expect(normalMat).toBeInstanceOf(Float32Array);
+      expect(normalMat.length).toBe(9);
     });
 
-    it('should create VAO', () => {
+    it('should return identity for default transform', () => {
       const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
+      const normalMat = cube.getNormalMatrix();
 
-      expect(mockGL.createVertexArray).toHaveBeenCalled();
-      expect(mockGL.bindVertexArray).toHaveBeenCalled();
-    });
-
-    it('should create and fill buffer', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      expect(mockGL.createBuffer).toHaveBeenCalled();
-      expect(mockGL.bindBuffer).toHaveBeenCalledWith(
-        mockGL.ARRAY_BUFFER,
-        expect.anything()
-      );
-      expect(mockGL.bufferData).toHaveBeenCalled();
-    });
-
-    it('should set up vertex attribute', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      expect(mockGL.getAttribLocation).toHaveBeenCalledWith(
-        mockProgram,
-        'aPosition'
-      );
-      expect(mockGL.enableVertexAttribArray).toHaveBeenCalled();
-      expect(mockGL.vertexAttribPointer).toHaveBeenCalledWith(
-        expect.any(Number),
-        3,
-        mockGL.FLOAT,
-        false,
-        0,
-        0
-      );
-    });
-
-    it('should cache uniform location', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      expect(mockGL.getUniformLocation).toHaveBeenCalledWith(
-        mockProgram,
-        'uModelViewProjection'
-      );
-    });
-
-    it('should unbind VAO and buffer after setup', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      expect(mockGL.bindVertexArray).toHaveBeenLastCalledWith(null);
-      expect(mockGL.bindBuffer).toHaveBeenLastCalledWith(
-        mockGL.ARRAY_BUFFER,
-        null
-      );
-    });
-
-    it('should throw if VAO creation fails', () => {
-      vi.mocked(mockGL.createVertexArray).mockReturnValueOnce(null as unknown as WebGLVertexArrayObject);
-      const cube = new Cube();
-
-      expect(() => {
-        cube.initializeGPUResources(mockGL, mockProgram);
-      }).toThrow('Failed to create wireframe VAO for Cube');
-    });
-
-    it('should throw if buffer creation fails', () => {
-      vi.mocked(mockGL.createBuffer).mockReturnValueOnce(null as unknown as WebGLBuffer);
-      const cube = new Cube();
-
-      expect(() => {
-        cube.initializeGPUResources(mockGL, mockProgram);
-      }).toThrow('Failed to create wireframe VBO for Cube');
+      // 3x3 identity
+      expect(normalMat[0]).toBeCloseTo(1);
+      expect(normalMat[4]).toBeCloseTo(1);
+      expect(normalMat[8]).toBeCloseTo(1);
     });
   });
 
-  describe('render', () => {
-    let mockGL: WebGL2RenderingContext;
-    let mockProgram: WebGLProgram;
-
-    beforeEach(() => {
-      mockGL = createMockGL();
-      mockProgram = {} as WebGLProgram;
-    });
-
-    it('should do nothing if not initialized', () => {
+  describe('render (legacy)', () => {
+    it('should be a no-op (does not throw)', () => {
       const cube = new Cube();
+      const mockGL = {} as WebGL2RenderingContext;
       const viewProjection = new Float32Array(16);
 
-      cube.render(mockGL, viewProjection);
-
-      expect(mockGL.useProgram).not.toHaveBeenCalled();
-      expect(mockGL.drawArrays).not.toHaveBeenCalled();
-    });
-
-    it('should use program when rendering', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      const viewProjection = new Float32Array(16);
-      cube.render(mockGL, viewProjection);
-
-      expect(mockGL.useProgram).toHaveBeenCalledWith(mockProgram);
-    });
-
-    it('should bind VAO when rendering', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      // Reset mock to track render calls
-      vi.mocked(mockGL.bindVertexArray).mockClear();
-
-      const viewProjection = new Float32Array(16);
-      cube.render(mockGL, viewProjection);
-
-      expect(mockGL.bindVertexArray).toHaveBeenCalled();
-    });
-
-    it('should set MVP uniform', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      const viewProjection = new Float32Array(16);
-      cube.render(mockGL, viewProjection);
-
-      expect(mockGL.uniformMatrix4fv).toHaveBeenCalled();
-    });
-
-    it('should draw lines', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      const viewProjection = new Float32Array(16);
-      cube.render(mockGL, viewProjection);
-
-      // Should draw all edge vertices (24 for a cube)
-      expect(mockGL.drawArrays).toHaveBeenCalled();
-    });
-
-    it('should unbind VAO after drawing', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-
-      // Reset mock to track render calls
-      vi.mocked(mockGL.bindVertexArray).mockClear();
-
-      const viewProjection = new Float32Array(16);
-      cube.render(mockGL, viewProjection);
-
-      expect(mockGL.bindVertexArray).toHaveBeenLastCalledWith(null);
+      expect(() => {
+        cube.render(mockGL, viewProjection);
+      }).not.toThrow();
     });
   });
 
-  describe('dispose', () => {
-    let mockGL: WebGL2RenderingContext;
-    let mockProgram: WebGLProgram;
-
-    beforeEach(() => {
-      mockGL = createMockGL();
-      mockProgram = {} as WebGLProgram;
-    });
-
-    it('should delete VAO', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-      cube.dispose();
-
-      expect(mockGL.deleteVertexArray).toHaveBeenCalled();
-    });
-
-    it('should delete buffer', () => {
-      const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-      cube.dispose();
-
-      expect(mockGL.deleteBuffer).toHaveBeenCalled();
-    });
-
-    it('should be safe to call without initialization', () => {
+  describe('IEntity implementation', () => {
+    it('should have mesh component', () => {
       const cube = new Cube();
 
-      expect(() => {
-        cube.dispose();
-      }).not.toThrow();
+      expect(cube.hasComponent('mesh')).toBe(true);
+      const mesh = cube.getComponent('mesh');
+      expect(mesh).toBeDefined();
+      expect(mesh?.type).toBe('mesh');
     });
 
-    it('should be safe to call multiple times', () => {
+    it('should have material component', () => {
       const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
 
-      expect(() => {
-        cube.dispose();
-        cube.dispose();
-      }).not.toThrow();
+      expect(cube.hasComponent('material')).toBe(true);
+      const material = cube.getComponent('material');
+      expect(material).toBeDefined();
+      expect(material?.type).toBe('material');
     });
 
-    it('should prevent rendering after dispose', () => {
+    it('should return null for non-existent component', () => {
       const cube = new Cube();
-      cube.initializeGPUResources(mockGL, mockProgram);
-      cube.dispose();
 
-      // Clear mock calls
-      vi.mocked(mockGL.drawArrays).mockClear();
+      expect(cube.getComponent('nonexistent')).toBeNull();
+    });
 
-      const viewProjection = new Float32Array(16);
-      cube.render(mockGL, viewProjection);
+    it('should return all components', () => {
+      const cube = new Cube();
+      const components = cube.getComponents();
 
-      expect(mockGL.drawArrays).not.toHaveBeenCalled();
+      expect(components.length).toBe(2); // mesh and material
+    });
+  });
+
+  describe('render mode', () => {
+    it('should default to solid mode', () => {
+      const cube = new Cube();
+
+      expect(cube.getRenderMode()).toBe('solid');
+    });
+
+    it('should allow setting render mode', () => {
+      const cube = new Cube();
+      cube.setRenderMode('wireframe');
+
+      expect(cube.getRenderMode()).toBe('wireframe');
+    });
+
+    it('should support all render modes', () => {
+      const cube = new Cube();
+
+      cube.setRenderMode('solid');
+      expect(cube.getRenderMode()).toBe('solid');
+
+      cube.setRenderMode('wireframe');
+      expect(cube.getRenderMode()).toBe('wireframe');
+
+      cube.setRenderMode('both');
+      expect(cube.getRenderMode()).toBe('both');
     });
   });
 
@@ -454,6 +410,59 @@ describe('Cube', () => {
       expect(parent.children.length).toBe(2);
       expect(parent.children).toContain(child1);
       expect(parent.children).toContain(child2);
+    });
+  });
+});
+
+describe('CubeFactory', () => {
+  describe('properties', () => {
+    it('should have type "Cube"', () => {
+      const factory = new CubeFactory();
+
+      expect(factory.type).toBe('Cube');
+    });
+
+    it('should have category "Mesh"', () => {
+      const factory = new CubeFactory();
+
+      expect(factory.category).toBe('Mesh');
+    });
+
+    it('should have icon "cube"', () => {
+      const factory = new CubeFactory();
+
+      expect(factory.icon).toBe('cube');
+    });
+  });
+
+  describe('create', () => {
+    it('should create a Cube instance', () => {
+      const factory = new CubeFactory();
+      const cube = factory.create();
+
+      expect(cube).toBeInstanceOf(Cube);
+    });
+
+    it('should create a Cube with default name', () => {
+      const factory = new CubeFactory();
+      const cube = factory.create();
+
+      expect(cube.name).toBe('Cube');
+    });
+
+    it('should create a Cube with custom name', () => {
+      const factory = new CubeFactory();
+      const cube = factory.create('My Cube');
+
+      expect(cube.name).toBe('My Cube');
+    });
+
+    it('should create unique cubes each time', () => {
+      const factory = new CubeFactory();
+      const cube1 = factory.create();
+      const cube2 = factory.create();
+
+      expect(cube1.id).not.toBe(cube2.id);
     });
   });
 });

@@ -39,3 +39,7 @@ export { createDefaultDirectionalLightComponent, createDefaultPointLightComponen
 // Property Editing
 export type { IPropertyEditable } from './IPropertyEditable';
 export { isPropertyEditable } from './IPropertyEditable';
+
+// Mesh Data
+export type { IMeshData, IEdgeData, MeshBounds, IMeshProvider } from './IMeshData';
+export { isMeshProvider } from './IMeshData';

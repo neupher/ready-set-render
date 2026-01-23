@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T22:51:00Z
-> **Version:** 0.6.11
-> **Status:** Phase 6.6+6.7 Complete (Directional Light + Forward Renderer)
+> **Last Updated:** 2026-01-23T23:09:00Z
+> **Version:** 0.7.0
+> **Status:** Mesh Rendering Refactor Complete + Sphere Primitive
 
 ---
 
@@ -404,16 +404,53 @@ const ctx = app.getContext();
 
 **Test Coverage:** 307 tests passing
 
-### ⚠️ NEXT SESSION: Architectural Refactoring Required
+### ✅ Completed - v0.7.0: Mesh Rendering Architecture Refactor + Sphere Primitive
 
-**See detailed plan:** [REFACTOR_MESH_RENDERING.md](./REFACTOR_MESH_RENDERING.md)
+**Goal:** Eliminate duplication between primitives/importers by separating mesh data from GPU resources.
 
-**Problem:** `Cube.ts` (~500 lines) contains mesh data + GPU resources + rendering logic, which will cause duplication when adding more primitives or importers.
+**Key Files Created:**
+- `src/core/interfaces/IMeshData.ts` - Common mesh data interfaces (IMeshData, IEdgeData, IMeshProvider)
+- `src/plugins/renderers/shared/MeshGPUCache.ts` - Centralized GPU resource management
+- `src/plugins/primitives/Sphere.ts` - UV sphere primitive using IMeshProvider pattern
 
-**Solution (3 classes):**
-1. `IMeshData` interface - Common geometry data (vertices, indices, normals, uvs)
-2. `MeshGPUCache` - Centralized GPU resource management
-3. Cube/Sphere/ImportedMesh - Only provide mesh data, no rendering logic
+**Key Files Modified:**
+- `src/plugins/primitives/Cube.ts` - Reduced from ~500 to ~300 lines, now implements IMeshProvider
+- `src/plugins/renderers/forward/ForwardRenderer.ts` - Uses MeshGPUCache, polymorphic mesh rendering
+- `src/core/Application.ts` - Registered SphereFactory, removed setupSceneObjectListener()
+- `src/ui/components/TopMenuBar.ts` - Enabled Sphere in Create menu
+
+**New Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         IMeshProvider                                │
+│     getMeshData(): IMeshData | null                                  │
+│     getEdgeData?(): IEdgeData | null                                 │
+└─────────────────────────────────────────────────────────────────────┘
+           ▲                          ▲                    ▲
+           │                          │                    │
+     ┌─────┴─────┐           ┌────────┴────────┐   ┌──────┴──────┐
+     │   Cube    │           │     Sphere      │   │ OBJImporter │
+     │ (300 loc) │           │   (220 loc)     │   │  (future)   │
+     └───────────┘           └─────────────────┘   └─────────────┘
+           │                          │                    │
+           └──────────────────────────┼────────────────────┘
+                                      ▼
+                        ┌─────────────────────────────┐
+                        │       MeshGPUCache          │
+                        │  - Lazy GPU resource init   │
+                        │  - Caches VAO/VBO/EBO       │
+                        │  - Handles disposal         │
+                        └─────────────────────────────┘
+```
+
+**Sphere Features:**
+- UV sphere with configurable segments (default 32) and rings (default 16)
+- Proper normals for smooth shading
+- UV coordinates for texture mapping
+- Wireframe edge data for line rendering
+- 52 comprehensive unit tests
+
+**Test Coverage:** 393 tests passing (341 → 393, +52 new)
 
 ### 📋 Remaining Steps (Phase 6.8-6.14: Functional Editor Continued)
 

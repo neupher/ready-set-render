@@ -714,17 +714,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
-
-### Planned
-- **Phase 2**: Core engine implementation (EventBus, PluginManager, WebGLContext, SceneGraph)
-- **Phase 3**: Renderer migration from ready-set-render
-- **Phase 4**: UI layer with collapsible panels
-- **Phase 5**: Test infrastructure with WebGL mocks
-- **Phase 6**: GitHub Pages deployment testing
-- **Phase 7**: Documentation updates
-
----
-
 [Unreleased]: https://github.com/user/repo/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/user/repo/releases/tag/v0.1.0
