@@ -22,6 +22,10 @@ import { EditorLayout } from '@ui/panels/EditorLayout';
 // Plugins
 import { CubeFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
+import { OrbitController } from '@plugins/navigation';
+
+// Core systems
+import { InputManager } from '@core/InputManager';
 
 console.log('WebGL Editor initializing...');
 
@@ -92,7 +96,20 @@ async function main(): Promise<void> {
       canvas: layout.getViewport()!.getCanvas()
     });
 
-console.log('Line renderer initialized');
+    console.log('Line renderer initialized');
+
+    // Initialize input manager for viewport interactions
+    const viewportCanvas = layout.getViewport()!.getCanvas();
+    // InputManager is instantiated for its side effects (event listener setup)
+    new InputManager(viewportCanvas, eventBus);
+
+    console.log('Input manager initialized');
+
+    // Initialize orbit controller for camera navigation
+    // OrbitController is instantiated for its side effects (event listener setup)
+    new OrbitController(cameraEntity, eventBus);
+
+    console.log('Orbit controller initialized (Alt+LMB=orbit, Alt+MMB=pan, Alt+RMB=dolly, Scroll=zoom)');
 
     // Listen for new objects added to scene and initialize their GPU resources
     eventBus.on('scene:objectAdded', (data: { object: unknown; parent: unknown }) => {
