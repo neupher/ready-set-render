@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.8] - 2026-01-23
+
+### Added
+
+- **Undo/Redo System** - Complete Command Pattern implementation
+  - `ICommand` interface for undoable/redoable operations
+  - `CommandHistory` manager with configurable stack size (default 100)
+  - Command coalescing for rapid changes (300ms window)
+  - Batch operations support for grouping multiple commands
+  - Events: `command:executed`, `command:undone`, `command:redone`, `command:stackChanged`
+
+- **Property Change Commands** - All property edits now undoable
+  - `PropertyChangeCommand` for entity transform/component changes
+  - `TextEditCommand` for shader editor changes
+  - PropertyChangeHandler integrated with CommandHistory
+
+- **Delete Entity Command** - Undoable entity deletion
+  - `DeleteEntityCommand` stores entity for restoration
+  - Restores to original parent on undo
+
+- **Duplicate Entity Command** - Undoable entity duplication
+  - `DuplicateEntityCommand` creates offset clone
+  - Auto-generates incremented names (e.g., Cube.001, Cube.002)
+
+- **Keyboard Shortcuts**
+  - `Ctrl+Z` - Undo
+  - `Ctrl+Y` - Redo
+  - `Ctrl+Shift+Z` - Redo (alternative)
+  - `Delete` - Delete selected mesh entities
+  - `Shift+D` - Duplicate selected mesh entities
+  - `KeyboardShortcutManager` for centralized shortcut handling
+
+- **Context Menu** - Right-click menu for Hierarchy panel
+  - `ContextMenu` component with singleton pattern
+  - Auto-positions and dismisses on click outside or Escape
+  - Only appears for mesh entities (not cameras)
+  - Actions: Delete, Rename, Duplicate
+
+- **TreeView Context Menu Support**
+  - `onContextMenu` callback with node, x, y position data
+  - Context menu events trigger entity operations
+
+### Changed
+
+- **HierarchyPanel** - Added context menu handler for mesh entities
+- **index.ts** - Integrated CommandHistory, shortcuts, and event handlers
+
+### Technical Details
+
+- **Architecture**: Command Pattern with centralized CommandHistory
+- **Test coverage**: 38 new CommandHistory tests, 307 total passing
+- **Mandatory rule**: All data-modifying features must integrate with undo/redo
+
+---
+
 ## [0.6.6] - 2026-01-23
 
 ### Changed

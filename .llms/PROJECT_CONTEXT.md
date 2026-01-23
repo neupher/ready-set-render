@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T20:57:00Z
-> **Version:** 0.6.6
-> **Status:** Phase 6.4+ Complete - Centralized Property System Architecture
+> **Last Updated:** 2026-01-23T21:40:00Z
+> **Version:** 0.6.8
+> **Status:** Phase 6.5+ Complete - Undo/Redo System & Keyboard Shortcuts
 
 ---
 
@@ -285,7 +285,60 @@ Render loop reads entity.transform → Changes visible!
 - Scrolling: Properties panel is now scrollable
 - Collapsed sections: State preserved across re-renders
 
-### 📋 Next Steps (Phase 6.5-6.14: Functional Editor Continued)
+### ✅ Completed - Phase 6.5+: Undo/Redo System & Keyboard Shortcuts
+
+**Key Files Created:**
+- `src/core/commands/ICommand.ts` - Command interface for undoable operations
+- `src/core/commands/CommandHistory.ts` - Central undo/redo stack manager
+- `src/core/commands/PropertyChangeCommand.ts` - Entity property change commands
+- `src/core/commands/TextEditCommand.ts` - Shader editor text commands
+- `src/core/commands/DeleteEntityCommand.ts` - Undoable entity deletion
+- `src/core/commands/DuplicateEntityCommand.ts` - Undoable entity duplication
+- `src/core/KeyboardShortcutManager.ts` - Global keyboard shortcut handler
+- `src/ui/components/ContextMenu.ts` - Right-click context menu component
+- `tests/unit/core/CommandHistory.test.ts` - 38 tests for CommandHistory
+
+**Architecture - Command Pattern:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        CommandHistory                                │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
+│  │  Undo Stack  │  │  Redo Stack  │  │   Command Coalescing     │  │
+│  │   (100 max)  │  │              │  │   (300ms window)         │  │
+│  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+           ┌─────────────────────────────────────────┐
+           │             ICommand                     │
+           │  PropertyChangeCommand (transforms)      │
+           │  DeleteEntityCommand (scene removal)     │
+           │  DuplicateEntityCommand (clone + offset) │
+           │  TextEditCommand (shader editor)         │
+           └─────────────────────────────────────────┘
+```
+
+**Keyboard Shortcuts:**
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Z | Undo |
+| Ctrl+Y | Redo |
+| Ctrl+Shift+Z | Redo (alternative) |
+| Delete | Delete selected mesh entities |
+| Shift+D | Duplicate selected mesh entities |
+
+**Context Menu (Right-click on mesh entities in Hierarchy):**
+- Delete - Deletes entity with undo support
+- Rename - Triggers inline rename in tree
+- Duplicate - Creates offset clone with undo support
+
+**Test Coverage:**
+- 38 new CommandHistory tests
+- 307 total tests passing
+
+**MANDATORY RULE:** All future data-modifying features MUST integrate with CommandHistory for undo/redo support. See `.llms/GUIDELINES.md` Section 6 for details.
+
+### 📋 Next Steps (Phase 6.6-6.14: Functional Editor Continued)
 
 **See detailed plan:** [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)
 

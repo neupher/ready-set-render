@@ -17,7 +17,8 @@
 import { EventBus } from '@core/EventBus';
 import { SceneGraph, SceneObject } from '@core/SceneGraph';
 import { isEntity } from '@core/interfaces';
-import { TreeView, TreeNode } from '../components/TreeView';
+import { TreeView, TreeNode, ContextMenuData } from '../components/TreeView';
+import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
 
 export interface HierarchyPanelOptions {
   /** Event bus for communication */
@@ -62,6 +63,7 @@ export class HierarchyPanel {
       onSelect: this.handleSelect.bind(this),
       onToggle: this.handleToggle.bind(this),
       onRename: this.handleRename.bind(this),
+      onContextMenu: this.handleContextMenu.bind(this),
       expandedIds: new Set(['root'])
     });
 
@@ -134,6 +136,59 @@ export class HierarchyPanel {
     if (obj) {
       this.sceneGraph.rename(obj, newName);
     }
+  }
+
+  /**
+   * Handle right-click context menu on a tree node.
+   * Only shows context menu for mesh entities (not cameras).
+   */
+  private handleContextMenu(data: ContextMenuData): void {
+    const { node, x, y } = data;
+
+    // Don't show context menu for root or camera nodes
+    if (node.id === 'root' || node.type === 'camera') {
+      return;
+    }
+
+    // Only show for mesh entities
+    if (node.type !== 'mesh') {
+      return;
+    }
+
+    const sceneObj = this.sceneGraph.find(node.id);
+    if (!sceneObj) return;
+
+    // Build context menu items
+    const items: ContextMenuItem[] = [
+      {
+        label: 'Delete',
+        icon: '🗑',
+        action: () => {
+          this.eventBus.emit('entity:requestDelete', { id: node.id });
+        }
+      },
+      {
+        label: 'Rename',
+        icon: '✏',
+        action: () => {
+          // Trigger inline rename via the tree view
+          // Re-emit as a double-click on the current selection
+          this.eventBus.emit('hierarchy:rename', { id: node.id });
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Duplicate',
+        icon: '📋',
+        action: () => {
+          this.eventBus.emit('entity:requestDuplicate', { id: node.id });
+        }
+      }
+    ];
+
+    // Show the context menu
+    const menu = new ContextMenu();
+    menu.show({ x, y, items });
   }
 
   private convertSceneToTree(): TreeNode[] {

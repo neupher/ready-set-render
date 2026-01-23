@@ -109,7 +109,87 @@ else if (object.type === 'light') { renderLight(object); }
 object.render(context); // Polymorphism
 ```
 
-### 6. Industry-Standard Terminology (MANDATORY)
+### 6. Undo/Redo Integration (MANDATORY)
+
+**ALL features that modify data MUST integrate with the Command History system.**
+
+The project uses the Command Pattern for undo/redo. Direct data mutation is forbidden for any user-facing operation.
+
+#### The Rule
+
+```typescript
+// ❌ FORBIDDEN - Direct mutation
+entity.transform.position[0] = newX;
+eventBus.emit('entity:propertyUpdated', { ... });
+
+// ✅ REQUIRED - Via Command History
+const command = new PropertyChangeCommand(
+  entity.id,
+  'position.x',
+  entity.transform.position[0],  // old value
+  newX,                          // new value
+  sceneGraph,
+  eventBus
+);
+commandHistory.execute(command);  // This applies the change AND enables undo
+```
+
+#### What MUST Use Commands
+
+| Operation Type | Example | Command Type |
+|---------------|---------|--------------|
+| Property changes | Position, rotation, FOV, color | `PropertyChangeCommand` |
+| Text editing | Shader editor content | `TextEditCommand` |
+| Entity creation | Create Cube | `CreateEntityCommand` |
+| Entity deletion | Delete from hierarchy | `DeleteEntityCommand` |
+| Component changes | Add/remove components | `ComponentCommand` |
+| Batch operations | Multi-select transform | `CompositeCommand` |
+
+#### Creating New Commands
+
+When implementing a new feature that modifies data:
+
+1. **Create a command class** implementing `ICommand`
+2. **Implement `execute()`** with the forward operation
+3. **Implement `undo()`** with the reverse operation
+4. **Implement `canMergeWith()` / `mergeWith()`** if rapid changes should coalesce
+5. **Execute via `commandHistory.execute(command)`**
+
+```typescript
+// Example: Custom command for a new feature
+export class MyFeatureCommand implements ICommand {
+  readonly type = 'MyFeature';
+  readonly description: string;
+  readonly timestamp = Date.now();
+
+  constructor(
+    private readonly oldState: MyState,
+    private readonly newState: MyState,
+    private readonly target: MyTarget
+  ) {
+    this.description = `Change ${target.name}`;
+  }
+
+  execute(): void {
+    this.target.applyState(this.newState);
+  }
+
+  undo(): void {
+    this.target.applyState(this.oldState);
+  }
+}
+```
+
+#### Exceptions
+
+The ONLY exception to this rule is **internal system state** that is NOT user-facing:
+- Camera orbit state during navigation (not undoable by design)
+- Selection state (not typically undoable)
+- UI panel sizes/positions (not undoable)
+
+When in doubt: **If the user can see the effect, it should be undoable.**
+
+### 7. Industry-Standard Terminology (MANDATORY)
 
 **All naming for editor features, engine concepts, and shading languages MUST use industry-standard terminology.**
 

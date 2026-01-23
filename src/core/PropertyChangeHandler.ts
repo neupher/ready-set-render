@@ -1,42 +1,41 @@
 /**
  * PropertyChangeHandler
  *
- * Centralized handler that routes property change events to entities.
- * Handles ALL entity properties without requiring entities to implement IPropertyEditable.
+ * Centralized handler that routes property change events through the Command History.
+ * ALL property changes go through CommandHistory for full undo/redo support.
  *
  * Architecture:
  * - Transform properties (position, rotation, scale) handled for ALL entities
  * - Component-specific properties handled by checking hasComponent()
- * - IPropertyEditable is optional for entities with truly custom properties
+ * - All changes create Commands for undo/redo support
+ * - Rapid changes are coalesced (e.g., slider drags become single undo entry)
  *
  * Data Flow:
  * 1. PropertiesPanel emits 'object:propertyChanged' event
- * 2. PropertyChangeHandler receives event, finds entity in SceneGraph
- * 3. Handler manipulates entity data directly (transform, components)
- * 4. Handler emits 'entity:propertyUpdated' for UI refresh
- * 5. Renderer reads updated transform on next frame (automatic)
- *
- * Benefits:
- * - Zero code needed in entities for standard properties
- * - New primitives work automatically
- * - Imported meshes editable immediately
- * - Single source of truth for property handling
+ * 2. PropertyChangeHandler captures OLD value from entity
+ * 3. PropertyChangeHandler creates PropertyChangeCommand
+ * 4. CommandHistory.execute() applies change and adds to undo stack
+ * 5. PropertyChangeCommand emits 'entity:propertyUpdated' for UI refresh
+ * 6. Renderer reads updated transform on next frame (automatic)
  *
  * @example
  * ```typescript
  * const handler = new PropertyChangeHandler({
  *   eventBus,
- *   sceneGraph
+ *   sceneGraph,
+ *   commandHistory  // Required for undo/redo
  * });
  * // Handler auto-subscribes to events
- * // No manual intervention needed after construction
+ * // All changes are now undoable via Ctrl+Z
  * ```
  */
 
 import type { EventBus } from './EventBus';
 import type { SceneGraph } from './SceneGraph';
+import type { CommandHistory } from './commands/CommandHistory';
 import type { ISceneObject, IEntity, IComponent } from './interfaces';
 import type { ICameraComponent } from './interfaces/ICameraComponent';
+import { PropertyChangeCommand } from './commands/PropertyChangeCommand';
 import { isPropertyEditable } from './interfaces';
 
 /**
@@ -68,6 +67,8 @@ export interface PropertyChangeHandlerOptions {
   eventBus: EventBus;
   /** Scene graph for finding entities by ID */
   sceneGraph: SceneGraph;
+  /** Command history for undo/redo support (optional for backwards compatibility) */
+  commandHistory?: CommandHistory;
 }
 
 /**
@@ -85,17 +86,18 @@ function isEntity(obj: unknown): obj is IEntity {
 }
 
 /**
- * Handles property change events and routes them to entities.
- * Uses centralized handlers for standard properties, eliminating
- * the need for each entity to implement property handling code.
+ * Handles property change events and routes them through CommandHistory.
+ * All changes are undoable when CommandHistory is provided.
  */
 export class PropertyChangeHandler {
   private readonly eventBus: EventBus;
   private readonly sceneGraph: SceneGraph;
+  private readonly commandHistory: CommandHistory | null;
 
   constructor(options: PropertyChangeHandlerOptions) {
     this.eventBus = options.eventBus;
     this.sceneGraph = options.sceneGraph;
+    this.commandHistory = options.commandHistory ?? null;
 
     // Bind and subscribe to property change events
     this.handlePropertyChange = this.handlePropertyChange.bind(this);
@@ -104,7 +106,7 @@ export class PropertyChangeHandler {
 
   /**
    * Handle a property change event.
-   * Routes the change through centralized handlers based on property path.
+   * Captures old value, creates command, and executes via CommandHistory.
    */
   private handlePropertyChange(event: PropertyChangeEvent): void {
     const { id, property, value } = event;
@@ -116,36 +118,178 @@ export class PropertyChangeHandler {
       return;
     }
 
-    let success = false;
+    // Get the current (old) value before applying changes
+    const oldValue = this.getPropertyValue(entity, property);
 
-    // 1. Handle name changes (direct property on ISceneObject)
-    if (property === 'name') {
-      success = this.handleNameChange(entity, value);
-    }
-    // 2. Handle transform properties (ALL entities have transforms)
-    else if (this.isTransformProperty(property)) {
-      success = this.handleTransformChange(entity, property, value);
-    }
-    // 3. Handle component-specific properties (check if entity has the component)
-    else if (this.isComponentProperty(property)) {
-      success = this.handleComponentProperty(entity, property, value);
-    }
-    // 4. Fallback to IPropertyEditable for custom properties
-    else if (isPropertyEditable(entity)) {
-      success = entity.setProperty(property, value);
-    }
-
-    if (success) {
-      this.eventBus.emit('entity:propertyUpdated', {
-        id,
+    // If we have CommandHistory, create and execute a command
+    if (this.commandHistory) {
+      const command = new PropertyChangeCommand({
+        entityId: id,
         property,
-        entity
-      } as PropertyUpdatedEvent);
+        oldValue,
+        newValue: this.normalizeValue(property, value),
+        sceneGraph: this.sceneGraph,
+        eventBus: this.eventBus
+      });
+
+      this.commandHistory.execute(command);
     } else {
-      console.warn(
-        `PropertyChangeHandler: Failed to set property '${property}' on entity '${id}'`
-      );
+      // Fallback: direct mutation (for backwards compatibility or tests)
+      this.applyPropertyDirectly(entity, property, value);
     }
+  }
+
+  /**
+   * Get the current value of a property from an entity.
+   * Used to capture old value before applying changes.
+   */
+  private getPropertyValue(entity: ISceneObject, property: string): unknown {
+    // Handle name
+    if (property === 'name') {
+      return entity.name;
+    }
+
+    // Handle transform properties
+    if (this.isTransformProperty(property)) {
+      return this.getTransformValue(entity, property);
+    }
+
+    // Handle component properties
+    if (this.isComponentProperty(property)) {
+      return this.getComponentValue(entity, property);
+    }
+
+    // Fallback to IPropertyEditable
+    if (isPropertyEditable(entity)) {
+      return entity.getProperty(property);
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Get a transform property value.
+   */
+  private getTransformValue(entity: ISceneObject, property: string): unknown {
+    const parts = property.split('.');
+    if (parts.length !== 2) return undefined;
+
+    const [transformProp, axis] = parts;
+    const axisIndex = { x: 0, y: 1, z: 2 }[axis];
+
+    if (axisIndex === undefined) return undefined;
+
+    switch (transformProp) {
+      case 'position':
+        return entity.transform.position[axisIndex];
+      case 'rotation':
+        return entity.transform.rotation[axisIndex];
+      case 'scale':
+        return entity.transform.scale[axisIndex];
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Get a component property value.
+   */
+  private getComponentValue(entity: ISceneObject, property: string): unknown {
+    if (!isEntity(entity)) return undefined;
+
+    const parts = property.split('.');
+    if (parts.length < 2) return undefined;
+
+    const [componentType, ...propertyPath] = parts;
+    const propertyName = propertyPath.join('.');
+
+    switch (componentType) {
+      case 'camera':
+        return this.getCameraValue(entity, propertyName);
+      case 'material':
+        return this.getMaterialValue(entity, propertyName);
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Get a camera component value.
+   */
+  private getCameraValue(entity: IEntity, property: string): unknown {
+    if (!entity.hasComponent('camera')) return undefined;
+
+    const cameraComponent = entity.getComponent<ICameraComponent>('camera');
+    if (!cameraComponent) return undefined;
+
+    switch (property) {
+      case 'fieldOfView':
+        return cameraComponent.fieldOfView;
+      case 'nearClipPlane':
+        return cameraComponent.nearClipPlane;
+      case 'farClipPlane':
+        return cameraComponent.farClipPlane;
+      case 'clearFlags':
+        return cameraComponent.clearFlags;
+      case 'backgroundColor':
+        return [...cameraComponent.backgroundColor]; // Return copy
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Get a material component value.
+   */
+  private getMaterialValue(entity: IEntity, property: string): unknown {
+    if (!entity.hasComponent('material')) return undefined;
+
+    const materialComponent = entity.getComponent<IComponent>('material');
+    if (!materialComponent) return undefined;
+
+    const material = materialComponent as IComponent & {
+      color?: [number, number, number];
+      opacity?: number;
+      transparent?: boolean;
+      roughness?: number;
+      metallic?: number;
+    };
+
+    switch (property) {
+      case 'color':
+        return material.color ? [...material.color] : undefined;
+      case 'opacity':
+        return material.opacity;
+      case 'transparent':
+        return material.transparent;
+      case 'roughness':
+        return material.roughness;
+      case 'metallic':
+        return material.metallic;
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Normalize a value for storage in command.
+   * Converts hex colors to RGB arrays, etc.
+   */
+  private normalizeValue(property: string, value: unknown): unknown {
+    // Convert hex color strings to RGB arrays for camera and material colors
+    if (
+      (property === 'camera.backgroundColor' || property === 'material.color') &&
+      typeof value === 'string' &&
+      value.startsWith('#')
+    ) {
+      const hex = value.slice(1);
+      const r = parseInt(hex.substring(0, 2), 16) / 255;
+      const g = parseInt(hex.substring(2, 4), 16) / 255;
+      const b = parseInt(hex.substring(4, 6), 16) / 255;
+      return [r, g, b];
+    }
+
+    return value;
   }
 
   /**
@@ -165,18 +309,46 @@ export class PropertyChangeHandler {
     const parts = property.split('.');
     if (parts.length < 2) return false;
     const [component] = parts;
-    // Known component types that have editable properties
     return component === 'camera' || component === 'material';
   }
 
   /**
-   * Handle name property changes.
+   * Apply a property change directly (fallback when no CommandHistory).
+   * This is the legacy behavior for backwards compatibility.
+   */
+  private applyPropertyDirectly(
+    entity: ISceneObject,
+    property: string,
+    value: unknown
+  ): void {
+    let success = false;
+
+    if (property === 'name') {
+      success = this.handleNameChange(entity, value);
+    } else if (this.isTransformProperty(property)) {
+      success = this.handleTransformChange(entity, property, value);
+    } else if (this.isComponentProperty(property)) {
+      success = this.handleComponentProperty(entity, property, value);
+    } else if (isPropertyEditable(entity)) {
+      success = entity.setProperty(property, value);
+    }
+
+    if (success) {
+      this.eventBus.emit('entity:propertyUpdated', {
+        id: entity.id,
+        property,
+        entity
+      } as PropertyUpdatedEvent);
+    }
+  }
+
+  /**
+   * Handle name property changes (direct apply, used in fallback mode).
    */
   private handleNameChange(entity: ISceneObject, value: unknown): boolean {
     const oldName = entity.name;
     entity.name = String(value);
 
-    // Emit rename event for UI components that need to update
     this.eventBus.emit('scene:objectRenamed', {
       object: entity,
       oldName,
@@ -187,8 +359,7 @@ export class PropertyChangeHandler {
   }
 
   /**
-   * Handle transform property changes.
-   * Works for ALL entities since they all have transforms.
+   * Handle transform property changes (direct apply, used in fallback mode).
    */
   private handleTransformChange(
     entity: ISceneObject,
@@ -196,19 +367,12 @@ export class PropertyChangeHandler {
     value: unknown
   ): boolean {
     const parts = property.split('.');
-
-    if (parts.length !== 2) {
-      return false;
-    }
+    if (parts.length !== 2) return false;
 
     const [transformProp, axis] = parts;
     const axisIndex = { x: 0, y: 1, z: 2 }[axis];
 
-    if (axisIndex === undefined) {
-      return false;
-    }
-
-    if (typeof value !== 'number') {
+    if (axisIndex === undefined || typeof value !== 'number') {
       return false;
     }
 
@@ -228,8 +392,7 @@ export class PropertyChangeHandler {
   }
 
   /**
-   * Handle component-specific property changes.
-   * Uses hasComponent() to check if entity has the relevant component.
+   * Handle component-specific property changes (direct apply, used in fallback mode).
    */
   private handleComponentProperty(
     entity: ISceneObject,
@@ -242,12 +405,8 @@ export class PropertyChangeHandler {
     const [componentType, ...propertyPath] = parts;
     const propertyName = propertyPath.join('.');
 
-    // Check if entity is an IEntity with component support
-    if (!isEntity(entity)) {
-      return false;
-    }
+    if (!isEntity(entity)) return false;
 
-    // Route to component-specific handlers
     switch (componentType) {
       case 'camera':
         return this.handleCameraProperty(entity, propertyName, value);
@@ -259,21 +418,17 @@ export class PropertyChangeHandler {
   }
 
   /**
-   * Handle camera component property changes.
+   * Handle camera component property changes (direct apply, used in fallback mode).
    */
   private handleCameraProperty(
     entity: IEntity,
     property: string,
     value: unknown
   ): boolean {
-    if (!entity.hasComponent('camera')) {
-      return false;
-    }
+    if (!entity.hasComponent('camera')) return false;
 
     const cameraComponent = entity.getComponent<ICameraComponent>('camera');
-    if (!cameraComponent) {
-      return false;
-    }
+    if (!cameraComponent) return false;
 
     switch (property) {
       case 'fieldOfView':
@@ -306,7 +461,6 @@ export class PropertyChangeHandler {
         }
         break;
       case 'backgroundColor':
-        // Handle hex color string
         if (typeof value === 'string' && value.startsWith('#')) {
           const hex = value.slice(1);
           const r = parseInt(hex.substring(0, 2), 16) / 255;
@@ -322,24 +476,18 @@ export class PropertyChangeHandler {
   }
 
   /**
-   * Handle material component property changes.
-   * Foundation for future PBR material editing.
+   * Handle material component property changes (direct apply, used in fallback mode).
    */
   private handleMaterialProperty(
     entity: IEntity,
     property: string,
     value: unknown
   ): boolean {
-    if (!entity.hasComponent('material')) {
-      return false;
-    }
+    if (!entity.hasComponent('material')) return false;
 
     const materialComponent = entity.getComponent<IComponent>('material');
-    if (!materialComponent) {
-      return false;
-    }
+    if (!materialComponent) return false;
 
-    // Cast to access material-specific properties
     const material = materialComponent as IComponent & {
       color?: [number, number, number];
       opacity?: number;
@@ -350,7 +498,6 @@ export class PropertyChangeHandler {
 
     switch (property) {
       case 'color':
-        // Handle hex color string
         if (typeof value === 'string' && value.startsWith('#')) {
           const hex = value.slice(1);
           const r = parseInt(hex.substring(0, 2), 16) / 255;

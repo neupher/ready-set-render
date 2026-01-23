@@ -4,7 +4,7 @@
  * A modular, extensible WebGL2-based 3D editor for learning
  * real-time and ray-tracing rendering techniques.
  *
- * @version 0.5.0
+ * @version 0.6.8
  */
 
 // Import theme CSS
@@ -17,6 +17,10 @@ import { CameraEntity } from '@core/CameraEntity';
 import { SelectionManager } from '@core/SelectionManager';
 import { PropertyChangeHandler } from '@core/PropertyChangeHandler';
 import { isInitializable } from '@core/interfaces';
+import { CommandHistory } from '@core/commands/CommandHistory';
+import { DeleteEntityCommand } from '@core/commands/DeleteEntityCommand';
+import { DuplicateEntityCommand } from '@core/commands/DuplicateEntityCommand';
+import { KeyboardShortcutManager, registerUndoRedoShortcuts } from '@core/KeyboardShortcutManager';
 
 // UI system
 import { EditorLayout } from '@ui/panels/EditorLayout';
@@ -128,12 +132,126 @@ async function main(): Promise<void> {
     // Initialize property change handler (bridges UI → Entity data)
     // This enables Properties Panel edits to update entity transforms/components
     // The handler auto-subscribes to EventBus events in its constructor
-    new PropertyChangeHandler({
+    // Initialize Command History for undo/redo
+    const commandHistory = new CommandHistory({
       eventBus,
-      sceneGraph
+      maxStackSize: 100
     });
 
-    console.log('Property change handler initialized (UI → Entity data binding)');
+    console.log('Command history initialized (undo/redo support)');
+
+    // Initialize keyboard shortcut manager
+    const shortcutManager = new KeyboardShortcutManager({ eventBus });
+
+    // Register undo/redo shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
+    registerUndoRedoShortcuts(shortcutManager, commandHistory);
+
+    // Register Delete shortcut (Delete key)
+    shortcutManager.register({
+      key: 'Delete',
+      action: () => {
+        const selected = selectionManager.getSelected();
+        if (selected.length > 0) {
+          // Only delete mesh entities, not cameras
+          const deletableEntities = selected.filter(obj => {
+            const typedObj = obj as unknown as { hasComponent?: (type: string) => boolean };
+            return typedObj.hasComponent && typedObj.hasComponent('mesh') && !typedObj.hasComponent('camera');
+          });
+
+          if (deletableEntities.length > 0) {
+            // Create and execute delete command for each entity
+            commandHistory.beginBatch();
+            for (const entity of deletableEntities) {
+              const deleteCmd = new DeleteEntityCommand({
+                entity,
+                sceneGraph,
+                eventBus
+              });
+              commandHistory.execute(deleteCmd);
+            }
+            commandHistory.endBatch('Delete selected objects');
+          }
+        }
+      },
+      description: 'Delete selected objects'
+    });
+
+    // Register Duplicate shortcut (Shift+D)
+    shortcutManager.register({
+      key: 'd',
+      shift: true,
+      action: () => {
+        const selected = selectionManager.getSelected();
+        if (selected.length > 0) {
+          // Only duplicate mesh entities, not cameras
+          const duplicableEntities = selected.filter(obj => {
+            const typedObj = obj as unknown as { hasComponent?: (type: string) => boolean };
+            return typedObj.hasComponent && typedObj.hasComponent('mesh') && !typedObj.hasComponent('camera');
+          });
+
+          if (duplicableEntities.length > 0) {
+            // Create and execute duplicate command for each entity
+            commandHistory.beginBatch();
+            for (const entity of duplicableEntities) {
+              const duplicateCmd = new DuplicateEntityCommand({
+                entity,
+                sceneGraph,
+                eventBus,
+                primitiveRegistry
+              });
+              commandHistory.execute(duplicateCmd);
+            }
+            commandHistory.endBatch('Duplicate selected objects');
+          }
+        }
+      },
+      description: 'Duplicate selected objects'
+    });
+
+    console.log('Keyboard shortcuts initialized (Ctrl+Z=undo, Ctrl+Y=redo, Delete=delete, Shift+D=duplicate)');
+
+    // Handle context menu delete/duplicate requests from HierarchyPanel
+    eventBus.on('entity:requestDelete', (data: { id: string }) => {
+      const entity = sceneGraph.find(data.id);
+      if (entity) {
+        // Check if it's a mesh entity (not camera)
+        const hasComponent = (entity as { hasComponent?: (type: string) => boolean }).hasComponent;
+        if (hasComponent && hasComponent('mesh') && !hasComponent('camera')) {
+          const deleteCmd = new DeleteEntityCommand({
+            entity,
+            sceneGraph,
+            eventBus
+          });
+          commandHistory.execute(deleteCmd);
+        }
+      }
+    });
+
+    eventBus.on('entity:requestDuplicate', (data: { id: string }) => {
+      const entity = sceneGraph.find(data.id);
+      if (entity) {
+        // Check if it's a mesh entity (not camera)
+        const hasComponent = (entity as { hasComponent?: (type: string) => boolean }).hasComponent;
+        if (hasComponent && hasComponent('mesh') && !hasComponent('camera')) {
+          const duplicateCmd = new DuplicateEntityCommand({
+            entity,
+            sceneGraph,
+            eventBus,
+            primitiveRegistry
+          });
+          commandHistory.execute(duplicateCmd);
+        }
+      }
+    });
+
+    // Initialize property change handler WITH CommandHistory for full undo support
+    new PropertyChangeHandler({
+      eventBus,
+      sceneGraph,
+      commandHistory  // All property changes are now undoable!
+    });
+
+    console.log('Property change handler initialized (UI → Entity data binding with undo support)');
 
     // Listen for new objects added to scene and initialize their GPU resources
     eventBus.on('scene:objectAdded', (data: { object: unknown; parent: unknown }) => {

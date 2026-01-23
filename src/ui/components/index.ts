@@ -21,3 +21,6 @@ export type { MenuItem, Menu, TopMenuBarOptions } from './TopMenuBar';
 
 export { AboutDialog } from './AboutDialog';
 export type { AboutDialogOptions } from './AboutDialog';
+
+export { ContextMenu } from './ContextMenu';
+export type { ContextMenuItem, ContextMenuOptions } from './ContextMenu';

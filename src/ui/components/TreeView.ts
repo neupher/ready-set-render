@@ -25,6 +25,15 @@ export interface TreeNode {
   children?: TreeNode[];
 }
 
+export interface ContextMenuData {
+  /** The node that was right-clicked */
+  node: TreeNode;
+  /** X position for the context menu */
+  x: number;
+  /** Y position for the context menu */
+  y: number;
+}
+
 export interface TreeViewOptions {
   /** Callback when a node is selected */
   onSelect?: (id: string, node: TreeNode) => void;
@@ -32,6 +41,8 @@ export interface TreeViewOptions {
   onToggle?: (id: string, expanded: boolean) => void;
   /** Callback when a node is renamed via double-click */
   onRename?: (id: string, newName: string) => void;
+  /** Callback when a node is right-clicked (context menu) */
+  onContextMenu?: (data: ContextMenuData) => void;
   /** Initially selected node ID */
   selectedId?: string;
   /** Initially expanded node IDs */
@@ -50,6 +61,7 @@ export class TreeView {
   private readonly onSelect?: (id: string, node: TreeNode) => void;
   private readonly onToggle?: (id: string, expanded: boolean) => void;
   private readonly onRename?: (id: string, newName: string) => void;
+  private readonly onContextMenu?: (data: ContextMenuData) => void;
   private nodeMap = new Map<string, TreeNode>();
   private editingId: string | null = null;
 
@@ -57,6 +69,7 @@ export class TreeView {
     this.onSelect = options.onSelect;
     this.onToggle = options.onToggle;
     this.onRename = options.onRename;
+    this.onContextMenu = options.onContextMenu;
     this.selectedId = options.selectedId ?? null;
     this.expandedIds = options.expandedIds ?? new Set();
 
@@ -251,6 +264,33 @@ export class TreeView {
       // Notify listeners
       if (this.onSelect) {
         this.onSelect(node.id, node);
+      }
+    });
+
+    // Context menu handler (right-click)
+    item.addEventListener('contextmenu', (e) => {
+      // If we're editing, don't handle context menu
+      if (this.editingId) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Select the item if not already selected
+      if (this.selectedId !== node.id) {
+        this.selectedId = node.id;
+        this.container.querySelectorAll('.tree-item.selected').forEach(el => {
+          el.classList.remove('selected');
+        });
+        item.classList.add('selected');
+      }
+
+      // Notify context menu listeners
+      if (this.onContextMenu) {
+        this.onContextMenu({
+          node,
+          x: e.clientX,
+          y: e.clientY
+        });
       }
     });
 
