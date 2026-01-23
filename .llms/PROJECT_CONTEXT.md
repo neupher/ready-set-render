@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-22T23:55:00Z
-> **Version:** 0.6.0
+> **Last Updated:** 2026-01-23T15:25:00Z
+> **Version:** 0.6.1
 > **Status:** Phase 6.1 Complete - Render Pipeline Fixed
 
 ---

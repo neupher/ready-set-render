@@ -1,7 +1,7 @@
 # Phase 6: Functional WebGL Editor (Revised)
 
-> **Last Updated:** 2026-01-22T23:45:00Z
-> **Version:** 0.6.0-draft
+> **Last Updated:** 2026-01-23T15:24:00Z
+> **Version:** 0.6.1
 
 ## Goal
 
@@ -79,31 +79,33 @@ class RenderCameraAdapter implements ICamera {
 
 ## Implementation Phases
 
-### Phase 6.1: Fix Rendering Pipeline (CRITICAL)
+### Phase 6.1: Fix Rendering Pipeline ✅ COMPLETE
+
+**Status**: Completed in commit `d9d03dc865c9f37a7d6b9b1f970f65e72bda5dab`
 
 **Goal**: Make instantiated cubes actually render in the viewport.
 
 **Root Cause**: `Cube.render()` silently returns when `!this.vao || !this.program` - GPU resources are never initialized after Create menu instantiation.
 
-**Tasks**:
-1. Add `scene:objectAdded` event listener in `src/index.ts` that calls `initializeGPUResources()` on new renderables
-2. Create `IInitializable` interface:
+**Implemented**:
+1. ✅ Added `scene:objectAdded` event listener in `src/index.ts` that calls `initializeGPUResources()` on new renderables
+2. ✅ Created `IInitializable` interface:
    ```typescript
    interface IInitializable {
      initializeGPUResources(gl: WebGL2RenderingContext, program: WebGLProgram): void;
      isInitialized(): boolean;
    }
    ```
-3. Add type guard `isInitializable(obj)` for runtime checking
-4. Ensure render loop calls `getRenderables()` and iterates properly
-5. Verify camera matrices are passed correctly to `LineRenderer`
+3. ✅ Added type guard `isInitializable(obj)` for runtime checking
+4. ✅ Ensured render loop calls `getRenderables()` and iterates properly
+5. ✅ Verified camera matrices are passed correctly to `LineRenderer`
 
-**Files**:
-- `src/index.ts` - Add objectAdded listener
-- `src/core/interfaces/ISceneObject.ts` - Add IInitializable
-- `src/plugins/primitives/Cube.ts` - Implement isInitialized()
+**Files Modified**:
+- `src/index.ts` - Added objectAdded listener
+- `src/core/interfaces/ISceneObject.ts` - Added IInitializable
+- `src/plugins/primitives/Cube.ts` - Implemented isInitialized()
 
-**Test**: Create Cube via menu → renders as white wireframe immediately
+**Result**: Create Cube via menu → renders as white wireframe immediately ✅
 
 ---
 
