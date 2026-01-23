@@ -33,3 +33,7 @@ export type { IMeshComponent } from './IMeshComponent';
 export type { IMaterialComponent } from './IMaterialComponent';
 export type { ICameraComponent, CameraClearFlags } from './ICameraComponent';
 export { createDefaultCameraComponent } from './ICameraComponent';
+
+// Property Editing
+export type { IPropertyEditable } from './IPropertyEditable';
+export { isPropertyEditable } from './IPropertyEditable';

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.5] - 2026-01-23
+
+### Added
+
+- **Property Change Handler** (`src/core/PropertyChangeHandler.ts`)
+  - Centralized handler that routes property change events to entities
+  - Bridges UI (PropertiesPanel) to entity data
+  - Emits `entity:propertyUpdated` events for bidirectional sync
+  - Supports future gizmos and scripting systems
+
+- **IPropertyEditable Interface** (`src/core/interfaces/IPropertyEditable.ts`)
+  - Interface for entities supporting property editing
+  - `setProperty(path, value)` and `getProperty(path)` methods
+  - `isPropertyEditable()` type guard for runtime checking
+
+- **Bidirectional Data Binding**
+  - PropertiesPanel listens for `entity:propertyUpdated` events
+  - Future transform gizmos can emit `object:propertyChanged` and UI will refresh automatically
+
+### Changed
+
+- **Cube** now implements `IPropertyEditable` for live transform editing
+- **CameraEntity** now implements `IPropertyEditable` for camera property editing (FOV, near/far clip)
+- **PropertiesPanel** refactored for bidirectional sync architecture
+- **DraggableNumberInput** completely rewritten:
+  - Removed drag zone overlay that was blocking input focus
+  - Drag now triggered by middle-mouse or Alt+left-click
+  - Regular left-click immediately focuses for text editing
+  - Cursor only changes to `ew-resize` during actual drag operation
+
+### Fixed
+
+- **Properties Panel Focus** - Clicking text fields now immediately focuses them (no more multiple clicks required)
+- **Cursor Behavior** - Horizontal resize cursor only appears when dragging starts
+- **Smooth Dragging** - Values increment smoothly based on delta from start position
+- **Properties Panel Scrolling** - Panel content is now scrollable when items overflow
+- **Collapsed Sections** - Section open/closed state persists across re-renders
+
+---
+
 ## [0.6.4] - 2026-01-23
 
 ### Added

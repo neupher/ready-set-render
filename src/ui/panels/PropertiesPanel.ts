@@ -48,6 +48,9 @@ export class PropertiesPanel {
 
   private selectedObject: ISceneObject | null = null;
 
+  /** Track collapsed state of sections by title (persists across re-renders) */
+  private sectionStates: Map<string, boolean> = new Map();
+
   constructor(options: PropertiesPanelOptions) {
     this.eventBus = options.eventBus;
     this.sceneGraph = options.sceneGraph;
@@ -159,16 +162,21 @@ export class PropertiesPanel {
    */
   dispose(): void {
     this.eventBus.off('selection:changed', this.handleSelectionChange);
-    this.eventBus.off('object:propertyChanged', this.handlePropertyChange);
+    this.eventBus.off('entity:propertyUpdated', this.handleExternalPropertyUpdate);
+    this.eventBus.off('scene:objectRenamed', this.handleObjectRenamed);
   }
 
   private setupEvents(): void {
     this.handleSelectionChange = this.handleSelectionChange.bind(this);
-    this.handlePropertyChange = this.handlePropertyChange.bind(this);
+    this.handleExternalPropertyUpdate = this.handleExternalPropertyUpdate.bind(this);
     this.handleObjectRenamed = this.handleObjectRenamed.bind(this);
 
     this.eventBus.on('selection:changed', this.handleSelectionChange);
-    this.eventBus.on('object:propertyChanged', this.handlePropertyChange);
+    // Listen for external property updates (from gizmos, scripts, etc.)
+    // This enables bidirectional sync: when a gizmo changes entity data,
+    // the Properties Panel updates to show the new values
+    this.eventBus.on('entity:propertyUpdated', this.handleExternalPropertyUpdate);
+    this.eventBus.off('object:propertyChanged', this.handlePropertyChange);
     this.eventBus.on('scene:objectRenamed', this.handleObjectRenamed);
   }
 
@@ -177,8 +185,27 @@ export class PropertiesPanel {
     this.renderDetails();
   }
 
-  private handlePropertyChange(): void {
+  /**
+   * Handle external property updates (from gizmos, scripts, etc.).
+   * Only re-renders if the updated entity is currently selected.
+   * This enables bidirectional sync for future transform gizmos.
+   */
+  private handleExternalPropertyUpdate(data: { id: string; property: string }): void {
+    // Only update if this is the currently selected object
+    if (!this.selectedObject || this.selectedObject.id !== data.id) {
+      return;
+    }
+
+    // Re-render to show updated values
+    // Note: A future optimization would be to update only the specific input
+    // rather than full re-render, but this works for now
     this.renderDetails();
+  }
+
+  private handlePropertyChange(): void {
+    // This was previously used to re-render on own property changes,
+    // but that causes issues with input focus. Now we only listen for
+    // external updates via entity:propertyUpdated
   }
 
   private handleObjectRenamed(data: { object: { id: string }; newName: string }): void {
@@ -221,7 +248,7 @@ export class PropertiesPanel {
     contentWrapper.style.padding = '0';
 
     // Object Name Section
-    const nameSection = new CollapsibleSection({ title: 'Object', defaultOpen: true });
+    const nameSection = this.createTrackedSection('Object', true);
     const nameContent = document.createElement('div');
     nameContent.style.display = 'flex';
     nameContent.style.flexDirection = 'column';
@@ -267,7 +294,7 @@ export class PropertiesPanel {
     }
 
     // Transform Section
-    const transformSection = new CollapsibleSection({ title: 'Transform', defaultOpen: true });
+    const transformSection = this.createTrackedSection('Transform', true);
     const transformContent = document.createElement('div');
     transformContent.style.display = 'flex';
     transformContent.style.flexDirection = 'column';
@@ -302,7 +329,7 @@ export class PropertiesPanel {
     if (isEntity(obj) && obj.hasComponent('mesh')) {
       const meshComponent = obj.getComponent<IMeshComponent>('mesh');
       if (meshComponent) {
-        const meshSection = new CollapsibleSection({ title: 'Mesh', defaultOpen: true });
+        const meshSection = this.createTrackedSection('Mesh', true);
         const meshContent = document.createElement('div');
         meshContent.style.display = 'flex';
         meshContent.style.flexDirection = 'column';
@@ -331,7 +358,7 @@ export class PropertiesPanel {
     if (isEntity(obj) && obj.hasComponent('material')) {
       const materialComponent = obj.getComponent<IMaterialComponent>('material');
       if (materialComponent) {
-        const materialSection = new CollapsibleSection({ title: 'Material', defaultOpen: true });
+        const materialSection = this.createTrackedSection('Material', true);
         const materialContent = document.createElement('div');
         materialContent.style.display = 'flex';
         materialContent.style.flexDirection = 'column';
@@ -401,7 +428,7 @@ export class PropertiesPanel {
     if (isEntity(obj) && obj.hasComponent('camera')) {
       const cameraComponent = obj.getComponent<ICameraComponent>('camera');
       if (cameraComponent) {
-        const cameraSection = new CollapsibleSection({ title: 'Camera', defaultOpen: true });
+        const cameraSection = this.createTrackedSection('Camera', true);
         const cameraContent = document.createElement('div');
         cameraContent.style.display = 'flex';
         cameraContent.style.flexDirection = 'column';
@@ -535,7 +562,7 @@ export class PropertiesPanel {
 
     // Fallback Material Section (for non-entity objects without material component)
     if (!isEntity(obj) || !obj.hasComponent('material')) {
-      const materialSection = new CollapsibleSection({ title: 'Material', defaultOpen: true });
+      const materialSection = this.createTrackedSection('Material', true);
       const materialInput = document.createElement('input');
       materialInput.type = 'text';
       materialInput.className = 'input';
@@ -620,6 +647,34 @@ export class PropertiesPanel {
       property,
       value
     });
+  }
+
+  /**
+   * Create a collapsible section that tracks and restores its collapsed state.
+   * State is persisted across re-renders using the section title as key.
+   */
+  private createTrackedSection(title: string, defaultOpen: boolean): CollapsibleSection {
+    // Get saved state or use default
+    const isOpen = this.sectionStates.has(title)
+      ? this.sectionStates.get(title)!
+      : defaultOpen;
+
+    const section = new CollapsibleSection({ title, defaultOpen: isOpen });
+
+    // Listen for toggle events to save state
+    // CollapsibleSection uses click on header to toggle
+    const header = section.element.querySelector('.collapsible-header');
+    if (header) {
+      header.addEventListener('click', () => {
+        // After the section toggles, save its new state
+        // Small delay to let the toggle complete
+        setTimeout(() => {
+          this.sectionStates.set(title, section.expanded);
+        }, 0);
+      });
+    }
+
+    return section;
   }
 }
 

@@ -5,9 +5,12 @@
  * Mimics professional 3D software behavior (Unity, Blender, Substance).
  *
  * Drag modes:
- * - Left-click drag on the label area (left side of input)
  * - Middle-mouse drag anywhere on input
  * - Alt + left-click drag anywhere on input
+ *
+ * Click behavior:
+ * - Single click focuses the input for text editing
+ * - Cursor changes to ew-resize only when dragging starts
  *
  * @example
  * ```ts
@@ -45,7 +48,6 @@ export interface DraggableNumberInputOptions {
 export class DraggableNumberInput {
   private readonly container: HTMLDivElement;
   private readonly input: HTMLInputElement;
-  private readonly dragZone: HTMLDivElement;
   private value: number;
   private readonly step: number;
   private readonly precision: number;
@@ -59,6 +61,9 @@ export class DraggableNumberInput {
   private overlay: HTMLDivElement | null = null;
 
   // Bound handlers for proper cleanup
+  private boundHandleInputMouseDown: (e: MouseEvent) => void;
+  private boundHandleInputChange: () => void;
+  private boundHandleBlur: () => void;
   private boundMouseMove: (e: MouseEvent) => void;
   private boundMouseUp: (e: MouseEvent) => void;
   private boundPreventMiddleClick: (e: MouseEvent) => void;
@@ -71,6 +76,10 @@ export class DraggableNumberInput {
     this.max = options.max ?? Infinity;
     this.onChange = options.onChange;
 
+    // Bind all handlers
+    this.boundHandleInputMouseDown = this.handleInputMouseDown.bind(this);
+    this.boundHandleInputChange = this.handleInputChange.bind(this);
+    this.boundHandleBlur = this.handleBlur.bind(this);
     this.boundMouseMove = this.handleMouseMove.bind(this);
     this.boundMouseUp = this.handleMouseUp.bind(this);
     this.boundPreventMiddleClick = this.preventMiddleClick.bind(this);
@@ -80,20 +89,7 @@ export class DraggableNumberInput {
     this.container.className = 'draggable-input-container';
     this.container.style.cssText = 'position: relative; display: flex; width: 100%;';
 
-    // Create drag zone (left side for drag interaction)
-    this.dragZone = document.createElement('div');
-    this.dragZone.className = 'drag-zone';
-    this.dragZone.style.cssText = `
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 50%;
-      height: 100%;
-      cursor: ew-resize;
-      z-index: 1;
-    `;
-
-    // Create actual input
+    // Create actual input - no separate drag zone, we handle it via events
     this.input = document.createElement('input');
     this.input.type = 'number';
     this.input.className = `input draggable-input ${options.className ?? ''}`.trim();
@@ -102,7 +98,6 @@ export class DraggableNumberInput {
 
     // Assemble
     this.container.appendChild(this.input);
-    this.container.appendChild(this.dragZone);
 
     this.setupEvents();
   }
@@ -143,10 +138,9 @@ export class DraggableNumberInput {
    * Clean up event listeners.
    */
   dispose(): void {
-    this.dragZone.removeEventListener('mousedown', this.handleDragZoneMouseDown);
-    this.input.removeEventListener('mousedown', this.handleInputMouseDown);
-    this.input.removeEventListener('change', this.handleInputChange);
-    this.input.removeEventListener('blur', this.handleBlur);
+    this.input.removeEventListener('mousedown', this.boundHandleInputMouseDown);
+    this.input.removeEventListener('change', this.boundHandleInputChange);
+    this.input.removeEventListener('blur', this.boundHandleBlur);
     this.input.removeEventListener('auxclick', this.boundPreventMiddleClick);
     this.removeOverlay();
     document.removeEventListener('mousemove', this.boundMouseMove);
@@ -154,18 +148,11 @@ export class DraggableNumberInput {
   }
 
   private setupEvents(): void {
-    this.handleDragZoneMouseDown = this.handleDragZoneMouseDown.bind(this);
-    this.handleInputMouseDown = this.handleInputMouseDown.bind(this);
-    this.handleInputChange = this.handleInputChange.bind(this);
-    this.handleBlur = this.handleBlur.bind(this);
-
-    // Drag zone handles left-click drag
-    this.dragZone.addEventListener('mousedown', this.handleDragZoneMouseDown);
-
-    // Input handles middle-click and alt+left-click
-    this.input.addEventListener('mousedown', this.handleInputMouseDown);
-    this.input.addEventListener('change', this.handleInputChange);
-    this.input.addEventListener('blur', this.handleBlur);
+    // Input handles middle-click and alt+left-click for dragging
+    // Regular left-click allows normal text input focus
+    this.input.addEventListener('mousedown', this.boundHandleInputMouseDown);
+    this.input.addEventListener('change', this.boundHandleInputChange);
+    this.input.addEventListener('blur', this.boundHandleBlur);
 
     // Prevent middle-click paste in some browsers
     this.input.addEventListener('auxclick', this.boundPreventMiddleClick);
@@ -177,22 +164,14 @@ export class DraggableNumberInput {
     }
   }
 
-  private handleDragZoneMouseDown(e: MouseEvent): void {
-    // Left-click on drag zone starts dragging
-    if (e.button === 0) {
-      e.preventDefault();
-      e.stopPropagation();
-      this.startDrag(e.clientX);
-    }
-  }
-
   private handleInputMouseDown(e: MouseEvent): void {
-    // Middle mouse button (button === 1) or Alt + left-click
+    // Middle mouse button (button === 1) or Alt + left-click starts dragging
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       e.preventDefault();
       e.stopPropagation();
       this.startDrag(e.clientX);
     }
+    // Regular left-click (button === 0 without alt) allows default behavior (focus input)
   }
 
   private startDrag(clientX: number): void {
@@ -217,8 +196,18 @@ export class DraggableNumberInput {
     const deltaX = currentX - this.startX;
 
     // Calculate new value based on total delta from start
-    const newValue = this.startValue + (deltaX * this.step);
-    this.setValue(this.clampValue(newValue));
+    // Use accumulated delta for smooth increments
+    const newValue = this.startValue + deltaX * this.step;
+    const clampedValue = this.clampValue(newValue);
+
+    // Only update if value actually changed (avoids flickering)
+    if (clampedValue !== this.value) {
+      this.value = clampedValue;
+      this.input.value = this.formatValue(this.value);
+      if (this.onChange) {
+        this.onChange(this.value);
+      }
+    }
   }
 
   private handleMouseUp(): void {

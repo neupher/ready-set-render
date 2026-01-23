@@ -1,7 +1,7 @@
 # Architecture: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:07:00Z  
-> **Version:** 0.1.0
+> **Last Updated:** 2026-01-23T18:05:00Z
+> **Version:** 0.2.0
 
 ---
 
@@ -50,8 +50,8 @@ Define small, focused interfaces. A module should only depend on the interfaces 
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │                              CORE ENGINE                                 ││
 │  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐       ││
-│  │  │  Event Bus  │ │ Scene Graph │ │  Resource   │ │   WebGL2    │       ││
-│  │  │             │ │             │ │   Manager   │ │   Context   │       ││
+│  │  │  Event Bus  │ │ Scene Graph │ │  Property   │ │   WebGL2    │       ││
+│  │  │             │ │             │ │   Handler   │ │   Context   │       ││
 │  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘       ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -69,9 +69,47 @@ The core engine provides fundamental services that all plugins depend on.
 |--------|---------------|--------------|
 | `EventBus` | Pub/sub communication between modules | None |
 | `SceneGraph` | Hierarchical scene structure, transforms | EventBus |
-| `ResourceManager` | Asset loading, caching, disposal | EventBus |
+| `PropertyChangeHandler` | Routes UI property changes to entity data | EventBus, SceneGraph |
+| `SelectionManager` | Tracks selected objects, provides selection events | EventBus |
 | `WebGLContext` | WebGL2 context management, capabilities | None |
 | `PluginManager` | Plugin lifecycle, dependency resolution | EventBus |
+| `CameraEntity` | Camera as ECS entity with composition pattern | None |
+| `RenderCameraAdapter` | Bridges CameraEntity to ICamera interface | CameraEntity |
+| `InputManager` | Centralized mouse/keyboard event tracking | EventBus |
+
+#### Property Change Data Flow
+
+The `PropertyChangeHandler` enables bidirectional data binding between UI and entities:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         EventBus                                         │
+│  object:propertyChanged ◄──────────────────► entity:propertyUpdated     │
+└─────────────────────────────────────────────────────────────────────────┘
+         │                                              ▲
+         │                                              │
+         ▼                                              │
+┌──────────────────────┐                    ┌──────────────────────┐
+│ PropertyChangeHandler │───────────────────►│   Entity/Component   │
+│   (routes changes)    │   setProperty()   │   (Cube, Camera...)  │
+└──────────────────────┘                    └──────────────────────┘
+         ▲                                              │
+         │                                              │
+         │                                              ▼
+┌──────────────────────┐                    ┌──────────────────────┐
+│   PropertiesPanel    │                    │    Render Loop       │
+│   (UI - displays)    │                    │ (reads transform)    │
+└──────────────────────┘                    └──────────────────────┘
+         ▲                                              │
+         │                                              │
+         └──────────────────────────────────────────────┘
+                      entity:propertyUpdated
+                    (UI refreshes displayed values)
+
+FUTURE: Viewport Gizmos emit same 'object:propertyChanged' events
+```
+
+Entities implement `IPropertyEditable` interface for property editing support.
 
 #### Core Interfaces
 
@@ -82,7 +120,7 @@ interface IPlugin {
   readonly name: string;
   readonly version: string;
   readonly dependencies?: string[];
-  
+
   initialize(context: IPluginContext): Promise<void>;
   dispose(): Promise<void>;
 }
@@ -90,7 +128,7 @@ interface IPlugin {
 // src/core/interfaces/IRenderPipeline.ts
 interface IRenderPipeline extends IPlugin {
   readonly type: 'forward' | 'deferred' | 'raytracing';
-  
+
   beginFrame(camera: ICamera): void;
   render(scene: IScene): void;
   endFrame(): void;
@@ -100,7 +138,7 @@ interface IRenderPipeline extends IPlugin {
 // src/core/interfaces/IImporter.ts
 interface IImporter extends IPlugin {
   readonly supportedExtensions: string[];
-  
+
   canImport(file: File): boolean;
   import(file: File): Promise<ISceneObject>;
 }
@@ -270,7 +308,7 @@ src/
      readonly name = 'Custom Renderer';
      readonly version = '1.0.0';
      readonly type = 'forward';
-     
+
      // Implement all interface methods...
    }
    ```

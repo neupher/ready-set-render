@@ -15,6 +15,7 @@ import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
 import { CameraEntity } from '@core/CameraEntity';
 import { SelectionManager } from '@core/SelectionManager';
+import { PropertyChangeHandler } from '@core/PropertyChangeHandler';
 import { isInitializable } from '@core/interfaces';
 
 // UI system
@@ -123,6 +124,16 @@ async function main(): Promise<void> {
     const selectionManager = new SelectionManager(eventBus);
 
     console.log('Selection manager initialized');
+
+    // Initialize property change handler (bridges UI → Entity data)
+    // This enables Properties Panel edits to update entity transforms/components
+    // The handler auto-subscribes to EventBus events in its constructor
+    new PropertyChangeHandler({
+      eventBus,
+      sceneGraph
+    });
+
+    console.log('Property change handler initialized (UI → Entity data binding)');
 
     // Listen for new objects added to scene and initialize their GPU resources
     eventBus.on('scene:objectAdded', (data: { object: unknown; parent: unknown }) => {

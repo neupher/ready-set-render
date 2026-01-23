@@ -50,9 +50,10 @@ describe('DraggableNumberInput', () => {
       expect(defaultInput.getValue()).toBe(0);
     });
 
-    it('should include drag zone element', () => {
-      const dragZone = input.element.querySelector('.drag-zone');
-      expect(dragZone).toBeTruthy();
+    it('should have input element directly in container (no drag zone)', () => {
+      // New implementation uses the input directly without a separate drag zone
+      expect(input.element.childElementCount).toBe(1);
+      expect(input.element.firstChild).toBe(input.inputElement);
     });
   });
 
@@ -146,16 +147,15 @@ describe('DraggableNumberInput', () => {
   });
 
   describe('drag functionality', () => {
-    it('should have drag zone with ew-resize cursor', () => {
-      const dragZone = input.element.querySelector('.drag-zone') as HTMLElement;
-      expect(dragZone.style.cursor).toBe('ew-resize');
+    it('should default to text cursor (not ew-resize)', () => {
+      // New implementation: cursor is 'text' by default, only changes to ew-resize during drag
+      // We verify the element doesn't have the 'dragging' class initially
+      expect(input.inputElement.classList.contains('dragging')).toBe(false);
     });
 
-    it('should start drag on drag zone mousedown', () => {
-      const dragZone = input.element.querySelector('.drag-zone') as HTMLElement;
-
-      dragZone.dispatchEvent(new MouseEvent('mousedown', {
-        button: 0,
+    it('should start drag on middle-mouse down', () => {
+      input.inputElement.dispatchEvent(new MouseEvent('mousedown', {
+        button: 1, // Middle mouse button
         clientX: 100,
         bubbles: true
       }));
@@ -164,6 +164,32 @@ describe('DraggableNumberInput', () => {
 
       // Cleanup - trigger mouseup
       document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    });
+
+    it('should start drag on Alt + left-click', () => {
+      input.inputElement.dispatchEvent(new MouseEvent('mousedown', {
+        button: 0, // Left mouse button
+        altKey: true,
+        clientX: 100,
+        bubbles: true
+      }));
+
+      expect(input.element.classList.contains('dragging')).toBe(true);
+
+      // Cleanup - trigger mouseup
+      document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+    });
+
+    it('should NOT start drag on regular left-click (allows text editing)', () => {
+      input.inputElement.dispatchEvent(new MouseEvent('mousedown', {
+        button: 0, // Left mouse button without Alt
+        altKey: false,
+        clientX: 100,
+        bubbles: true
+      }));
+
+      // Should NOT start dragging - allows normal focus behavior
+      expect(input.element.classList.contains('dragging')).toBe(false);
     });
   });
 

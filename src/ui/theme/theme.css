@@ -654,12 +654,20 @@ body {
    Draggable Number Input
    ====================================== */
 
-.draggable-input {
-  cursor: default;
+.draggable-input-container {
+  position: relative;
+  display: flex;
+  width: 100%;
 }
 
+.draggable-input {
+  cursor: text;
+}
+
+.draggable-input-container.dragging .draggable-input,
 .draggable-input.dragging {
   cursor: ew-resize;
+  user-select: none;
 }
 
 /* Drag overlay for capturing mouse events */
@@ -671,4 +679,20 @@ body {
   height: 100%;
   cursor: ew-resize;
   z-index: var(--z-overlay);
+}
+
+/* ======================================
+   Properties Panel Scrolling
+   ====================================== */
+
+.properties-panel .tab-content {
+  overflow-y: auto;
+  max-height: calc(100vh - var(--menu-bar-height) - var(--panel-header-height) - 60px);
+}
+
+.properties-panel .tabs-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }

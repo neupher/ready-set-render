@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T16:13:00Z
-> **Version:** 0.6.4
-> **Status:** Phase 6.4 Complete - Selection System with Navigation Fixes
+> **Last Updated:** 2026-01-23T18:06:00Z
+> **Version:** 0.6.5
+> **Status:** Phase 6.4+ Complete - Property System with Bidirectional Data Binding
 
 ---
 
@@ -225,6 +225,45 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **F key focus**: Frames camera on current selection
 - **Auto-pivot**: Camera automatically pivots around active selection
 - **Selection sync**: Hierarchy panel syncs with viewport selection
+
+### ✅ Completed - Phase 6.4+: Property System with Bidirectional Data Binding
+
+**Key Files Created/Modified:**
+- `src/core/PropertyChangeHandler.ts` - Routes property change events from UI to entity data
+- `src/core/interfaces/IPropertyEditable.ts` - Interface for entities that support property editing
+- `src/plugins/primitives/Cube.ts` - Now implements `IPropertyEditable`
+- `src/core/CameraEntity.ts` - Now implements `IPropertyEditable`
+- `src/ui/panels/PropertiesPanel.ts` - Listens for `entity:propertyUpdated` for bidirectional sync
+
+**Data Flow:**
+```
+PropertiesPanel (edit value)
+       ↓
+EventBus: 'object:propertyChanged'
+       ↓
+PropertyChangeHandler.handlePropertyChange()
+       ↓
+entity.setProperty(path, value)
+       ↓
+EventBus: 'entity:propertyUpdated'
+       ↓
+PropertiesPanel refreshes (for external updates like gizmos)
+       ↓
+Render loop reads entity.transform → Changes visible!
+```
+
+**Features:**
+- **Live property editing**: Editing transform values in Properties Panel updates objects in viewport
+- **IPropertyEditable interface**: Entities implement `setProperty(path, value)` and `getProperty(path)`
+- **Bidirectional sync**: Future gizmos can emit `object:propertyChanged` and UI will update automatically
+- **Camera property support**: FOV, near/far clip planes editable through Properties Panel
+
+**Also Fixed (Properties Panel UX):**
+- Focus management: Clicking text fields immediately focuses them
+- Cursor behavior: ew-resize cursor only during drag
+- Smooth dragging: Values increment smoothly
+- Scrolling: Properties panel is now scrollable
+- Collapsed sections: State preserved across re-renders
 
 ### 📋 Next Steps (Phase 6.5-6.14: Functional Editor Continued)
 
