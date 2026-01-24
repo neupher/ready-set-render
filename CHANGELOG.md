@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.1] - 2026-01-24
+
+### Added
+- **Coordinate System Documentation**: Comprehensive Z-up right-handed convention (Blender standard)
+  - New `COORDINATE_SYSTEM.md` with axis definitions, implementation requirements, migration checklist
+  - Section 8 in GUIDELINES.md: Coordinate System Convention (MANDATORY)
+  - Render Pipeline Modularity section in ARCHITECTURE.md
+- **Documentation Archive System**: Historical plan documents preserved in `.llms/archive/`
+  - `archive/README.md` - Index of archived docs
+  - `archive/PHASE_6_HISTORICAL.md` - Completed phases 6.1-6.6 implementation details
+  - Archived: `IMPLEMENTATION_PLAN.md`, `LIGHT_SYSTEM_PLAN.md`, `REFACTOR_MESH_RENDERING.md`
+
+### Changed
+- **PROJECT_CONTEXT.md**: Simplified from ~645 to ~150 lines, focused on current state
+- **PHASE_6_PLAN.md**: Reduced from ~715 to ~280 lines, keeping only remaining phases (6.7-6.14)
+- **ARCHITECTURE.md**: Added swappable renderer documentation and checklist for new renderers
+
+### Removed
+- Moved obsolete plan files to archive (preserved, not deleted):
+  - `IMPLEMENTATION_PLAN.md` → `archive/` (Phases 1-5 complete)
+  - `LIGHT_SYSTEM_PLAN.md` → `archive/` (v0.8.0 complete)
+  - `REFACTOR_MESH_RENDERING.md` → `archive/` (v0.7.0 complete)
+
+---
+
 ## [0.8.0] - 2026-01-24
 
 ### Added

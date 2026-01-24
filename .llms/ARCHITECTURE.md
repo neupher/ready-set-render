@@ -1,7 +1,7 @@
 # Architecture: WebGL Editor
 
-> **Last Updated:** 2026-01-23T22:30:00Z
-> **Version:** 0.3.0
+> **Last Updated:** 2026-01-24T01:35:00Z
+> **Version:** 0.4.0
 
 ---
 
@@ -55,6 +55,124 @@ Define small, focused interfaces. A module should only depend on the interfaces 
 │  │  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘       ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Render Pipeline Modularity
+
+### Design Philosophy
+
+The rendering engine is designed to be **modular and swappable**, allowing different rendering methods to coexist and be switched at runtime. This supports:
+
+- **Educational comparison:** Switch between forward, deferred, and raytracing to see the differences
+- **Performance optimization:** Choose the best pipeline for the scene complexity
+- **Experimentation:** Test new rendering techniques without rewriting the engine
+
+### Swappable Pipeline Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             IRenderPipeline                                  │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │ beginFrame(camera) │ render(scene) │ endFrame() │ resize(w, h)        │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                ▲                    ▲                    ▲
+                │                    │                    │
+     ┌──────────┴─────┐   ┌─────────┴─────────┐   ┌─────┴──────────┐
+     │ LineRenderer   │   │ ForwardRenderer   │   │ DeferredRenderer│
+     │ (wireframe)    │   │ (solid + lights)  │   │ (G-buffer)      │
+     └────────────────┘   └───────────────────┘   └─────────────────┘
+                                                           │
+                                               ┌───────────┴───────────┐
+                                               │ RaytracingRenderer    │
+                                               │ (software raytracing) │
+                                               └───────────────────────┘
+```
+
+### Current Renderers
+
+| Renderer | Type | Status | Purpose |
+|----------|------|--------|---------|
+| `LineRenderer` | Forward | ✅ Complete | Wireframe debug rendering |
+| `ForwardRenderer` | Forward | ✅ Complete | Solid meshes with multi-light support |
+| `LightGizmoRenderer` | Gizmo | ✅ Complete | Debug visualization for lights |
+| `DeferredRenderer` | Deferred | 📋 Planned | G-buffer based, many lights |
+| `RaytracingRenderer` | Raytracing | 📋 Planned | Software raytracing for learning |
+
+### Swapping Mechanism
+
+Pipelines can be swapped at runtime via the Application settings:
+
+```typescript
+// Current: Via Application or direct reference
+application.setRenderPipeline(forwardRenderer);
+
+// Future: Via settings system
+editor.settings.set('renderer.pipeline', 'deferred');
+```
+
+### Implementing a New Render Pipeline
+
+Every new renderer MUST:
+
+1. **Implement `IRenderPipeline` interface**
+2. **Follow Z-up coordinate convention** (see [COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md))
+3. **Support `IMeshProvider` for mesh data**
+4. **Use `MeshGPUCache` for GPU resource management**
+5. **Test with all existing primitives**
+
+#### Checklist for New Renderers
+
+- [ ] Implements `IRenderPipeline` interface
+- [ ] Uses Z-up right-handed coordinate system
+- [ ] Supports all primitives (Cube, Sphere, future imports)
+- [ ] Integrates with `LightManager` for lighting
+- [ ] Has barrel export in `src/plugins/renderers/<type>/index.ts`
+- [ ] Documented in this file (ARCHITECTURE.md)
+- [ ] Unit tests in `tests/plugins/renderers/`
+
+#### Example: New Renderer Structure
+
+```
+src/plugins/renderers/custom/
+├── CustomRenderer.ts     # Implements IRenderPipeline
+├── shaders/              # GLSL shaders (embedded or external)
+│   ├── custom.vert
+│   └── custom.frag
+├── index.ts              # Barrel export
+└── README.md             # Pipeline-specific documentation
+```
+
+### Shared Rendering Infrastructure
+
+All renderers share common infrastructure:
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `MeshGPUCache` | `src/plugins/renderers/shared/` | Centralized GPU resource management |
+| `IMeshProvider` | `src/core/interfaces/IMeshData.ts` | Common mesh data interface |
+| `LightManager` | `src/core/LightManager.ts` | Collects active lights for shader uniforms |
+| `WebGLContext` | `src/core/WebGLContext.ts` | Shader compilation, state management |
+
+### Rendering Pipeline Data Flow
+
+```
+1. Application.render() called each frame
+   │
+   ├─► Current pipeline.beginFrame(camera)
+   │   └─► Clear buffers, set view/projection matrices
+   │
+   ├─► Current pipeline.render(scene)
+   │   ├─► For each renderable in scene:
+   │   │   ├─► MeshGPUCache.getOrCreate() - lazy GPU init
+   │   │   ├─► Set model matrix uniform
+   │   │   └─► gl.drawElements() or gl.drawArrays()
+   │   └─► LightManager.getLights() for lighting uniforms
+   │
+   └─► Current pipeline.endFrame()
+       └─► Cleanup, present to screen
 ```
 
 ---

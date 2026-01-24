@@ -1,6 +1,6 @@
 # Development Guidelines: WebGL Editor
 
-> **Last Updated:** 2026-01-22T23:06:00Z
+> **Last Updated:** 2026-01-24T01:35:00Z
 > **Version:** 0.1.2
 
 ---
@@ -194,6 +194,52 @@ When in doubt: **If the user can see the effect, it should be undoable.**
 **All naming for editor features, engine concepts, and shading languages MUST use industry-standard terminology.**
 
 When multiple naming conventions exist across different engines/tools, **follow Unity's terminology** as the canonical reference.
+
+### 8. Coordinate System Convention (MANDATORY)
+
+**All rendering code MUST use the Right-Handed, Z-Up coordinate system (Blender convention).**
+
+See **[COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md)** for the complete specification.
+
+#### Quick Reference
+
+| Axis | Direction |
+|------|-----------|
+| **+X** | Right |
+| **+Y** | Forward |
+| **+Z** | Up (vertical axis) |
+
+#### The Rule
+
+```typescript
+// ✅ REQUIRED - Z-up world
+const WORLD_UP: Vec3 = [0, 0, 1];
+
+// ❌ FORBIDDEN - Y-up world (OpenGL/WebGL default)
+const WORLD_UP: Vec3 = [0, 1, 0];
+```
+
+#### What MUST Follow Z-Up Convention
+
+| Component | Requirement |
+|-----------|-------------|
+| **Camera** | `getUp()` returns `[0, 0, 1]` |
+| **LookAt matrix** | Default up parameter is `[0, 0, 1]` |
+| **Orbit controller** | Spherical coordinates use Z as vertical |
+| **Primitives** | Top/bottom faces along Z axis |
+| **Hemisphere lighting** | `normal.z` determines sky/ground blend |
+| **Importers** | Convert Y-up assets (GLTF, OBJ) to Z-up |
+
+#### Checklist for New Rendering Features
+
+Before implementing any new rendering feature:
+
+- [ ] World up vector is `[0, 0, 1]`
+- [ ] Geometry uses Z as vertical axis
+- [ ] Shaders use `normal.z` for vertical-dependent effects
+- [ ] Imported assets are converted to Z-up
+
+⚠️ **Migration Note:** The codebase currently uses Y-up. See `COORDINATE_SYSTEM.md` Migration Status section for files requiring changes.
 
 #### Why This Matters
 
