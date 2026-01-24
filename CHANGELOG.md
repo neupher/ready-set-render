@@ -10,6 +10,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.8.1] - 2026-01-24
 
 ### Added
+- **Z-Up Coordinate System**: Complete migration from Y-up (OpenGL default) to Z-up (Blender convention)
+  - Camera system now uses `[0, 0, 1]` as world up vector
+  - OrbitController rewritten with Z-up spherical coordinates
+  - Cube primitive: top/bottom faces now along Z axis
+  - Sphere primitive: poles now along Z axis
+  - ForwardRenderer hemisphere lighting uses `normal.z`
+  - LightGizmoRenderer fallback up vector updated
+- **ViewportGizmoRenderer**: New orientation indicator in bottom-left corner of viewport
+  - Shows XYZ axes with color coding (X=Red, Y=Green, Z=Blue)
+  - Rotates to match current camera orientation
+  - Clean line rendering (no arrowheads)
+
+### Changed
+- `Camera.ts`: Default `_up` changed from `[0, 1, 0]` to `[0, 0, 1]`
+- `RenderCameraAdapter.ts`: `up` property returns `[0, 0, 1]`
+- `CameraEntity.ts`: Default camera position adjusted for Z-up viewing angle `[5, -7, 4]`
+- `OrbitController.ts`: Spherical ↔ Cartesian conversions rewritten for Z-up
+- `Cube.ts`: Face geometry rotated for Z-up (Top/Bottom along Z, Front/Back along Y)
+- `Sphere.ts`: UV sphere poles along Z axis instead of Y
+- `ForwardRenderer.ts`: Hemisphere ambient uses `normal.z` instead of `normal.y`
+- `LightGizmoRenderer.ts`: Arrow shader uses Z-up fallback up vector
+- `transforms.ts`: Documentation updated to reference Z-up convention
+
+### Fixed
+- Sphere lighting appearing reversed (triangle winding order corrected for Z-up geometry)
+
+### Removed
+- "WebGL Viewport - Ready" status text from viewport panel (replaced by orientation gizmo)
+
+---
+
+## [0.8.0] - 2026-01-24
+
+### Added
 - **Coordinate System Documentation**: Comprehensive Z-up right-handed convention (Blender standard)
   - New `COORDINATE_SYSTEM.md` with axis definitions, implementation requirements, migration checklist
   - Section 8 in GUIDELINES.md: Coordinate System Convention (MANDATORY)

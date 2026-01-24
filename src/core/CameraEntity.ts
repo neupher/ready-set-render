@@ -98,8 +98,9 @@ export class CameraEntity implements IEntity {
     if (options?.position) {
       this.transform.position = [...options.position];
     } else {
-      // Default camera position: [7, 5, 7] looking at origin
-      this.transform.position = [7, 5, 7];
+      // Default camera position for Z-up: elevated view from front-right
+      // X = right, Y = forward (into screen), Z = up
+      this.transform.position = [5, -7, 4];
     }
 
     // Set target

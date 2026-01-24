@@ -75,10 +75,10 @@ export class RenderCameraAdapter implements ICamera {
   }
 
   /**
-   * Camera up vector (always world up for now).
+   * Camera up vector (Z-up world coordinate system).
    */
   get up(): [number, number, number] {
-    return [0, 1, 0];
+    return [0, 0, 1];
   }
 
   /**

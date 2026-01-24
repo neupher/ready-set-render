@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-24T01:35:00Z
-> **Version:** 0.8.0
-> **Status:** Phase 6 In Progress (6.7-6.14 remaining)
+> **Last Updated:** 2026-01-24T19:26:00Z
+> **Version:** 0.8.1
+> **Status:** Phase 6 In Progress (6.7-6.13 remaining)
 
 ---
 
@@ -81,10 +81,10 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 
 ## Next Steps (Recommended Order)
 
-1. **🔴 PRIORITY: Z-Up Coordinate System Refactor** - Complete the migration from Y-up to Z-up (Blender convention). See [COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md) Migration Status section for the ~12 files requiring changes.
-2. **Phase 6.7: PBR Uber Shader** - Cook-Torrance BRDF for realistic materials
-3. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
-4. **Phase 6.12: Viewport Grid** - Ground grid for spatial reference (NOTE: Must use Z-up XY plane)
+1. **Phase 6.7: PBR Uber Shader** - Cook-Torrance BRDF for realistic materials
+2. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
+3. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (now Z-up compliant)
+4. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
 
 ---
 

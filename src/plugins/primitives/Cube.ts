@@ -187,39 +187,41 @@ export class Cube implements IRenderable, IEntity, IMeshProvider, ICloneable {
   /**
    * Build mesh data for solid rendering.
    * 6 faces × 4 vertices = 24 vertices (for correct per-face normals)
+   * Z-up coordinate system: Top/bottom faces along Z axis.
    */
   private buildMeshData(): IMeshData {
     // 6 faces × 4 vertices = 24 vertices
+    // Z-up: Top (+Z), Bottom (-Z), Front (+Y), Back (-Y), Right (+X), Left (-X)
     const positions = new Float32Array([
-      // Front face (+Z)
+      // Top face (+Z)
       -0.5, -0.5, 0.5,
       0.5, -0.5, 0.5,
       0.5, 0.5, 0.5,
       -0.5, 0.5, 0.5,
 
-      // Back face (-Z)
-      0.5, -0.5, -0.5,
-      -0.5, -0.5, -0.5,
+      // Bottom face (-Z)
       -0.5, 0.5, -0.5,
       0.5, 0.5, -0.5,
+      0.5, -0.5, -0.5,
+      -0.5, -0.5, -0.5,
 
-      // Top face (+Y)
+      // Front face (+Y)
+      -0.5, 0.5, -0.5,
       -0.5, 0.5, 0.5,
       0.5, 0.5, 0.5,
       0.5, 0.5, -0.5,
-      -0.5, 0.5, -0.5,
 
-      // Bottom face (-Y)
-      -0.5, -0.5, -0.5,
+      // Back face (-Y)
       0.5, -0.5, -0.5,
       0.5, -0.5, 0.5,
       -0.5, -0.5, 0.5,
+      -0.5, -0.5, -0.5,
 
       // Right face (+X)
-      0.5, -0.5, 0.5,
-      0.5, -0.5, -0.5,
       0.5, 0.5, -0.5,
       0.5, 0.5, 0.5,
+      0.5, -0.5, 0.5,
+      0.5, -0.5, -0.5,
 
       // Left face (-X)
       -0.5, -0.5, -0.5,
@@ -230,25 +232,25 @@ export class Cube implements IRenderable, IEntity, IMeshProvider, ICloneable {
 
     // Normals for each vertex (same for all 4 vertices of each face)
     const normals = new Float32Array([
-      // Front face (+Z)
+      // Top face (+Z)
       0, 0, 1,
       0, 0, 1,
       0, 0, 1,
       0, 0, 1,
 
-      // Back face (-Z)
+      // Bottom face (-Z)
       0, 0, -1,
       0, 0, -1,
       0, 0, -1,
       0, 0, -1,
 
-      // Top face (+Y)
+      // Front face (+Y)
       0, 1, 0,
       0, 1, 0,
       0, 1, 0,
       0, 1, 0,
 
-      // Bottom face (-Y)
+      // Back face (-Y)
       0, -1, 0,
       0, -1, 0,
       0, -1, 0,

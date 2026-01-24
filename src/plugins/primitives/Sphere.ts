@@ -227,6 +227,7 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable {
   /**
    * Build mesh data for solid rendering.
    * Uses UV sphere algorithm with latitude/longitude subdivision.
+   * Z-up coordinate system: Poles along Z axis.
    */
   private buildMeshData(): IMeshData {
     const segments = this.segments;
@@ -239,24 +240,24 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable {
     const positions = new Float32Array(vertexCount * 3);
     const normals = new Float32Array(vertexCount * 3);
 
-    // Generate vertices
+    // Generate vertices (Z-up convention)
     let vertexIndex = 0;
     for (let ring = 0; ring <= rings; ring++) {
-      // phi: 0 at top pole (y = +radius), PI at bottom pole (y = -radius)
+      // phi: 0 at top pole (z = +radius), PI at bottom pole (z = -radius)
       const phi = (ring / rings) * Math.PI;
       const sinPhi = Math.sin(phi);
       const cosPhi = Math.cos(phi);
 
       for (let seg = 0; seg <= segments; seg++) {
-        // theta: 0 to 2*PI around the equator
+        // theta: 0 to 2*PI around the equator (in XY plane)
         const theta = (seg / segments) * Math.PI * 2;
         const sinTheta = Math.sin(theta);
         const cosTheta = Math.cos(theta);
 
-        // Position on unit sphere
+        // Position on unit sphere (Z-up: poles along Z axis)
         const x = cosTheta * sinPhi;
-        const y = cosPhi;
-        const z = sinTheta * sinPhi;
+        const y = sinTheta * sinPhi;
+        const z = cosPhi;
 
         // Position (scaled by radius)
         positions[vertexIndex * 3 + 0] = x * radius;
@@ -286,15 +287,15 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable {
         const bottomLeft = topLeft + (segments + 1);
         const bottomRight = bottomLeft + 1;
 
-        // Triangle 1: top-left, bottom-right, bottom-left (CCW when viewed from outside)
+        // Triangle 1: top-left, bottom-left, bottom-right (CCW when viewed from outside)
         indices[indexOffset++] = topLeft;
-        indices[indexOffset++] = bottomRight;
         indices[indexOffset++] = bottomLeft;
-
-        // Triangle 2: top-left, top-right, bottom-right (CCW when viewed from outside)
-        indices[indexOffset++] = topLeft;
-        indices[indexOffset++] = topRight;
         indices[indexOffset++] = bottomRight;
+
+        // Triangle 2: top-left, bottom-right, top-right (CCW when viewed from outside)
+        indices[indexOffset++] = topLeft;
+        indices[indexOffset++] = bottomRight;
+        indices[indexOffset++] = topRight;
       }
     }
 

@@ -32,14 +32,14 @@ const CURSORS = {
 };
 
 /**
- * Spherical coordinates for orbital camera.
+ * Spherical coordinates for orbital camera (Z-up convention).
  */
 interface SphericalCoordinates {
   /** Distance from pivot */
   radius: number;
-  /** Horizontal angle in radians (azimuth, around Y axis) */
+  /** Horizontal angle in radians (azimuth, around Z axis in XY plane) */
   theta: number;
-  /** Vertical angle in radians (polar, from Y axis) */
+  /** Vertical angle in radians (polar, from +Z axis downward) */
   phi: number;
 }
 
@@ -275,8 +275,8 @@ export class OrbitController {
       this.pivot[2] - position[2],
     ]);
 
-    // Right vector (perpendicular to forward and world up)
-    const worldUp: [number, number, number] = [0, 1, 0];
+    // Right vector (perpendicular to forward and world up - Z-up convention)
+    const worldUp: [number, number, number] = [0, 0, 1];
     const right = this.normalize(this.cross(forward, worldUp));
 
     // Up vector (perpendicular to both forward and right - stays in camera's local plane)
@@ -327,6 +327,7 @@ export class OrbitController {
 
   /**
    * Convert spherical coordinates to Cartesian.
+   * Z-up convention: theta is azimuth in XY plane, phi is from +Z axis.
    */
   private sphericalToCartesian(
     spherical: SphericalCoordinates,
@@ -334,17 +335,20 @@ export class OrbitController {
   ): [number, number, number] {
     const { radius, theta, phi } = spherical;
 
-    // Spherical to Cartesian (Y-up convention)
+    // Spherical to Cartesian (Z-up convention)
+    // theta = azimuth angle around Z axis (in XY plane)
+    // phi = polar angle from +Z axis (0 = top, PI = bottom)
     const sinPhi = Math.sin(phi);
-    const x = center[0] + radius * sinPhi * Math.sin(theta);
-    const y = center[1] + radius * Math.cos(phi);
-    const z = center[2] + radius * sinPhi * Math.cos(theta);
+    const x = center[0] + radius * sinPhi * Math.cos(theta);
+    const y = center[1] + radius * sinPhi * Math.sin(theta);
+    const z = center[2] + radius * Math.cos(phi);
 
     return [x, y, z];
   }
 
   /**
    * Convert Cartesian position to spherical coordinates.
+   * Z-up convention: theta is azimuth in XY plane, phi is from +Z axis.
    */
   private cartesianToSpherical(
     position: [number, number, number],
@@ -355,8 +359,10 @@ export class OrbitController {
     const dz = position[2] - center[2];
 
     const radius = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    const theta = Math.atan2(dx, dz);
-    const phi = Math.acos(Math.max(-1, Math.min(1, dy / radius)));
+    // Azimuth angle in XY plane (around Z axis)
+    const theta = Math.atan2(dy, dx);
+    // Polar angle from +Z axis
+    const phi = Math.acos(Math.max(-1, Math.min(1, dz / radius)));
 
     return { radius, theta, phi };
   }

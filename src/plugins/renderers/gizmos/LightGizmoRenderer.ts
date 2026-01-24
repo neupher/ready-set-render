@@ -65,6 +65,7 @@ void main() {
  * Arrow vertex shader - rotates to match light direction.
  * Uses a rotation matrix derived from the light direction.
  * Arrow points in the direction light travels (from sun toward scene).
+ * Z-up coordinate system.
  */
 const ARROW_VERTEX_SHADER = `#version 300 es
 precision highp float;
@@ -82,8 +83,8 @@ void main() {
   // Light direction vector points where light travels (from sun to scene)
   vec3 dir = normalize(uLightDirection);
 
-  // Create orthonormal basis from direction
-  vec3 up = abs(dir.y) < 0.999 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  // Create orthonormal basis from direction (Z-up coordinate system)
+  vec3 up = abs(dir.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
   vec3 right = normalize(cross(up, dir));
   up = cross(dir, right);
 

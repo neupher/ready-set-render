@@ -1,6 +1,6 @@
 # Coordinate System Convention: WebGL Editor
 
-> **Last Updated:** 2026-01-24T01:35:00Z
+> **Last Updated:** 2026-01-24T19:25:00Z
 > **Version:** 1.0.0
 > **Status:** CANONICAL - All rendering features MUST follow this convention
 
@@ -289,38 +289,49 @@ GLTF uses **Y-up, right-handed**. When importing:
 
 ## Migration Status
 
-### ⚠️ CURRENT STATE: Y-Up Implementation
+### ✅ COMPLETE: Z-Up Implementation
 
-The codebase currently uses **Y-up** (OpenGL/WebGL default). The following files require modification to enforce the canonical Z-up convention:
+The codebase has been migrated to **Z-up** (Blender convention). The following files have been updated:
 
-#### Critical (Core Math) - Must Change First
-| File | Current | Required |
-|------|---------|----------|
-| `src/utils/math/transforms.ts` | `mat4LookAt` defaults to Y-up | Change default up to `[0, 0, 1]` |
-| `src/core/Camera.ts` | `_up = [0, 1, 0]` | Change to `[0, 0, 1]` |
-| `src/core/RenderCameraAdapter.ts` | Hardcoded `[0, 1, 0]` | Change to `[0, 0, 1]` |
+#### Core Math
 
-#### Navigation - Change After Core
-| File | Current | Required |
-|------|---------|----------|
-| `src/plugins/navigation/OrbitController.ts` | `worldUp = [0, 1, 0]`, Y-up spherical | Change to Z-up, rewrite spherical math |
+| File | Change |
+|------|--------|
+| `src/utils/math/transforms.ts` | Updated `mat4LookAt` documentation to reference Z-up |
 
-#### Primitives - Change After Navigation
-| File | Current | Required |
-|------|---------|----------|
-| `src/plugins/primitives/Cube.ts` | Top/Bottom on Y axis | Rotate geometry: swap Y↔Z |
-| `src/plugins/primitives/Sphere.ts` | Poles on Y axis | Change pole axis to Z |
+#### Camera System
 
-#### Shaders/Lighting - Change Last
-| File | Current | Required |
-|------|---------|----------|
-| `src/plugins/renderers/forward/ForwardRenderer.ts` | `normal.y` hemisphere | Change to `normal.z` |
-| `src/plugins/renderers/gizmos/LightGizmoRenderer.ts` | Fallback up `[0, 1, 0]` | Change to `[0, 0, 1]` |
+| File | Change |
+|------|--------|
+| `src/core/Camera.ts` | `_up = [0, 0, 1]` (Z-up) |
+| `src/core/RenderCameraAdapter.ts` | `up` property returns `[0, 0, 1]` |
+| `src/core/CameraEntity.ts` | Default position `[5, -7, 4]` for Z-up viewing angle |
 
-#### Default Values
-| File | Current | Required |
-|------|---------|----------|
-| `src/core/CameraEntity.ts` | Position `[7, 5, 7]` | Adjust for Z-up viewing angle |
+#### Navigation
+
+| File | Change |
+|------|--------|
+| `src/plugins/navigation/OrbitController.ts` | Z-up spherical coordinates, `worldUp = [0, 0, 1]` |
+
+#### Primitives
+
+| File | Change |
+|------|--------|
+| `src/plugins/primitives/Cube.ts` | Top/bottom faces along Z axis |
+| `src/plugins/primitives/Sphere.ts` | Poles along Z axis |
+
+#### Shaders/Lighting
+
+| File | Change |
+|------|--------|
+| `src/plugins/renderers/forward/ForwardRenderer.ts` | Hemisphere uses `normal.z` |
+| `src/plugins/renderers/gizmos/LightGizmoRenderer.ts` | Fallback up `[0, 0, 1]` |
+
+#### New Features
+
+| File | Description |
+|------|-------------|
+| `src/plugins/renderers/gizmos/ViewportGizmoRenderer.ts` | Orientation indicator showing XYZ axes |
 
 ---
 

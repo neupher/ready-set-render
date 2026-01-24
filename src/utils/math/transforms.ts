@@ -79,7 +79,7 @@ export function mat4Perspective(
  *
  * @param eye - Camera position
  * @param target - Target point to look at
- * @param up - Up vector (usually [0, 1, 0])
+ * @param up - Up vector (world up is [0, 0, 1] for Z-up coordinate system)
  * @returns A new view matrix
  */
 export function mat4LookAt(eye: Vec3, target: Vec3, up: Vec3): Mat4 {

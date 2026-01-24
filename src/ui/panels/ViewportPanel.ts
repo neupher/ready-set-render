@@ -66,10 +66,10 @@ export class ViewportPanel {
     this.canvas.className = 'viewport-canvas';
     this.canvas.style.display = 'block';
 
-    // Create status overlay
+    // Create status overlay (hidden by default - gizmo replaces this)
     this.status = document.createElement('div');
     this.status.className = 'viewport-status';
-    this.status.textContent = 'WebGL Viewport - Ready';
+    this.status.style.display = 'none';
 
     // Assemble
     this.canvasContainer.appendChild(this.canvas);

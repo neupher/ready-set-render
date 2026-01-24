@@ -32,6 +32,7 @@ import { CubeFactory, SphereFactory, PrimitiveRegistry } from '@plugins/primitiv
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { LightGizmoRenderer } from '@plugins/renderers/gizmos/LightGizmoRenderer';
+import { ViewportGizmoRenderer } from '@plugins/renderers/gizmos/ViewportGizmoRenderer';
 import { OrbitController } from '@plugins/navigation';
 import { DirectionalLight } from '@plugins/lights/DirectionalLight';
 import { LightManager } from '@core/LightManager';
@@ -80,6 +81,7 @@ export class Application {
   private lineRenderer!: LineRenderer;
   private forwardRenderer!: ForwardRenderer;
   private lightGizmoRenderer!: LightGizmoRenderer;
+  private viewportGizmoRenderer!: ViewportGizmoRenderer;
   private lightManager!: LightManager;
   private renderCamera!: RenderCameraAdapter;
   private cameraEntity!: CameraEntity;
@@ -200,6 +202,11 @@ export class Application {
     this.lightGizmoRenderer.initialize();
     console.log('Light gizmo renderer initialized');
 
+    // Initialize viewport gizmo renderer (orientation indicator)
+    this.viewportGizmoRenderer = new ViewportGizmoRenderer(this.gl);
+    this.viewportGizmoRenderer.initialize();
+    console.log('Viewport gizmo renderer initialized');
+
     // Initialize input manager
     const viewportCanvas = this.layout.getViewport()!.getCanvas();
     new InputManager(viewportCanvas, this.eventBus);
@@ -300,6 +307,9 @@ export class Application {
 
       // Render light gizmos for selected light entities
       this.renderSelectedLightGizmos();
+
+      // Render viewport orientation gizmo (always visible in corner)
+      this.viewportGizmoRenderer.render(this.renderCamera);
 
       this.forwardRenderer.endFrame();
       this.animationFrameId = requestAnimationFrame(render);

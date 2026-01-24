@@ -26,7 +26,7 @@ import { mat4Perspective, mat4LookAt, mat4Multiply, degToRad } from '@utils/math
 export class Camera implements ICamera {
   private _position: [number, number, number] = [0, 0, 5];
   private _target: [number, number, number] = [0, 0, 0];
-  private _up: [number, number, number] = [0, 1, 0];
+  private _up: [number, number, number] = [0, 0, 1]; // Z-up coordinate system
   private _fov: number = degToRad(60);
   private _aspect: number = 1;
   private _near: number = 0.1;

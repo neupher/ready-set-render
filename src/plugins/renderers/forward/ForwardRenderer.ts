@@ -102,8 +102,8 @@ void main() {
     diffuse += uBaseColor * uLightColors[i] * NdotL;
   }
 
-  // Hemisphere ambient (sky color top, ground color bottom)
-  float hemiFactor = normal.y * 0.5 + 0.5;
+  // Hemisphere ambient (sky color top, ground color bottom) - Z-up convention
+  float hemiFactor = normal.z * 0.5 + 0.5;
   vec3 ambient = uBaseColor * mix(uAmbientColor * 0.6, uAmbientColor, hemiFactor);
 
   // Simple rim light for better definition (using primary light if available)
