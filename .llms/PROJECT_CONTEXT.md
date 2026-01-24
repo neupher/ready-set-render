@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-24T19:47:00Z
-> **Version:** 0.8.2
-> **Status:** Phase 6 In Progress (6.7-6.13 remaining)
+> **Last Updated:** 2026-01-24T22:54:00Z
+> **Version:** 0.8.3
+> **Status:** Phase 6 In Progress (6.8-6.13 remaining)
 
 ---
 
@@ -32,12 +32,19 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.8.0)
+## Current State (v0.8.3)
 
 ### What's Working
 
 - **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
+- **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
+  - GGX/Trowbridge-Reitz normal distribution
+  - Smith-GGX geometry function
+  - Fresnel-Schlick approximation
+  - Metallic/roughness workflow
+  - ACES tone mapping, sRGB gamma correction
+- **Modular Shaders**: Reusable GLSL modules (math, brdf, lighting) via `composeShader()`
 - **Primitives**: Cube, Sphere (via IMeshProvider/MeshGPUCache architecture)
 - **Lights**: DirectionalLight with transform-based direction, LightGizmoRenderer
 - **Camera**: CameraEntity with composition pattern, OrbitController (Maya-style navigation)
@@ -48,7 +55,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **393 tests passing**
+- **453 tests passing**
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -57,6 +64,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **PropertyChangeHandler** centralizes all entity property changes
 - **MeshGPUCache** centralized GPU resource management
 - **ICloneable** enables polymorphic entity duplication
+- **PBRShaderProgram** encapsulates PBR shader with automatic material switching
 
 ---
 
@@ -68,7 +76,7 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 6.7 | PBR Uber Shader (Cook-Torrance BRDF) | Not Started |
+| 6.7 | PBR Uber Shader (Cook-Torrance BRDF) | ✅ Complete |
 | 6.8 | Transform Gizmos (W/E/R) | Not Started |
 | 6.9 | Live Shader Editor | Not Started |
 | 6.10 | Render Mode Dropdown | Not Started |
@@ -81,10 +89,10 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 
 ## Next Steps (Recommended Order)
 
-1. **Phase 6.7: PBR Uber Shader** - Cook-Torrance BRDF for realistic materials
-2. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
-3. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (now Z-up compliant)
-4. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
+1. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
+2. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
+3. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
+4. **Phase 6.10: Render Mode Dropdown** - Solid/Wireframe/Textured switching
 
 ---
 
@@ -118,6 +126,10 @@ ready-set-render/
 ├── src/
 │   ├── core/                 # Core engine modules
 │   ├── plugins/              # Plugin modules (renderers, primitives, lights, tools)
+│   │   └── renderers/
+│   │       └── shaders/      # Modular GLSL shader system (NEW)
+│   │           ├── common/   # Reusable GLSL snippets (math, brdf, lighting)
+│   │           └── pbr/      # PBR shader (Cook-Torrance BRDF)
 │   ├── ui/                   # UI components and panels
 │   ├── utils/                # Shared utilities (math, etc.)
 │   └── index.ts              # Entry point
@@ -145,14 +157,15 @@ For detailed history of completed phases, see:
 | **Terminology** | Unity-style (GameObject, Transform, Component) - see [GUIDELINES.md](./GUIDELINES.md) §7 |
 | **Undo/Redo** | Command pattern required for all data changes - see [GUIDELINES.md](./GUIDELINES.md) §6 |
 | **Render Pipelines** | Must implement IRenderPipeline interface - see [ARCHITECTURE.md](./ARCHITECTURE.md) |
+| **PBR Materials** | Set `shaderName: 'pbr'` on material to enable Cook-Torrance BRDF |
 
 ---
 
 ## Related Documents
 
-- [PHASE_6_PLAN.md](./PHASE_6_PLAN.md) - Remaining Phase 6 work (6.7-6.14)
+- [PHASE_6_PLAN.md](./PHASE_6_PLAN.md) - Remaining Phase 6 work (6.8-6.13)
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System design details
-- [COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md) - Z-up convention (NEW)
+- [COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md) - Z-up convention
 - [GUIDELINES.md](./GUIDELINES.md) - Development rules
 - [PATTERNS.md](./PATTERNS.md) - Code conventions
 - [WORKFLOWS.md](./WORKFLOWS.md) - Workflow automation

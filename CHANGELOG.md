@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.3] - 2026-01-24
+
+### Added
+
+- **PBR Uber Shader (Phase 6.7)**: Physically-based rendering following Blender's Principled BSDF conventions
+  - Cook-Torrance microfacet BRDF with GGX/Trowbridge-Reitz normal distribution
+  - Smith-GGX geometry function for accurate self-shadowing
+  - Fresnel-Schlick approximation with roughness-aware ambient term
+  - Metallic workflow (0 = dielectric, 1 = metal)
+  - Energy-conserving diffuse/specular split
+  - ACES filmic tone mapping and sRGB gamma correction
+  - Multi-light support (up to 8 directional lights)
+  - Emission support with strength multiplier
+
+- **Modular Shader Architecture**: Reusable GLSL code modules
+  - `shaders/common/math.glsl.ts` - Math utilities (PI, saturate, sqr, remap)
+  - `shaders/common/brdf.glsl.ts` - BRDF functions (GGX, Smith, Fresnel)
+  - `shaders/common/lighting.glsl.ts` - Tone mapping, gamma correction, hemisphere ambient
+  - `composeShader()` utility for combining GLSL snippets
+
+- **PBR Material Properties**: Extended `IMaterialComponent` interface
+  - `metallic: number` - Metallic factor (0-1)
+  - `roughness: number` - Roughness factor (0-1)
+  - `emission: [number, number, number]` - Emission color
+  - `emissionStrength: number` - Emission intensity multiplier
+
+- **ForwardRenderer PBR Integration**: Automatic shader switching
+  - Materials with `shaderName: 'pbr'` use Cook-Torrance BRDF
+  - Materials with default shader continue using Lambertian diffuse
+  - Efficient per-frame light caching for shader switching
+  - Backward compatible with existing materials
+
+### Changed
+
+- `ForwardRenderer.ts`: Added PBR shader support with automatic switching based on material
+- `IMaterialComponent.ts`: Extended with PBR properties following Blender conventions
+
+---
+
 ## [0.8.2] - 2026-01-24
 
 ### Fixed

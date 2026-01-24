@@ -9,6 +9,7 @@
  * - Directional light support (direction, color, intensity)
  * - Ambient light approximation
  * - Normal matrix computation for correct lighting
+ * - PBR shader support (Cook-Torrance BRDF, Blender Principled BSDF style)
  */
 
 import type {
@@ -32,6 +33,7 @@ import {
   normalMatrix,
 } from '@utils/math';
 import { MeshGPUCache } from '../shared/MeshGPUCache';
+import { PBRShaderProgram } from '../shaders/pbr';
 
 /**
  * Vertex shader for forward rendering with lighting.
@@ -129,6 +131,10 @@ void main() {
  * Renders all IRenderable objects in the scene as solid shaded meshes
  * with directional lighting and ambient contribution.
  *
+ * Supports two shading models:
+ * - Default (Lambertian): Simple diffuse + ambient + rim lighting
+ * - PBR (Cook-Torrance): Physically-based with metallic/roughness workflow
+ *
  * Uses MeshGPUCache for centralized GPU resource management.
  * Entities only need to implement IMeshProvider to be rendered.
  *
@@ -153,12 +159,16 @@ export class ForwardRenderer implements IRenderPipeline {
 
   private gl: WebGL2RenderingContext | null = null;
   private program: WebGLProgram | null = null;
+  private pbrProgram: PBRShaderProgram | null = null;
   private currentCamera: ICamera | null = null;
   private lightManager: LightManager | null = null;
   private meshGPUCache: MeshGPUCache | null = null;
   private initialized = false;
 
-  // Uniform locations
+  // Track which shader is currently bound
+  private currentShader: 'default' | 'pbr' = 'default';
+
+  // Uniform locations for default shader
   private uModelMatrix: WebGLUniformLocation | null = null;
   private uViewProjectionMatrix: WebGLUniformLocation | null = null;
   private uNormalMatrix: WebGLUniformLocation | null = null;
@@ -172,6 +182,14 @@ export class ForwardRenderer implements IRenderPipeline {
   // Maximum lights supported
   private readonly MAX_LIGHTS = 8;
 
+  // Cached light data for shader switching
+  private cachedLightDirections: Float32Array = new Float32Array(8 * 3);
+  private cachedLightColors: Float32Array = new Float32Array(8 * 3);
+  private cachedLightCount = 0;
+  private cachedAmbientColor: [number, number, number] = [0.15, 0.15, 0.2];
+  private cachedCameraPosition: [number, number, number] = [0, 0, 0];
+  private cachedViewProjection: Float32Array | null = null;
+
   // Default light values (used when no lights in scene)
   private defaultLightDirection: [number, number, number] = [-0.5, -1, -0.5];
   private defaultLightColor: [number, number, number] = [1, 1, 1];
@@ -184,13 +202,17 @@ export class ForwardRenderer implements IRenderPipeline {
   async initialize(context: IPluginContext): Promise<void> {
     this.gl = context.gl;
 
-    // Compile and link shaders
+    // Compile and link default (Lambertian) shader
     this.program = this.createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+
+    // Compile PBR shader
+    this.pbrProgram = new PBRShaderProgram(this.gl);
+    this.pbrProgram.compile();
 
     // Create GPU resource cache
     this.meshGPUCache = new MeshGPUCache(this.gl);
 
-    // Cache uniform locations
+    // Cache uniform locations for default shader
     this.uModelMatrix = this.gl.getUniformLocation(this.program, 'uModelMatrix');
     this.uViewProjectionMatrix = this.gl.getUniformLocation(this.program, 'uViewProjectionMatrix');
     this.uNormalMatrix = this.gl.getUniformLocation(this.program, 'uNormalMatrix');
@@ -212,6 +234,18 @@ export class ForwardRenderer implements IRenderPipeline {
   async dispose(): Promise<void> {
     if (this.gl && this.program) {
       this.gl.deleteProgram(this.program);
+    }
+
+    // Dispose PBR shader
+    if (this.pbrProgram) {
+      this.pbrProgram.dispose();
+      this.pbrProgram = null;
+    }
+
+    // Dispose mesh cache
+    if (this.meshGPUCache) {
+      this.meshGPUCache.disposeAll();
+      this.meshGPUCache = null;
     }
 
     this.gl = null;
@@ -261,19 +295,24 @@ export class ForwardRenderer implements IRenderPipeline {
 
     const gl = this.gl;
 
-    // Use our shader program
+    // Start with default shader
     gl.useProgram(this.program);
+    this.currentShader = 'default';
+
+    // Cache view-projection matrix and camera position for shader switching
+    this.cachedViewProjection = this.currentCamera.getViewProjectionMatrix();
+    const cameraPos = this.currentCamera.position;
+    this.cachedCameraPosition = [cameraPos[0], cameraPos[1], cameraPos[2]];
 
     // Set up view-projection matrix
-    const viewProjection = this.currentCamera.getViewProjectionMatrix();
-    gl.uniformMatrix4fv(this.uViewProjectionMatrix, false, viewProjection);
+    gl.uniformMatrix4fv(this.uViewProjectionMatrix, false, this.cachedViewProjection);
 
     // Set up camera position for specular/rim lighting
-    const cameraPos = this.currentCamera.position;
     gl.uniform3f(this.uCameraPosition, cameraPos[0], cameraPos[1], cameraPos[2]);
 
-    // Set up lights using multi-light arrays
-    this.setLightUniforms(gl);
+    // Cache and set up lights
+    this.cacheLightUniforms();
+    this.setLightUniformsForShader(gl, 'default');
 
     // Set ambient color
     gl.uniform3fv(this.uAmbientColor, this.getAmbientColor());
@@ -281,36 +320,63 @@ export class ForwardRenderer implements IRenderPipeline {
     // Render all solid objects
     const renderables = scene.getRenderables() as IRenderable[];
     for (const renderable of renderables) {
-      this.renderObject(gl, renderable, viewProjection);
+      this.renderObject(gl, renderable);
     }
   }
 
   /**
-   * Set light uniforms for multi-light rendering.
+   * Cache light uniforms for use when switching between shaders.
    */
-  private setLightUniforms(gl: WebGL2RenderingContext): void {
+  private cacheLightUniforms(): void {
     const lights = this.getLightsData();
 
-    // Build flat arrays for uniform upload
-    const directions = new Float32Array(this.MAX_LIGHTS * 3);
-    const colors = new Float32Array(this.MAX_LIGHTS * 3);
+    // Reset cached data
+    this.cachedLightDirections.fill(0);
+    this.cachedLightColors.fill(0);
 
     for (let i = 0; i < Math.min(lights.length, this.MAX_LIGHTS); i++) {
       const light = lights[i];
       const normalizedDir = this.normalizeDirection(light.direction);
 
-      directions[i * 3 + 0] = normalizedDir[0];
-      directions[i * 3 + 1] = normalizedDir[1];
-      directions[i * 3 + 2] = normalizedDir[2];
+      this.cachedLightDirections[i * 3 + 0] = normalizedDir[0];
+      this.cachedLightDirections[i * 3 + 1] = normalizedDir[1];
+      this.cachedLightDirections[i * 3 + 2] = normalizedDir[2];
 
-      colors[i * 3 + 0] = light.color[0];
-      colors[i * 3 + 1] = light.color[1];
-      colors[i * 3 + 2] = light.color[2];
+      this.cachedLightColors[i * 3 + 0] = light.color[0];
+      this.cachedLightColors[i * 3 + 1] = light.color[1];
+      this.cachedLightColors[i * 3 + 2] = light.color[2];
     }
 
-    gl.uniform3fv(this.uLightDirections, directions);
-    gl.uniform3fv(this.uLightColors, colors);
-    gl.uniform1i(this.uLightCount, Math.min(lights.length, this.MAX_LIGHTS));
+    this.cachedLightCount = Math.min(lights.length, this.MAX_LIGHTS);
+    this.cachedAmbientColor = this.getAmbientColor();
+  }
+
+  /**
+   * Set light uniforms for the currently active shader.
+   */
+  private setLightUniformsForShader(gl: WebGL2RenderingContext, shader: 'default' | 'pbr'): void {
+    if (shader === 'default') {
+      gl.uniform3fv(this.uLightDirections, this.cachedLightDirections);
+      gl.uniform3fv(this.uLightColors, this.cachedLightColors);
+      gl.uniform1i(this.uLightCount, this.cachedLightCount);
+      gl.uniform3fv(this.uAmbientColor, this.cachedAmbientColor);
+    } else if (shader === 'pbr' && this.pbrProgram) {
+      this.pbrProgram.setLightingUniforms(
+        this.cachedLightDirections,
+        this.cachedLightColors,
+        this.cachedLightCount,
+        this.cachedAmbientColor
+      );
+      this.pbrProgram.setCameraPosition(this.cachedCameraPosition);
+    }
+  }
+
+  /**
+   * Set light uniforms for multi-light rendering (legacy method for compatibility).
+   */
+  private setLightUniforms(gl: WebGL2RenderingContext): void {
+    this.cacheLightUniforms();
+    this.setLightUniformsForShader(gl, 'default');
   }
 
   /**
@@ -348,12 +414,9 @@ export class ForwardRenderer implements IRenderPipeline {
    *
    * Objects that implement IMeshProvider will be rendered.
    * Objects without mesh data (cameras, lights) are skipped.
+   * Automatically switches between default and PBR shaders based on material.
    */
-  private renderObject(
-    gl: WebGL2RenderingContext,
-    renderable: IRenderable,
-    _viewProjection: Float32Array
-  ): void {
+  private renderObject(gl: WebGL2RenderingContext, renderable: IRenderable): void {
     // Check if this object provides mesh data
     if (!isMeshProvider(renderable)) {
       return; // Skip non-mesh objects (cameras, lights)
@@ -370,35 +433,92 @@ export class ForwardRenderer implements IRenderPipeline {
       return;
     }
 
-    const gpuResources = this.meshGPUCache.getOrCreateSolid(
-      renderable.id,
-      meshData,
-      this.program
-    );
+    // Get material from entity if available
+    let material: IMaterialComponent | null = null;
+    const entityWithComponent = renderable as { getComponent?: <T>(type: string) => T | null };
+    if (typeof entityWithComponent.getComponent === 'function') {
+      material = entityWithComponent.getComponent<IMaterialComponent>('material');
+    }
+
+    // Determine which shader to use based on material
+    const usePBR = material?.shaderName === 'pbr' && this.pbrProgram?.isReady();
+
+    // Switch shader if needed
+    if (usePBR && this.currentShader !== 'pbr') {
+      this.switchToPBRShader(gl);
+    } else if (!usePBR && this.currentShader !== 'default') {
+      this.switchToDefaultShader(gl);
+    }
 
     // Compute model matrix from transform
     const modelMatrix = this.computeModelMatrix(renderable.transform);
-    gl.uniformMatrix4fv(this.uModelMatrix, false, modelMatrix);
 
     // Compute normal matrix for correct lighting
     const normalMat = normalMatrix(modelMatrix);
-    gl.uniformMatrix3fv(this.uNormalMatrix, false, normalMat);
 
-    // Get material color from entity if available
-    let baseColor: [number, number, number] = [0.8, 0.8, 0.8];
-    const entityWithComponent = renderable as { getComponent?: <T>(type: string) => T | null };
-    if (typeof entityWithComponent.getComponent === 'function') {
-      const material = entityWithComponent.getComponent<IMaterialComponent>('material');
-      if (material?.color) {
-        baseColor = material.color;
-      }
+    // Get GPU resources using appropriate program
+    const activeProgram = usePBR ? this.pbrProgram!.getProgram()! : this.program;
+    const gpuResources = this.meshGPUCache.getOrCreateSolid(
+      renderable.id,
+      meshData,
+      activeProgram
+    );
+
+    if (usePBR && this.pbrProgram) {
+      // Set PBR uniforms
+      this.pbrProgram.setTransformUniforms(
+        modelMatrix,
+        this.cachedViewProjection!,
+        normalMat
+      );
+      this.pbrProgram.setMaterialUniforms(material);
+    } else {
+      // Set default shader uniforms
+      gl.uniformMatrix4fv(this.uModelMatrix, false, modelMatrix);
+      gl.uniformMatrix3fv(this.uNormalMatrix, false, normalMat);
+
+      // Set base color
+      const baseColor = material?.color ?? [0.8, 0.8, 0.8];
+      gl.uniform3fv(this.uBaseColor, baseColor);
     }
-    gl.uniform3fv(this.uBaseColor, baseColor);
 
     // Bind VAO and draw
     gl.bindVertexArray(gpuResources.vao);
     gl.drawElements(gl.TRIANGLES, gpuResources.indexCount, gl.UNSIGNED_SHORT, 0);
     gl.bindVertexArray(null);
+  }
+
+  /**
+   * Switch to PBR shader program.
+   */
+  private switchToPBRShader(gl: WebGL2RenderingContext): void {
+    if (!this.pbrProgram || !this.cachedViewProjection) return;
+
+    this.pbrProgram.use();
+    this.currentShader = 'pbr';
+
+    // Set up per-frame uniforms for PBR shader
+    this.setLightUniformsForShader(gl, 'pbr');
+  }
+
+  /**
+   * Switch to default (Lambertian) shader program.
+   */
+  private switchToDefaultShader(gl: WebGL2RenderingContext): void {
+    if (!this.program || !this.cachedViewProjection) return;
+
+    gl.useProgram(this.program);
+    this.currentShader = 'default';
+
+    // Restore per-frame uniforms for default shader
+    gl.uniformMatrix4fv(this.uViewProjectionMatrix, false, this.cachedViewProjection);
+    gl.uniform3f(
+      this.uCameraPosition,
+      this.cachedCameraPosition[0],
+      this.cachedCameraPosition[1],
+      this.cachedCameraPosition[2]
+    );
+    this.setLightUniformsForShader(gl, 'default');
   }
 
   /**

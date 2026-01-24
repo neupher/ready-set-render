@@ -1,14 +1,14 @@
 # Phase 6: Functional WebGL Editor - Remaining Work
 
-> **Last Updated:** 2026-01-24T01:35:00Z
-> **Version:** 0.8.0
-> **Status:** 6.7-6.14 remaining (6.1-6.6 complete)
+> **Last Updated:** 2026-01-24T22:55:00Z
+> **Version:** 0.8.3
+> **Status:** 6.8-6.13 remaining (6.1-6.7 complete)
 
 ---
 
 ## Overview
 
-This document covers the **remaining work** for Phase 6. For completed phases (6.1-6.6), see [archive/PHASE_6_HISTORICAL.md](./archive/PHASE_6_HISTORICAL.md).
+This document covers the **remaining work** for Phase 6. For completed phases (6.1-6.7), see [archive/PHASE_6_HISTORICAL.md](./archive/PHASE_6_HISTORICAL.md).
 
 **Goal**: Transform the WebGL Editor into a fully functional 3D editor with PBR shading, transform gizmos, live shader editing, and essential infrastructure.
 
@@ -19,52 +19,47 @@ This document covers the **remaining work** for Phase 6. For completed phases (6
 - [x] **Camera uses Composition Pattern** - CameraEntity + RenderCameraAdapter
 - [x] **Single source of truth**: Entity's Transform component
 - [x] **Gizmos render separate pass** with depth disabled (always on top)
-- [x] **PBR uses Cook-Torrance BRDF** (industry standard, same as Blender)
+- [x] **PBR uses Cook-Torrance BRDF** (industry standard, same as Blender) - ✅ Implemented
 - [x] **Shader errors shown inline** in editor (ShaderToy-style)
 - [x] **Forward rendering** with light uniforms (deferred for Phase 7+)
 - [x] **Maya-style navigation** controls (Alt+LMB/MMB/RMB)
 - [x] **Unity terminology** throughout
 - [x] **Undo/Redo from day one** - Command pattern (✅ already implemented)
 - [x] **Z-up right-handed** coordinate system (Blender convention) - see [COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md)
+- [x] **Modular GLSL shaders** - Reusable snippets via `composeShader()` utility
+
+---
+
+## Completed: Phase 6.7 (PBR Uber Shader)
+
+✅ **Implemented in v0.8.3**
+
+**Features Delivered**:
+- Cook-Torrance microfacet BRDF with:
+  - GGX/Trowbridge-Reitz normal distribution (D)
+  - Smith-GGX geometry function (G)
+  - Fresnel-Schlick approximation (F)
+- Metallic/roughness workflow following Blender's Principled BSDF
+- Energy-conserving diffuse/specular split
+- ACES filmic tone mapping + sRGB gamma correction
+- Multi-light support (up to 8 directional lights)
+- Emission support with strength multiplier
+- Modular shader architecture with reusable GLSL snippets
+
+**Files Created**:
+- `src/plugins/renderers/shaders/common/math.glsl.ts`
+- `src/plugins/renderers/shaders/common/brdf.glsl.ts`
+- `src/plugins/renderers/shaders/common/lighting.glsl.ts`
+- `src/plugins/renderers/shaders/pbr/pbr.vert.glsl.ts`
+- `src/plugins/renderers/shaders/pbr/pbr.frag.glsl.ts`
+- `src/plugins/renderers/shaders/pbr/PBRShaderProgram.ts`
+- `tests/unit/plugins/renderers/PBRShader.test.ts` (60 tests)
+
+**Usage**: Set `material.shaderName = 'pbr'` to enable PBR rendering on any entity.
 
 ---
 
 ## Remaining Phases
-
-### Phase 6.7: PBR Uber Shader (BRDF)
-
-**Goal**: Default PBR material matching Blender's Principled BSDF.
-
-**PBR Model**: Cook-Torrance microfacet BRDF
-- D: GGX/Trowbridge-Reitz
-- F: Schlick's Fresnel
-- G: Smith's geometry (GGX)
-
-**Tasks**:
-1. Create PBR shaders (pbr.vert, pbr.frag)
-2. Create `IMaterialComponent`:
-   ```typescript
-   interface IMaterialComponent extends IComponent {
-     type: 'material';
-     albedo: Vec3;
-     metallic: number;
-     roughness: number;
-     normalMap?: string;
-     emissive: Vec3;
-     emissiveIntensity: number;
-   }
-   ```
-3. Create `PBRMaterial` class
-4. Default values: Albedo [0.8,0.8,0.8], Metallic 0.0, Roughness 0.5
-5. Hemisphere ambient approximation
-
-**Files**:
-- `src/plugins/renderers/forward/shaders/pbr.vert` (new)
-- `src/plugins/renderers/forward/shaders/pbr.frag` (new)
-- `src/core/interfaces/IMaterialComponent.ts` (new/modify)
-- `src/plugins/materials/PBRMaterial.ts` (new)
-
----
 
 ### Phase 6.8: Transform Gizmos
 
