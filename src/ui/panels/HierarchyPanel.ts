@@ -112,19 +112,34 @@ export class HierarchyPanel {
     this.eventBus.off('scene:objectAdded', this.handleSceneChange);
     this.eventBus.off('scene:objectRemoved', this.handleSceneChange);
     this.eventBus.off('scene:objectRenamed', this.handleSceneChange);
+    this.eventBus.off('selection:changed', this.handleExternalSelectionChange);
     this.treeView.dispose();
   }
 
   private setupEvents(): void {
     this.handleSceneChange = this.handleSceneChange.bind(this);
+    this.handleExternalSelectionChange = this.handleExternalSelectionChange.bind(this);
 
     this.eventBus.on('scene:objectAdded', this.handleSceneChange);
     this.eventBus.on('scene:objectRemoved', this.handleSceneChange);
     this.eventBus.on('scene:objectRenamed', this.handleSceneChange);
+    this.eventBus.on('selection:changed', this.handleExternalSelectionChange);
   }
 
   private handleSceneChange(): void {
     this.refresh();
+  }
+
+  /**
+   * Handle selection changes from external sources (e.g., viewport picking).
+   * Updates the tree view to highlight the selected entity.
+   */
+  private handleExternalSelectionChange(data: { id: string }): void {
+    // Only update if the selection is different from current
+    if (data.id && this.treeView.getSelectedId() !== data.id) {
+      // Use internal method to update visual state without emitting another event
+      this.treeView.selectWithoutCallback(data.id);
+    }
   }
 
   private handleSelect(id: string): void {

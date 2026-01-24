@@ -37,6 +37,7 @@ uniform mat4 uViewMatrix;
 uniform mat4 uProjectionMatrix;
 uniform vec2 uScreenOffset;
 uniform float uSize;
+uniform float uAspectRatio;
 
 out vec3 vColor;
 
@@ -56,8 +57,9 @@ void main() {
 
   // Override XY to fixed screen position (bottom-left corner)
   // NDC coordinates: (-1,-1) is bottom-left, (1,1) is top-right
+  // Apply aspect ratio correction to X so gizmo remains square
   gl_Position = vec4(
-    uScreenOffset.x + rotatedPos.x * 0.15,
+    uScreenOffset.x + rotatedPos.x * 0.15 / uAspectRatio,
     uScreenOffset.y + rotatedPos.y * 0.15,
     -0.99, // Very close to near plane so it draws on top
     1.0
@@ -106,6 +108,7 @@ export class ViewportGizmoRenderer {
   private uProjectionMatrix: WebGLUniformLocation | null = null;
   private uScreenOffset: WebGLUniformLocation | null = null;
   private uSize: WebGLUniformLocation | null = null;
+  private uAspectRatio: WebGLUniformLocation | null = null;
 
   // Configuration
   private size: number;
@@ -144,6 +147,7 @@ export class ViewportGizmoRenderer {
     this.uProjectionMatrix = gl.getUniformLocation(this.program, 'uProjectionMatrix');
     this.uScreenOffset = gl.getUniformLocation(this.program, 'uScreenOffset');
     this.uSize = gl.getUniformLocation(this.program, 'uSize');
+    this.uAspectRatio = gl.getUniformLocation(this.program, 'uAspectRatio');
 
     // Create axis geometry
     this.createGeometry();
@@ -155,11 +159,18 @@ export class ViewportGizmoRenderer {
    * Render the orientation gizmo.
    *
    * @param camera - Current camera for view matrix
+   * @param viewportWidth - Width of the viewport in pixels
+   * @param viewportHeight - Height of the viewport in pixels
    */
-  render(camera: ICamera): void {
+  render(camera: ICamera, viewportWidth?: number, viewportHeight?: number): void {
     if (!this.initialized || !this.program) return;
 
     const gl = this.gl;
+
+    // Calculate aspect ratio
+    const width = viewportWidth ?? gl.canvas.width;
+    const height = viewportHeight ?? gl.canvas.height;
+    const aspectRatio = width / height;
 
     // Save current state
     const depthTestEnabled = gl.isEnabled(gl.DEPTH_TEST);
@@ -177,6 +188,7 @@ export class ViewportGizmoRenderer {
     gl.uniformMatrix4fv(this.uProjectionMatrix, false, camera.getProjectionMatrix());
     gl.uniform2fv(this.uScreenOffset, this.screenOffset);
     gl.uniform1f(this.uSize, this.size);
+    gl.uniform1f(this.uAspectRatio, aspectRatio);
 
     // Draw the axes
     gl.bindVertexArray(this.vao);

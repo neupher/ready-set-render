@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.2] - 2026-01-24
+
+### Fixed
+
+- **Viewport Gizmo Scaling**: Gizmo now maintains uniform size regardless of viewport aspect ratio
+  - Added `uAspectRatio` uniform to shader for proper NDC coordinate correction
+  - Gizmo no longer stretches on non-square viewports
+- **Hierarchy Selection Sync**: Hierarchy panel now highlights entities selected via viewport picking
+  - Added `selection:changed` event listener to HierarchyPanel
+  - Added `selectWithoutCallback()` method to TreeView to prevent circular event updates
+
+### Changed
+
+- `LightGizmoRenderer.ts`: Adjusted directional light arrow scale from 1.5 to 1.0 for better visual balance
+
+---
+
 ## [0.8.1] - 2026-01-24
 
 ### Added

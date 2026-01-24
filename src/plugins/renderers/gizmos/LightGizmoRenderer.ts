@@ -333,7 +333,7 @@ export class LightGizmoRenderer {
     gl.uniformMatrix4fv(this.uArrowViewProjection, false, viewProjection);
     gl.uniform3fv(this.uArrowWorldPosition, light.position);
     gl.uniform3fv(this.uArrowLightDirection, light.direction);
-    gl.uniform1f(this.uArrowScale, 1.5);
+    gl.uniform1f(this.uArrowScale, 1);
     gl.uniform3fv(this.uArrowColor, light.color);
 
     gl.bindVertexArray(this.arrowVAO);

@@ -115,6 +115,17 @@ export class TreeView {
   }
 
   /**
+   * Select a node by ID without triggering the onSelect callback.
+   * Used when selection is driven by external events to avoid circular updates.
+   */
+  selectWithoutCallback(id: string): void {
+    if (this.nodeMap.has(id)) {
+      this.selectedId = id;
+      this.render();
+    }
+  }
+
+  /**
    * Expand a node by ID.
    */
   expand(id: string): void {
