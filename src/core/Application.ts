@@ -31,6 +31,7 @@ import { EditorLayout } from '@ui/panels/EditorLayout';
 import { CubeFactory, SphereFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
+import { LightGizmoRenderer } from '@plugins/renderers/gizmos/LightGizmoRenderer';
 import { OrbitController } from '@plugins/navigation';
 import { DirectionalLight } from '@plugins/lights/DirectionalLight';
 import { LightManager } from '@core/LightManager';
@@ -78,6 +79,7 @@ export class Application {
   private gl!: WebGL2RenderingContext;
   private lineRenderer!: LineRenderer;
   private forwardRenderer!: ForwardRenderer;
+  private lightGizmoRenderer!: LightGizmoRenderer;
   private lightManager!: LightManager;
   private renderCamera!: RenderCameraAdapter;
   private cameraEntity!: CameraEntity;
@@ -179,15 +181,24 @@ export class Application {
     console.log('Forward renderer initialized');
 
     // Create default directional light
+    // Direction is now computed from rotation - default [50, -30, 0] gives nice sun angle
     this.directionalLight = new DirectionalLight({
       name: 'Directional Light',
-      direction: [-0.5, -1.0, -0.3],
+      rotation: [50, -30, 0], // Tilted down and rotated for typical sun angle
       color: [1, 0.98, 0.95],
       intensity: 1.0,
       enabled: true,
     });
     this.sceneGraph.add(this.directionalLight);
     console.log('Directional light added to scene');
+
+    // Initialize light gizmo renderer (for showing light direction when selected)
+    this.lightGizmoRenderer = new LightGizmoRenderer({
+      gl: this.gl,
+      eventBus: this.eventBus,
+    });
+    this.lightGizmoRenderer.initialize();
+    console.log('Light gizmo renderer initialized');
 
     // Initialize input manager
     const viewportCanvas = this.layout.getViewport()!.getCanvas();
@@ -286,6 +297,10 @@ export class Application {
       // Use Forward Renderer for solid shaded rendering
       this.forwardRenderer.beginFrame(this.renderCamera);
       this.forwardRenderer.render(this.sceneGraph);
+
+      // Render light gizmos for selected light entities
+      this.renderSelectedLightGizmos();
+
       this.forwardRenderer.endFrame();
       this.animationFrameId = requestAnimationFrame(render);
     };
@@ -296,6 +311,23 @@ export class Application {
     this.layout.getViewport()?.resize();
 
     console.log('Render loop started');
+  }
+
+  /**
+   * Render gizmos for any selected light entities.
+   */
+  private renderSelectedLightGizmos(): void {
+    const selectedEntities = this.selectionManager.getSelected();
+
+    for (const entity of selectedEntities) {
+      // Check if entity has a light component
+      if (typeof entity === 'object' && entity !== null) {
+        const e = entity as { hasComponent?: (type: string) => boolean };
+        if (typeof e.hasComponent === 'function' && e.hasComponent('light')) {
+          this.lightGizmoRenderer.render(this.renderCamera, entity);
+        }
+      }
+    }
   }
 
   /**

@@ -33,8 +33,8 @@ export type { IMeshComponent } from './IMeshComponent';
 export type { IMaterialComponent } from './IMaterialComponent';
 export type { ICameraComponent, CameraClearFlags } from './ICameraComponent';
 export { createDefaultCameraComponent } from './ICameraComponent';
-export type { ILightComponent, LightType } from './ILightComponent';
-export { createDefaultDirectionalLightComponent, createDefaultPointLightComponent } from './ILightComponent';
+export type { ILightComponent, LightType, ILightDirectionProvider } from './ILightComponent';
+export { createDefaultDirectionalLightComponent, createDefaultPointLightComponent, createDefaultSpotLightComponent, isLightDirectionProvider } from './ILightComponent';
 
 // Property Editing
 export type { IPropertyEditable } from './IPropertyEditable';

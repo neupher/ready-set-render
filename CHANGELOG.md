@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0] - 2026-01-24
+
+### Added
+- **Light Gizmo Renderer**: Debug visualization for directional lights when selected
+  - Billboard sun icon that always faces camera
+  - Direction arrow showing light direction from transform rotation
+  - Colored based on light color
+- **Multi-Light Support**: ForwardRenderer now supports up to 8 directional lights
+  - Shader arrays for light directions and colors
+  - `uLightCount` uniform for dynamic light count
+- **Light Properties Panel**: Full light controls in Properties panel
+  - Light type dropdown (directional, point, spot, area)
+  - Enabled checkbox
+  - Color picker
+  - Intensity slider
+  - Range and Spot Angle controls
+- **Sphere Properties Panel**: Read-only display of sphere parameters
+  - Segments, Rings, Radius values
+- **ILightDirectionProvider Interface**: Type-safe light direction computation
+  - `getWorldDirection()` method for transform-based direction
+  - Type guard `isLightDirectionProvider()` for runtime checks
+
+### Changed
+- **DirectionalLight**: Direction now computed from transform rotation
+  - Removed stored direction property
+  - Uses Euler rotation to compute forward vector
+  - Light direction updates when rotation changes
+- **LightManager**: Enhanced for multi-light support
+  - Added `MAX_LIGHTS` constant (8)
+  - Added `getActiveLightCount()`, `getDirectionalLights()`, `getPointLights()`
+  - Uses `isLightDirectionProvider()` type guard
+- **PropertyChangeHandler**: Extended for light component properties
+  - Supports `light.*` property paths
+  - Full undo/redo support for light properties
+
+### Fixed
+- **Sphere Winding Order**: Changed from CW to CCW winding
+  - Now matches Cube winding convention
+  - Both primitives lit consistently from same direction
+- **Light Direction Stability**: Light no longer changes with camera movement
+  - Direction determined by entity transform rotation only
+
+---
+
 ## [0.7.1] - 2026-01-23
 
 ### Added

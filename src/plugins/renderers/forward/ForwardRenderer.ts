@@ -58,11 +58,15 @@ void main() {
 `;
 
 /**
- * Fragment shader for forward rendering with lighting.
+ * Fragment shader for forward rendering with multi-light support.
  * Uses Lambertian diffuse + hemisphere ambient.
+ * Supports up to MAX_LIGHTS directional lights.
  */
 const FRAGMENT_SHADER = `#version 300 es
 precision highp float;
+
+// Maximum number of lights (keep in sync with TypeScript MAX_LIGHTS)
+#define MAX_LIGHTS 8
 
 in vec3 vNormal;
 in vec3 vWorldPosition;
@@ -70,9 +74,12 @@ in vec3 vWorldPosition;
 // Material
 uniform vec3 uBaseColor;
 
-// Lighting
-uniform vec3 uLightDirection;
-uniform vec3 uLightColor;
+// Lighting - arrays for multi-light support
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform int uLightCount;
+
+// Ambient
 uniform vec3 uAmbientColor;
 
 // Camera
@@ -82,20 +89,30 @@ out vec4 outColor;
 
 void main() {
   vec3 normal = normalize(vNormal);
+  vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
 
-  // Lambertian diffuse
-  float NdotL = max(dot(normal, -uLightDirection), 0.0);
-  vec3 diffuse = uBaseColor * uLightColor * NdotL;
+  // Accumulate light contribution
+  vec3 diffuse = vec3(0.0);
+
+  for (int i = 0; i < MAX_LIGHTS; i++) {
+    if (i >= uLightCount) break;
+
+    // Lambertian diffuse for this light
+    float NdotL = max(dot(normal, -uLightDirections[i]), 0.0);
+    diffuse += uBaseColor * uLightColors[i] * NdotL;
+  }
 
   // Hemisphere ambient (sky color top, ground color bottom)
   float hemiFactor = normal.y * 0.5 + 0.5;
   vec3 ambient = uBaseColor * mix(uAmbientColor * 0.6, uAmbientColor, hemiFactor);
 
-  // Simple rim light for better definition
-  vec3 viewDir = normalize(uCameraPosition - vWorldPosition);
-  float rim = 1.0 - max(dot(viewDir, normal), 0.0);
-  rim = pow(rim, 3.0) * 0.15;
-  vec3 rimColor = uLightColor * rim;
+  // Simple rim light for better definition (using primary light if available)
+  vec3 rimColor = vec3(0.0);
+  if (uLightCount > 0) {
+    float rim = 1.0 - max(dot(viewDir, normal), 0.0);
+    rim = pow(rim, 3.0) * 0.15;
+    rimColor = uLightColors[0] * rim;
+  }
 
   vec3 finalColor = diffuse + ambient + rimColor;
 
@@ -146,10 +163,14 @@ export class ForwardRenderer implements IRenderPipeline {
   private uViewProjectionMatrix: WebGLUniformLocation | null = null;
   private uNormalMatrix: WebGLUniformLocation | null = null;
   private uBaseColor: WebGLUniformLocation | null = null;
-  private uLightDirection: WebGLUniformLocation | null = null;
-  private uLightColor: WebGLUniformLocation | null = null;
+  private uLightDirections: WebGLUniformLocation | null = null;
+  private uLightColors: WebGLUniformLocation | null = null;
+  private uLightCount: WebGLUniformLocation | null = null;
   private uAmbientColor: WebGLUniformLocation | null = null;
   private uCameraPosition: WebGLUniformLocation | null = null;
+
+  // Maximum lights supported
+  private readonly MAX_LIGHTS = 8;
 
   // Default light values (used when no lights in scene)
   private defaultLightDirection: [number, number, number] = [-0.5, -1, -0.5];
@@ -174,8 +195,9 @@ export class ForwardRenderer implements IRenderPipeline {
     this.uViewProjectionMatrix = this.gl.getUniformLocation(this.program, 'uViewProjectionMatrix');
     this.uNormalMatrix = this.gl.getUniformLocation(this.program, 'uNormalMatrix');
     this.uBaseColor = this.gl.getUniformLocation(this.program, 'uBaseColor');
-    this.uLightDirection = this.gl.getUniformLocation(this.program, 'uLightDirection');
-    this.uLightColor = this.gl.getUniformLocation(this.program, 'uLightColor');
+    this.uLightDirections = this.gl.getUniformLocation(this.program, 'uLightDirections');
+    this.uLightColors = this.gl.getUniformLocation(this.program, 'uLightColors');
+    this.uLightCount = this.gl.getUniformLocation(this.program, 'uLightCount');
     this.uAmbientColor = this.gl.getUniformLocation(this.program, 'uAmbientColor');
     this.uCameraPosition = this.gl.getUniformLocation(this.program, 'uCameraPosition');
 
@@ -250,11 +272,10 @@ export class ForwardRenderer implements IRenderPipeline {
     const cameraPos = this.currentCamera.position;
     gl.uniform3f(this.uCameraPosition, cameraPos[0], cameraPos[1], cameraPos[2]);
 
-    // Get light data
-    const light = this.getLightData();
-    const normalizedDir = this.normalizeDirection(light.direction);
-    gl.uniform3fv(this.uLightDirection, normalizedDir);
-    gl.uniform3fv(this.uLightColor, light.color);
+    // Set up lights using multi-light arrays
+    this.setLightUniforms(gl);
+
+    // Set ambient color
     gl.uniform3fv(this.uAmbientColor, this.getAmbientColor());
 
     // Render all solid objects
@@ -262,6 +283,34 @@ export class ForwardRenderer implements IRenderPipeline {
     for (const renderable of renderables) {
       this.renderObject(gl, renderable, viewProjection);
     }
+  }
+
+  /**
+   * Set light uniforms for multi-light rendering.
+   */
+  private setLightUniforms(gl: WebGL2RenderingContext): void {
+    const lights = this.getLightsData();
+
+    // Build flat arrays for uniform upload
+    const directions = new Float32Array(this.MAX_LIGHTS * 3);
+    const colors = new Float32Array(this.MAX_LIGHTS * 3);
+
+    for (let i = 0; i < Math.min(lights.length, this.MAX_LIGHTS); i++) {
+      const light = lights[i];
+      const normalizedDir = this.normalizeDirection(light.direction);
+
+      directions[i * 3 + 0] = normalizedDir[0];
+      directions[i * 3 + 1] = normalizedDir[1];
+      directions[i * 3 + 2] = normalizedDir[2];
+
+      colors[i * 3 + 0] = light.color[0];
+      colors[i * 3 + 1] = light.color[1];
+      colors[i * 3 + 2] = light.color[2];
+    }
+
+    gl.uniform3fv(this.uLightDirections, directions);
+    gl.uniform3fv(this.uLightColors, colors);
+    gl.uniform1i(this.uLightCount, Math.min(lights.length, this.MAX_LIGHTS));
   }
 
   /**
@@ -376,20 +425,24 @@ export class ForwardRenderer implements IRenderPipeline {
 
   /**
    * Get light data from LightManager or use defaults.
+   * Returns array of lights for multi-light rendering.
    */
-  private getLightData(): LightData {
+  private getLightsData(): LightData[] {
     if (this.lightManager) {
-      const light = this.lightManager.getPrimaryDirectionalLight();
-      if (light) {
-        return light;
+      const lights = this.lightManager.getActiveLights();
+      if (lights.length > 0) {
+        return lights;
       }
     }
 
-    return {
+    // Return default single light if no lights in scene
+    return [{
+      lightType: 'directional',
       direction: this.defaultLightDirection,
+      position: [0, 0, 0],
       color: this.defaultLightColor,
       enabled: true,
-    };
+    }];
   }
 
   /**

@@ -208,6 +208,8 @@ export class PropertyChangeHandler {
         return this.getCameraValue(entity, propertyName);
       case 'material':
         return this.getMaterialValue(entity, propertyName);
+      case 'light':
+        return this.getLightValue(entity, propertyName);
       default:
         return undefined;
     }
@@ -272,13 +274,49 @@ export class PropertyChangeHandler {
   }
 
   /**
+   * Get a light component value.
+   */
+  private getLightValue(entity: IEntity, property: string): unknown {
+    if (!entity.hasComponent('light')) return undefined;
+
+    const lightComponent = entity.getComponent<IComponent>('light');
+    if (!lightComponent) return undefined;
+
+    const light = lightComponent as IComponent & {
+      lightType?: string;
+      color?: [number, number, number];
+      intensity?: number;
+      enabled?: boolean;
+      range?: number;
+      spotAngle?: number;
+    };
+
+    switch (property) {
+      case 'lightType':
+        return light.lightType;
+      case 'color':
+        return light.color ? [...light.color] : undefined;
+      case 'intensity':
+        return light.intensity;
+      case 'enabled':
+        return light.enabled;
+      case 'range':
+        return light.range;
+      case 'spotAngle':
+        return light.spotAngle;
+      default:
+        return undefined;
+    }
+  }
+
+  /**
    * Normalize a value for storage in command.
    * Converts hex colors to RGB arrays, etc.
    */
   private normalizeValue(property: string, value: unknown): unknown {
-    // Convert hex color strings to RGB arrays for camera and material colors
+    // Convert hex color strings to RGB arrays for camera, material, and light colors
     if (
-      (property === 'camera.backgroundColor' || property === 'material.color') &&
+      (property === 'camera.backgroundColor' || property === 'material.color' || property === 'light.color') &&
       typeof value === 'string' &&
       value.startsWith('#')
     ) {
@@ -309,7 +347,7 @@ export class PropertyChangeHandler {
     const parts = property.split('.');
     if (parts.length < 2) return false;
     const [component] = parts;
-    return component === 'camera' || component === 'material';
+    return component === 'camera' || component === 'material' || component === 'light';
   }
 
   /**

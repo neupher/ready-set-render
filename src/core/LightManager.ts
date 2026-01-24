@@ -3,23 +3,51 @@
  *
  * Collects and provides active lights from the scene for rendering.
  * Used by renderers to gather light data for shader uniforms.
+ *
+ * Supports multiple light types:
+ * - Directional lights (direction from transform rotation)
+ * - Point lights (future)
+ * - Spot lights (future)
  */
 
 import type { EventBus } from '@core/EventBus';
 import type { SceneGraph } from '@core/SceneGraph';
-import type { ILightComponent } from '@core/interfaces/ILightComponent';
-import type { DirectionalLight } from '@plugins/lights/DirectionalLight';
+import type { ILightComponent, LightType } from '@core/interfaces/ILightComponent';
+import { isLightDirectionProvider } from '@core/interfaces/ILightComponent';
 
 /**
  * Light data structure for shader uniforms.
  */
 export interface LightData {
-  /** Normalized direction (for directional lights) */
+  /** Light type */
+  lightType: LightType;
+  /** Normalized direction (for directional/spot lights) */
   direction: [number, number, number];
+  /** World position (for point/spot lights) */
+  position: [number, number, number];
   /** Light color with intensity applied */
   color: [number, number, number];
   /** Whether the light is enabled */
   enabled: boolean;
+  /** Range for point/spot lights */
+  range?: number;
+  /** Spot angle for spot lights */
+  spotAngle?: number;
+}
+
+/**
+ * Internal representation of a light entity.
+ */
+interface LightEntity {
+  id: string;
+  transform: {
+    position: [number, number, number];
+  };
+  hasComponent(type: string): boolean;
+  getComponent<T>(type: string): T | null;
+  getWorldDirection?(): [number, number, number];
+  getEffectiveColor?(): [number, number, number];
+  isEnabled?(): boolean;
 }
 
 /**
@@ -31,7 +59,16 @@ export interface LightManagerConfig {
 }
 
 /**
+ * Maximum number of lights supported in shaders.
+ * Keep in sync with ForwardRenderer MAX_LIGHTS constant.
+ */
+export const MAX_LIGHTS = 8;
+
+/**
  * Manages scene lights and provides light data for rendering.
+ *
+ * Light direction for directional/spot lights is computed from
+ * the entity's transform rotation, NOT stored in the component.
  *
  * @example
  * ```typescript
@@ -43,7 +80,7 @@ export interface LightManagerConfig {
 export class LightManager {
   private readonly eventBus: EventBus;
   private readonly sceneGraph: SceneGraph;
-  private cachedLights: DirectionalLight[] = [];
+  private cachedLights: LightEntity[] = [];
   private isDirty = true;
 
   constructor(config: LightManagerConfig) {
@@ -64,12 +101,9 @@ export class LightManager {
     }
 
     return this.cachedLights
-      .filter(light => light.isEnabled())
-      .map(light => ({
-        direction: light.getDirection(),
-        color: light.getEffectiveColor(),
-        enabled: light.isEnabled(),
-      }));
+      .filter(light => this.isLightEnabled(light))
+      .slice(0, MAX_LIGHTS)
+      .map(light => this.getLightData(light));
   }
 
   /**
@@ -78,7 +112,22 @@ export class LightManager {
    */
   getPrimaryDirectionalLight(): LightData | null {
     const lights = this.getActiveLights();
-    return lights.length > 0 ? lights[0] : null;
+    const directional = lights.find(l => l.lightType === 'directional');
+    return directional ?? null;
+  }
+
+  /**
+   * Get all directional lights.
+   */
+  getDirectionalLights(): LightData[] {
+    return this.getActiveLights().filter(l => l.lightType === 'directional');
+  }
+
+  /**
+   * Get all point lights.
+   */
+  getPointLights(): LightData[] {
+    return this.getActiveLights().filter(l => l.lightType === 'point');
   }
 
   /**
@@ -95,6 +144,13 @@ export class LightManager {
    */
   invalidate(): void {
     this.isDirty = true;
+  }
+
+  /**
+   * Get the count of active lights.
+   */
+  getActiveLightCount(): number {
+    return this.getActiveLights().length;
   }
 
   private setupEventListeners(): void {
@@ -116,8 +172,8 @@ export class LightManager {
 
     const traverse = (objects: unknown[]): void => {
       for (const obj of objects) {
-        if (this.isDirectionalLight(obj)) {
-          this.cachedLights.push(obj);
+        if (this.isLightEntity(obj)) {
+          this.cachedLights.push(obj as LightEntity);
         }
 
         // Traverse children
@@ -131,18 +187,58 @@ export class LightManager {
     traverse(this.sceneGraph.getRoot().children);
   }
 
-  private isDirectionalLight(obj: unknown): obj is DirectionalLight {
+  private isLightEntity(obj: unknown): boolean {
     if (!obj || typeof obj !== 'object') return false;
 
     const entity = obj as {
       hasComponent?: (type: string) => boolean;
-      getComponent?: (type: string) => ILightComponent | null;
     };
 
     if (typeof entity.hasComponent !== 'function') return false;
-    if (!entity.hasComponent('light')) return false;
+    return entity.hasComponent('light');
+  }
 
-    const light = entity.getComponent?.('light');
-    return light?.lightType === 'directional';
+  private isLightEnabled(light: LightEntity): boolean {
+    // Check for isEnabled method
+    if (typeof light.isEnabled === 'function') {
+      return light.isEnabled();
+    }
+
+    // Fallback to component check
+    const component = light.getComponent<ILightComponent>('light');
+    return component?.enabled ?? false;
+  }
+
+  private getLightData(light: LightEntity): LightData {
+    const component = light.getComponent<ILightComponent>('light');
+
+    // Get direction from ILightDirectionProvider interface
+    let direction: [number, number, number] = [0, -1, 0];
+    if (isLightDirectionProvider(light)) {
+      direction = light.getWorldDirection();
+    }
+
+    // Get effective color (color * intensity)
+    let color: [number, number, number] = [1, 1, 1];
+    if (typeof light.getEffectiveColor === 'function') {
+      color = light.getEffectiveColor();
+    } else if (component) {
+      const intensity = component.intensity ?? 1;
+      color = [
+        component.color[0] * intensity,
+        component.color[1] * intensity,
+        component.color[2] * intensity,
+      ];
+    }
+
+    return {
+      lightType: component?.lightType ?? 'directional',
+      direction,
+      position: light.transform.position,
+      color,
+      enabled: component?.enabled ?? true,
+      range: component?.range,
+      spotAngle: component?.spotAngle,
+    };
   }
 }

@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-23T23:40:00Z
-> **Version:** 0.7.1
-> **Status:** ICloneable Interface + Shared Menu Definitions
+> **Last Updated:** 2026-01-24T01:10:00Z
+> **Version:** 0.8.0
+> **Status:** Transform-Based Lighting + Light Gizmos + Multi-Light Support
 
 ---
 
@@ -16,17 +16,17 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 | # | Goal | Priority | Status |
 |---|------|----------|--------|
-| 1 | Educational rendering implementation (realtime + raytracing) | High | Not Started |
-| 2 | Professional UI (Unity/Substance Painter style) | High | Not Started |
-| 3 | WebGL2 cross-browser rendering | High | Not Started |
+| 1 | Educational rendering implementation (realtime + raytracing) | High | In Progress |
+| 2 | Professional UI (Unity/Substance Painter style) | High | In Progress |
+| 3 | WebGL2 cross-browser rendering | High | ✅ Complete |
 | 4 | Mobile-friendly design | Medium | Not Started |
-| 5 | Modular UI components with logic hooks | High | Not Started |
-| 6 | Main canvas WebGL renderer | High | Not Started |
-| 7 | Swappable render pipelines (forward/deferred/raytracing) | High | Not Started |
+| 5 | Modular UI components with logic hooks | High | In Progress |
+| 6 | Main canvas WebGL renderer | High | ✅ Complete |
+| 7 | Swappable render pipelines (forward/deferred/raytracing) | High | In Progress |
 | 8 | 3D model import (.obj, .gltf) | Medium | Not Started |
 | 9 | Texture support (.png, .jpg, .tga) | Medium | Not Started |
-| 10 | In-editor shader text editor | Medium | Not Started |
-| 11 | Camera controls and scene navigation | High | Not Started |
+| 10 | In-editor shader text editor | Medium | Placeholder |
+| 11 | Camera controls and scene navigation | High | ✅ Complete |
 | 12 | Comprehensive documentation | High | Ongoing |
 | 13 | Full test coverage | High | Ongoing |
 | 14 | Library tracking | High | Ongoing |
@@ -511,6 +511,55 @@ export class ImportedMesh implements IEntity, ICloneable {
 ```
 
 **Test Coverage:** 393 tests passing (no new tests, existing tests pass)
+
+### ✅ Completed - v0.8.0: Transform-Based Lighting + Light Gizmos + Multi-Light Support
+
+**Goal:** Fix directional light system to use transform rotation, add debug visualization, support multiple lights, and expose light/sphere properties in UI.
+
+**Key Files Created:**
+- `src/plugins/renderers/gizmos/LightGizmoRenderer.ts` - Debug visualization for lights (billboard sun icon + direction arrow)
+- `src/plugins/renderers/gizmos/index.ts` - Barrel export for gizmos
+
+**Key Files Modified:**
+- `src/core/interfaces/ILightComponent.ts` - Added `ILightDirectionProvider` interface with `getWorldDirection()`, removed stored direction
+- `src/plugins/lights/DirectionalLight.ts` - Direction computed from transform rotation via Euler angles
+- `src/plugins/renderers/forward/ForwardRenderer.ts` - Multi-light support (up to 8 lights via shader arrays)
+- `src/core/LightManager.ts` - Added `MAX_LIGHTS`, `getActiveLightCount()`, `getDirectionalLights()`, `getPointLights()`
+- `src/core/Application.ts` - Integrated LightGizmoRenderer, renders when light selected
+- `src/core/PropertyChangeHandler.ts` - Extended for `light.*` property paths
+- `src/core/commands/PropertyChangeCommand.ts` - Light property undo/redo support
+- `src/ui/panels/PropertiesPanel.ts` - Light section (type, enabled, color, intensity) + Sphere section (segments, rings, radius)
+- `src/plugins/primitives/Sphere.ts` - Fixed winding order (CW → CCW) for consistent lighting
+
+**Transform-Based Light Direction:**
+```typescript
+// DirectionalLight.ts - Direction computed from rotation
+getWorldDirection(): [number, number, number] {
+  const { rotation } = this.transform;
+  // Rotate forward vector (0, 0, -1) by Euler angles
+  // Returns normalized direction where light rays travel
+}
+```
+
+**Multi-Light Shader (ForwardRenderer GLSL):**
+```glsl
+#define MAX_LIGHTS 8
+uniform vec3 uLightDirections[MAX_LIGHTS];
+uniform vec3 uLightColors[MAX_LIGHTS];
+uniform int uLightCount;
+```
+
+**Light Gizmo Renderer:**
+- **Billboard sun icon**: Always faces camera using camera right/up vectors
+- **Direction arrow**: Points in light direction, rotates with transform
+- **Light color**: Icon and arrow colored by light's color property
+- **Visibility**: Only renders when light entity is selected in hierarchy
+
+**Sphere Winding Fix:**
+- Changed from clockwise (CW) to counter-clockwise (CCW) triangle winding
+- Now matches Cube convention, both lit consistently from same direction
+
+**Test Coverage:** 393 tests passing (TypeScript compiles, no code errors)
 
 ### 📋 Remaining Steps (Phase 6.8-6.14: Functional Editor Continued)
 

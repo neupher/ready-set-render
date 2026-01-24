@@ -18,7 +18,7 @@
 
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
-import type { ISceneObject, IMeshComponent, IMaterialComponent, ICameraComponent, CameraClearFlags } from '@core/interfaces';
+import type { ISceneObject, IMeshComponent, IMaterialComponent, ICameraComponent, CameraClearFlags, ILightComponent } from '@core/interfaces';
 import { isEntity } from '@core/interfaces';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { DraggableNumberInput } from '../components/DraggableNumberInput';
@@ -424,7 +424,7 @@ export class PropertiesPanel {
       }
     }
 
-    // Camera Component Section (if entity has camera component)
+// Camera Component Section (if entity has camera component)
     if (isEntity(obj) && obj.hasComponent('camera')) {
       const cameraComponent = obj.getComponent<ICameraComponent>('camera');
       if (cameraComponent) {
@@ -558,6 +558,197 @@ export class PropertiesPanel {
         cameraSection.setContent(cameraContent);
         contentWrapper.appendChild(cameraSection.element);
       }
+    }
+
+    // Light Component Section (if entity has light component)
+    if (isEntity(obj) && obj.hasComponent('light')) {
+      const lightComponent = obj.getComponent<ILightComponent>('light');
+      if (lightComponent) {
+        const lightSection = this.createTrackedSection('Light', true);
+        const lightContent = document.createElement('div');
+        lightContent.style.display = 'flex';
+        lightContent.style.flexDirection = 'column';
+        lightContent.style.gap = 'var(--spacing-sm)';
+
+        // Light Type (read-only display)
+        const typeGroup = document.createElement('div');
+        const typeLabel = document.createElement('label');
+        typeLabel.className = 'label';
+        typeLabel.textContent = 'Type';
+        typeGroup.appendChild(typeLabel);
+
+        const typeDisplay = document.createElement('div');
+        typeDisplay.className = 'input';
+        typeDisplay.style.backgroundColor = 'var(--bg-tertiary)';
+        typeDisplay.style.cursor = 'default';
+        typeDisplay.textContent = lightComponent.lightType.charAt(0).toUpperCase() + lightComponent.lightType.slice(1);
+        typeGroup.appendChild(typeDisplay);
+        lightContent.appendChild(typeGroup);
+
+        // Enabled checkbox
+        const enabledGroup = document.createElement('div');
+        enabledGroup.style.display = 'flex';
+        enabledGroup.style.alignItems = 'center';
+        enabledGroup.style.gap = 'var(--spacing-sm)';
+
+        const enabledCheckbox = document.createElement('input');
+        enabledCheckbox.type = 'checkbox';
+        enabledCheckbox.checked = lightComponent.enabled;
+        enabledCheckbox.id = `light-enabled-${obj.id}`;
+        enabledCheckbox.addEventListener('change', () => {
+          this.emitPropertyChange('light.enabled', enabledCheckbox.checked);
+        });
+
+        const enabledLabel = document.createElement('label');
+        enabledLabel.htmlFor = `light-enabled-${obj.id}`;
+        enabledLabel.className = 'label';
+        enabledLabel.style.marginBottom = '0';
+        enabledLabel.textContent = 'Enabled';
+
+        enabledGroup.appendChild(enabledCheckbox);
+        enabledGroup.appendChild(enabledLabel);
+        lightContent.appendChild(enabledGroup);
+
+        // Light Color
+        const colorGroup = document.createElement('div');
+        const colorLabel = document.createElement('label');
+        colorLabel.className = 'label';
+        colorLabel.textContent = 'Color';
+        colorGroup.appendChild(colorLabel);
+
+        const colorRow = document.createElement('div');
+        colorRow.style.display = 'flex';
+        colorRow.style.gap = 'var(--spacing-sm)';
+
+        const lightColorPicker = document.createElement('input');
+        lightColorPicker.type = 'color';
+        lightColorPicker.className = 'input';
+        lightColorPicker.style.width = '64px';
+
+        // Convert [0-1] RGB to hex
+        const lightR = Math.round(lightComponent.color[0] * 255);
+        const lightG = Math.round(lightComponent.color[1] * 255);
+        const lightB = Math.round(lightComponent.color[2] * 255);
+        const lightHexColor = `#${lightR.toString(16).padStart(2, '0')}${lightG.toString(16).padStart(2, '0')}${lightB.toString(16).padStart(2, '0')}`;
+        lightColorPicker.value = lightHexColor;
+
+        const lightColorText = document.createElement('input');
+        lightColorText.type = 'text';
+        lightColorText.className = 'input';
+        lightColorText.style.flex = '1';
+        lightColorText.value = lightHexColor;
+
+        lightColorPicker.addEventListener('change', () => {
+          lightColorText.value = lightColorPicker.value;
+          this.emitPropertyChange('light.color', lightColorPicker.value);
+        });
+
+        lightColorText.addEventListener('change', () => {
+          lightColorPicker.value = lightColorText.value;
+          this.emitPropertyChange('light.color', lightColorText.value);
+        });
+
+        colorRow.appendChild(lightColorPicker);
+        colorRow.appendChild(lightColorText);
+        colorGroup.appendChild(colorRow);
+        lightContent.appendChild(colorGroup);
+
+        // Intensity
+        const intensityGroup = document.createElement('div');
+        const intensityLabel = document.createElement('label');
+        intensityLabel.className = 'label';
+        intensityLabel.textContent = 'Intensity';
+        intensityGroup.appendChild(intensityLabel);
+
+        const intensityInput = new DraggableNumberInput({
+          value: lightComponent.intensity,
+          step: 0.1,
+          min: 0,
+          max: 10,
+          precision: 2,
+          onChange: (value) => this.emitPropertyChange('light.intensity', value)
+        });
+        intensityGroup.appendChild(intensityInput.element);
+        lightContent.appendChild(intensityGroup);
+
+        // Range (for point/spot lights only)
+        if (lightComponent.lightType === 'point' || lightComponent.lightType === 'spot') {
+          const rangeGroup = document.createElement('div');
+          const rangeLabel = document.createElement('label');
+          rangeLabel.className = 'label';
+          rangeLabel.textContent = 'Range';
+          rangeGroup.appendChild(rangeLabel);
+
+          const rangeInput = new DraggableNumberInput({
+            value: lightComponent.range ?? 10,
+            step: 0.5,
+            min: 0.1,
+            precision: 1,
+            onChange: (value) => this.emitPropertyChange('light.range', value)
+          });
+          rangeGroup.appendChild(rangeInput.element);
+          lightContent.appendChild(rangeGroup);
+        }
+
+        // Spot Angle (for spot lights only)
+        if (lightComponent.lightType === 'spot') {
+          const spotAngleGroup = document.createElement('div');
+          const spotAngleLabel = document.createElement('label');
+          spotAngleLabel.className = 'label';
+          spotAngleLabel.textContent = 'Spot Angle';
+          spotAngleGroup.appendChild(spotAngleLabel);
+
+          const spotAngleInput = new DraggableNumberInput({
+            value: lightComponent.spotAngle ?? 30,
+            step: 1,
+            min: 1,
+            max: 179,
+            precision: 0,
+            onChange: (value) => this.emitPropertyChange('light.spotAngle', value)
+          });
+          spotAngleGroup.appendChild(spotAngleInput.element);
+          lightContent.appendChild(spotAngleGroup);
+        }
+
+        lightSection.setContent(lightContent);
+        contentWrapper.appendChild(lightSection.element);
+      }
+    }
+
+    // Sphere Parameters Section (if object is a Sphere)
+    // Check for Sphere-specific methods - duck typing to avoid coupling
+    const sphereEntity = obj as {
+      getSegments?: () => number;
+      getRings?: () => number;
+      getRadius?: () => number;
+    };
+    if (
+      typeof sphereEntity.getSegments === 'function' &&
+      typeof sphereEntity.getRings === 'function' &&
+      typeof sphereEntity.getRadius === 'function'
+    ) {
+      const sphereSection = this.createTrackedSection('Sphere Parameters', true);
+      const sphereContent = document.createElement('div');
+      sphereContent.style.display = 'flex';
+      sphereContent.style.flexDirection = 'column';
+      sphereContent.style.gap = 'var(--spacing-sm)';
+
+      // Read-only fields for now (changing these would require mesh regeneration)
+      sphereContent.appendChild(this.createReadonlyField('Segments', sphereEntity.getSegments().toString()));
+      sphereContent.appendChild(this.createReadonlyField('Rings', sphereEntity.getRings().toString()));
+      sphereContent.appendChild(this.createReadonlyField('Radius', sphereEntity.getRadius().toFixed(2)));
+
+      // Add note about why these are read-only
+      const noteDiv = document.createElement('div');
+      noteDiv.style.fontSize = 'var(--font-size-xs)';
+      noteDiv.style.color = 'var(--text-muted)';
+      noteDiv.style.fontStyle = 'italic';
+      noteDiv.style.marginTop = 'var(--spacing-xs)';
+      noteDiv.textContent = 'Sphere geometry is generated at creation time.';
+      sphereContent.appendChild(noteDiv);
+
+      sphereSection.setContent(sphereContent);
+      contentWrapper.appendChild(sphereSection.element);
     }
 
     // Fallback Material Section (for non-entity objects without material component)

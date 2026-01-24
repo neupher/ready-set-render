@@ -6,8 +6,13 @@
  *
  * Directional lights:
  * - Have parallel rays (infinite distance)
- * - Are defined by direction, not position
+ * - Direction is determined by the entity's rotation (like Unity)
  * - Affect all objects equally regardless of distance
+ * - Position doesn't affect lighting (only used for gizmo placement)
+ *
+ * Light direction is computed from transform rotation using the standard
+ * forward vector (0, 0, -1) rotated by the entity's rotation.
+ * This means rotating the light entity changes where it shines.
  */
 
 import type {
@@ -17,11 +22,11 @@ import type {
   ICloneable,
 } from '@core/interfaces';
 import { cloneEntityBase } from '@core/interfaces';
-import type { ILightComponent } from '@core/interfaces/ILightComponent';
+import type { ILightComponent, ILightDirectionProvider } from '@core/interfaces/ILightComponent';
 import { createDefaultTransform } from '@core/interfaces';
 import { createDefaultDirectionalLightComponent } from '@core/interfaces/ILightComponent';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
-import { vec3Normalize } from '@utils/math';
+import { degToRad } from '@utils/math';
 
 /**
  * Configuration options for creating a DirectionalLight.
@@ -29,8 +34,8 @@ import { vec3Normalize } from '@utils/math';
 export interface DirectionalLightConfig {
   /** Display name (defaults to 'Directional Light') */
   name?: string;
-  /** Light direction vector (will be normalized) */
-  direction?: [number, number, number];
+  /** Initial rotation in Euler angles (degrees) [X, Y, Z] */
+  rotation?: [number, number, number];
   /** Light color RGB (0-1) */
   color?: [number, number, number];
   /** Light intensity (0-∞) */
@@ -42,11 +47,15 @@ export interface DirectionalLightConfig {
 /**
  * Directional Light entity class.
  *
- * Note: Position in transform is ignored for directional lights,
- * only direction matters. However, rotation can be used to visualize
- * light direction in the editor (future gizmo).
+ * The light direction is computed from the entity's transform rotation.
+ * Default rotation of [50, -30, 0] produces a typical sun-like direction
+ * pointing diagonally downward (similar to -0.5, -1, -0.3).
+ *
+ * To change light direction:
+ * - Rotate the entity using transform.rotation
+ * - The light will shine in the direction the entity's -Z axis points
  */
-export class DirectionalLight implements IEntity, ICloneable {
+export class DirectionalLight implements IEntity, ICloneable, ILightDirectionProvider {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -62,12 +71,19 @@ export class DirectionalLight implements IEntity, ICloneable {
     this.name = config.name ?? 'Directional Light';
     this.transform = createDefaultTransform();
 
+    // Set initial rotation (affects light direction)
+    // Default: X=50° (tilted down), Y=-30° (rotated around Y)
+    // This produces a direction similar to [-0.5, -0.77, -0.4]
+    if (config.rotation) {
+      this.transform.rotation = [...config.rotation];
+    } else {
+      // Default rotation for a nice sun-like angle
+      this.transform.rotation = [50, -30, 0];
+    }
+
     // Initialize light component
     const lightComponent = createDefaultDirectionalLightComponent();
 
-    if (config.direction) {
-      lightComponent.direction = vec3Normalize(config.direction);
-    }
     if (config.color) {
       lightComponent.color = [...config.color];
     }
@@ -108,6 +124,72 @@ export class DirectionalLight implements IEntity, ICloneable {
   }
 
   // =========================================
+  // ILightDirectionProvider Implementation
+  // =========================================
+
+  /**
+   * Get the world-space direction the light is pointing.
+   *
+   * Computed from the entity's transform rotation by rotating
+   * the forward vector (0, 0, -1) by the rotation.
+   *
+   * This is the direction that light rays travel.
+   */
+  getWorldDirection(): [number, number, number] {
+    const { rotation } = this.transform;
+
+    // Convert Euler angles to radians
+    const rx = degToRad(rotation[0]); // Pitch (around X)
+    const ry = degToRad(rotation[1]); // Yaw (around Y)
+    const rz = degToRad(rotation[2]); // Roll (around Z)
+
+    // Start with forward vector (0, 0, -1) in local space
+    // and rotate it by the entity's rotation
+    //
+    // Rotation order: Z * Y * X (same as model matrix)
+    // We apply in reverse order to the vector
+
+    // Initial forward vector
+    let x = 0;
+    let y = 0;
+    let z = -1;
+
+    // Rotate around X (pitch)
+    const cosX = Math.cos(rx);
+    const sinX = Math.sin(rx);
+    let y1 = y * cosX - z * sinX;
+    let z1 = y * sinX + z * cosX;
+    y = y1;
+    z = z1;
+
+    // Rotate around Y (yaw)
+    const cosY = Math.cos(ry);
+    const sinY = Math.sin(ry);
+    let x1 = x * cosY + z * sinY;
+    let z2 = -x * sinY + z * cosY;
+    x = x1;
+    z = z2;
+
+    // Rotate around Z (roll)
+    const cosZ = Math.cos(rz);
+    const sinZ = Math.sin(rz);
+    let x2 = x * cosZ - y * sinZ;
+    let y2 = x * sinZ + y * cosZ;
+    x = x2;
+    y = y2;
+
+    // Normalize (should already be unit length, but ensure precision)
+    const len = Math.sqrt(x * x + y * y + z * z);
+    if (len > 0.0001) {
+      x /= len;
+      y /= len;
+      z /= len;
+    }
+
+    return [x, y, z];
+  }
+
+  // =========================================
   // Light-specific Methods
   // =========================================
 
@@ -120,21 +202,10 @@ export class DirectionalLight implements IEntity, ICloneable {
 
   /**
    * Get the normalized light direction.
+   * Delegates to getWorldDirection() which computes from transform.
    */
   getDirection(): [number, number, number] {
-    const light = this.getLightComponent();
-    if (light.direction) {
-      return [light.direction[0], light.direction[1], light.direction[2]];
-    }
-    return [-0.5, -1, -0.5];
-  }
-
-  /**
-   * Set the light direction (will be normalized).
-   */
-  setDirection(direction: [number, number, number]): void {
-    const light = this.getLightComponent();
-    light.direction = vec3Normalize(direction);
+    return this.getWorldDirection();
   }
 
   /**
@@ -206,7 +277,7 @@ export class DirectionalLight implements IEntity, ICloneable {
     const light = this.getLightComponent();
     const cloned = new DirectionalLight({
       name: this.name,
-      direction: light.direction ? [...light.direction] : undefined,
+      rotation: [...this.transform.rotation],
       color: [...light.color],
       intensity: light.intensity,
       enabled: light.enabled,

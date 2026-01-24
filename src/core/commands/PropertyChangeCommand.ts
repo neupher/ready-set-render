@@ -189,7 +189,7 @@ export class PropertyChangeCommand implements ICommand {
     const parts = property.split('.');
     if (parts.length < 2) return false;
     const [component] = parts;
-    return component === 'camera' || component === 'material';
+    return component === 'camera' || component === 'material' || component === 'light';
   }
 
   /**
@@ -240,6 +240,8 @@ export class PropertyChangeCommand implements ICommand {
         return this.applyCameraValue(entity, propertyName, value);
       case 'material':
         return this.applyMaterialValue(entity, propertyName, value);
+      case 'light':
+        return this.applyLightValue(entity, propertyName, value);
       default:
         return false;
     }
@@ -356,6 +358,68 @@ export class PropertyChangeCommand implements ICommand {
       case 'metallic':
         if (typeof value === 'number') {
           material.metallic = value;
+          return true;
+        }
+        break;
+    }
+
+    return false;
+  }
+
+  /**
+   * Apply a light component value.
+   */
+  private applyLightValue(
+    entity: IEntity,
+    property: string,
+    value: unknown
+  ): boolean {
+    if (!entity.hasComponent('light')) {
+      return false;
+    }
+
+    const lightComponent = entity.getComponent<IComponent>('light');
+    if (!lightComponent) {
+      return false;
+    }
+
+    const light = lightComponent as IComponent & {
+      lightType?: string;
+      color?: [number, number, number];
+      intensity?: number;
+      enabled?: boolean;
+      range?: number;
+      spotAngle?: number;
+    };
+
+    switch (property) {
+      case 'color':
+        if (Array.isArray(value) && value.length === 3) {
+          light.color = value as [number, number, number];
+          return true;
+        }
+        break;
+      case 'intensity':
+        if (typeof value === 'number') {
+          light.intensity = value;
+          return true;
+        }
+        break;
+      case 'enabled':
+        if (typeof value === 'boolean') {
+          light.enabled = value;
+          return true;
+        }
+        break;
+      case 'range':
+        if (typeof value === 'number') {
+          light.range = value;
+          return true;
+        }
+        break;
+      case 'spotAngle':
+        if (typeof value === 'number') {
+          light.spotAngle = value;
           return true;
         }
         break;

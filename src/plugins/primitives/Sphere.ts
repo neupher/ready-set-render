@@ -286,15 +286,15 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable {
         const bottomLeft = topLeft + (segments + 1);
         const bottomRight = bottomLeft + 1;
 
-        // Triangle 1: top-left, bottom-left, bottom-right
+        // Triangle 1: top-left, bottom-right, bottom-left (CCW when viewed from outside)
         indices[indexOffset++] = topLeft;
+        indices[indexOffset++] = bottomRight;
         indices[indexOffset++] = bottomLeft;
-        indices[indexOffset++] = bottomRight;
 
-        // Triangle 2: top-left, bottom-right, top-right
+        // Triangle 2: top-left, top-right, bottom-right (CCW when viewed from outside)
         indices[indexOffset++] = topLeft;
-        indices[indexOffset++] = bottomRight;
         indices[indexOffset++] = topRight;
+        indices[indexOffset++] = bottomRight;
       }
     }
 
