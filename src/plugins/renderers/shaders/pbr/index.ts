@@ -7,7 +7,9 @@
  * @module shaders/pbr
  */
 
-export { PBR_VERTEX_SHADER } from './pbr.vert.glsl';
-export { PBR_FRAGMENT_SHADER } from './pbr.frag.glsl';
+import PBR_VERTEX_SHADER from './pbr.vert.glsl';
+import PBR_FRAGMENT_SHADER from './pbr.frag.glsl';
+
+export { PBR_VERTEX_SHADER, PBR_FRAGMENT_SHADER };
 export { PBRShaderProgram, PBR_MATERIAL_DEFAULTS } from './PBRShaderProgram';
 export type { PBRUniformLocations } from './PBRShaderProgram';

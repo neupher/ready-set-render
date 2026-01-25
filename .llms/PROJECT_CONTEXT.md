@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-25T00:41:00Z
-> **Version:** 0.8.4
+> **Last Updated:** 2026-01-25T21:58:00Z
+> **Version:** 0.8.5
 > **Status:** Phase 6 In Progress (6.8-6.13 remaining)
 
 ---
@@ -89,24 +89,23 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 | 6.13 | Settings Window | Not Started |
 | 6.14 | ~~Hierarchy Context Menu~~ | ✅ Complete |
 
-### GLSL Migration (In Progress)
+### GLSL Migration ✅ Complete
 
-Raw `.glsl` file support has been implemented. Migration status:
+Raw `.glsl` file support has been fully implemented. All phases complete:
 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Build Configuration (vite-plugin-glsl, Vitest fix) | ✅ Complete |
 | Phase 2 | Migrate Common Shader Modules (math, brdf, lighting) | ✅ Complete |
-| Phase 3 | Migrate PBR Shaders (vertex, fragment with #include) | Not Started |
+| Phase 3 | Migrate PBR Shaders (vertex, fragment with #include) | ✅ Complete |
 
 ---
 
 ## Next Steps (Recommended Order)
 
-1. **GLSL Migration Phase 3**: Migrate PBR shaders to use `#include` directives
-2. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
-3. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
-4. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
+1. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
+2. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
+3. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
 
 ---
 

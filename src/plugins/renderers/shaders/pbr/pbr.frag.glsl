@@ -1,3 +1,4 @@
+#version 300 es
 /**
  * PBR Fragment Shader
  *
@@ -11,16 +12,17 @@
  * - Multi-light support (up to 8 directional lights)
  * - Emission support
  * - ACES tone mapping
- *
- * @module shaders/pbr
  */
 
-import { GLSL_MATH, GLSL_BRDF, GLSL_LIGHTING, composeShader } from '../common';
+precision highp float;
 
-/**
- * Main PBR fragment shader code (uniforms and main function)
- */
-const PBR_FRAGMENT_MAIN = `
+//=============================================================================
+// COMMON MODULES
+//=============================================================================
+#include "../common/math.glsl"
+#include "../common/brdf.glsl"
+#include "../common/lighting.glsl"
+
 //=============================================================================
 // PBR FRAGMENT SHADER - Blender Principled BSDF Style
 //=============================================================================
@@ -162,15 +164,3 @@ void main() {
 
   outColor = vec4(color, 1.0);
 }
-`;
-
-/**
- * Complete PBR Fragment Shader source
- *
- * Composed from common modules (math, brdf, lighting) and PBR-specific code.
- */
-export const PBR_FRAGMENT_SHADER = `#version 300 es
-precision highp float;
-
-${composeShader(GLSL_MATH, GLSL_BRDF, GLSL_LIGHTING, PBR_FRAGMENT_MAIN)}
-`;

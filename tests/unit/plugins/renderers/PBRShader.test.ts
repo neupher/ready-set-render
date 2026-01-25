@@ -6,9 +6,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PBRShaderProgram, PBR_MATERIAL_DEFAULTS } from '@plugins/renderers/shaders/pbr';
-import { PBR_VERTEX_SHADER } from '@plugins/renderers/shaders/pbr/pbr.vert.glsl';
-import { PBR_FRAGMENT_SHADER } from '@plugins/renderers/shaders/pbr/pbr.frag.glsl';
+import {
+  PBRShaderProgram,
+  PBR_MATERIAL_DEFAULTS,
+  PBR_VERTEX_SHADER,
+  PBR_FRAGMENT_SHADER,
+} from '@plugins/renderers/shaders/pbr';
 import { GLSL_MATH, GLSL_BRDF, GLSL_LIGHTING, composeShader } from '@plugins/renderers/shaders/common';
 import type { IMaterialComponent } from '@core/interfaces';
 
@@ -187,14 +190,19 @@ describe('PBR Fragment Shader', () => {
     expect(PBR_FRAGMENT_SHADER).toContain('#version 300 es');
   });
 
-  it('should include all common modules', () => {
-    // Math constants
-    expect(PBR_FRAGMENT_SHADER).toContain('const float PI =');
-    // BRDF functions
+  it('should include all common modules via #include directives', () => {
+    // In test mode, #include directives are not resolved (raw strings)
+    // In production, vite-plugin-glsl resolves them
+    expect(PBR_FRAGMENT_SHADER).toContain('#include "../common/math.glsl"');
+    expect(PBR_FRAGMENT_SHADER).toContain('#include "../common/brdf.glsl"');
+    expect(PBR_FRAGMENT_SHADER).toContain('#include "../common/lighting.glsl"');
+  });
+
+  it('should use BRDF functions from included modules', () => {
+    // These functions are called but defined in includes
     expect(PBR_FRAGMENT_SHADER).toContain('distributionGGX');
     expect(PBR_FRAGMENT_SHADER).toContain('geometrySmith');
     expect(PBR_FRAGMENT_SHADER).toContain('fresnelSchlick');
-    // Lighting utilities
     expect(PBR_FRAGMENT_SHADER).toContain('tonemapACES');
     expect(PBR_FRAGMENT_SHADER).toContain('linearToSRGB');
   });

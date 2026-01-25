@@ -1,13 +1,11 @@
+#version 300 es
 /**
  * PBR Vertex Shader
  *
  * Transforms vertices and passes data to fragment shader for PBR lighting.
  * Outputs world position, normal, and texture coordinates.
- *
- * @module shaders/pbr
  */
 
-export const PBR_VERTEX_SHADER = `#version 300 es
 precision highp float;
 
 // Vertex attributes
@@ -39,4 +37,3 @@ void main() {
   // Final clip space position
   gl_Position = uViewProjectionMatrix * worldPosition;
 }
-`;

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.5] - 2026-01-25
+
+### Changed
+
+- **PBR Shaders migrated to `#include` directives** (Phase 3 complete):
+  - `pbr/pbr.vert.glsl` - Raw vertex shader (was `pbr.vert.glsl.ts`)
+  - `pbr/pbr.frag.glsl` - Raw fragment shader with `#include` for common modules
+  - `PBRShaderProgram.ts` - Now imports raw `.glsl` files directly
+  - `pbr/index.ts` - Updated barrel exports for raw GLSL imports
+
+### Removed
+
+- `pbr/pbr.vert.glsl.ts` - Replaced by raw `pbr.vert.glsl`
+- `pbr/pbr.frag.glsl.ts` - Replaced by raw `pbr.frag.glsl` with `#include` directives
+
+---
+
 ## [0.8.4] - 2026-01-25
 
 ### Added

@@ -7,8 +7,8 @@
  * @module shaders/pbr
  */
 
-import { PBR_VERTEX_SHADER } from './pbr.vert.glsl';
-import { PBR_FRAGMENT_SHADER } from './pbr.frag.glsl';
+import PBR_VERTEX_SHADER from './pbr.vert.glsl';
+import PBR_FRAGMENT_SHADER from './pbr.frag.glsl';
 import type { IMaterialComponent } from '@core/interfaces';
 
 /**
