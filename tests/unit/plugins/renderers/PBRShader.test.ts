@@ -9,10 +9,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PBRShaderProgram, PBR_MATERIAL_DEFAULTS } from '@plugins/renderers/shaders/pbr';
 import { PBR_VERTEX_SHADER } from '@plugins/renderers/shaders/pbr/pbr.vert.glsl';
 import { PBR_FRAGMENT_SHADER } from '@plugins/renderers/shaders/pbr/pbr.frag.glsl';
-import { GLSL_MATH } from '@plugins/renderers/shaders/common/math.glsl';
-import { GLSL_BRDF } from '@plugins/renderers/shaders/common/brdf.glsl';
-import { GLSL_LIGHTING } from '@plugins/renderers/shaders/common/lighting.glsl';
-import { composeShader } from '@plugins/renderers/shaders/common';
+import { GLSL_MATH, GLSL_BRDF, GLSL_LIGHTING, composeShader } from '@plugins/renderers/shaders/common';
 import type { IMaterialComponent } from '@core/interfaces';
 
 /**
@@ -38,7 +35,7 @@ function createMockGL(): WebGL2RenderingContext {
     getProgramInfoLog: vi.fn(() => ''),
     useProgram: vi.fn(),
 
-    getUniformLocation: vi.fn((program, name) => ({ name })),
+    getUniformLocation: vi.fn((_program, name) => ({ name })),
     uniform1f: vi.fn(),
     uniform1i: vi.fn(),
     uniform3f: vi.fn(),

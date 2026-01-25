@@ -1,19 +1,3 @@
-/**
- * BRDF Functions for PBR Shaders
- *
- * Implements Cook-Torrance microfacet BRDF following Blender's Principled BSDF.
- * Uses GGX/Trowbridge-Reitz distribution (D), Smith-GGX geometry (G),
- * and Fresnel-Schlick approximation (F).
- *
- * References:
- * - Blender Cycles: https://developer.blender.org/docs/features/cycles/
- * - Epic Games PBR: https://blog.selfshadow.com/publications/s2013-shading-course/
- * - Google Filament: https://google.github.io/filament/Filament.html
- *
- * @module shaders/common
- */
-
-export const GLSL_BRDF = `
 //=============================================================================
 // BRDF FUNCTIONS - Cook-Torrance Microfacet Model
 //=============================================================================
@@ -148,4 +132,3 @@ vec3 cookTorranceSpecular(float D, float G, vec3 F, float NdotV, float NdotL) {
 vec3 lambertianDiffuse(vec3 albedo) {
   return albedo * INV_PI;
 }
-`;

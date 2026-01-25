@@ -1,13 +1,3 @@
-/**
- * Common Math Functions for GLSL Shaders
- *
- * Reusable mathematical utilities that can be included in any shader.
- * These are pure functions with no dependencies on uniforms.
- *
- * @module shaders/common
- */
-
-export const GLSL_MATH = `
 //=============================================================================
 // MATH UTILITIES
 //=============================================================================
@@ -48,4 +38,3 @@ vec3 lerpSaturate(vec3 a, vec3 b, float t) {
 float remap(float value, float inMin, float inMax, float outMin, float outMax) {
   return outMin + (value - inMin) * (outMax - outMin) / (inMax - inMin);
 }
-`;

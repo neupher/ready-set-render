@@ -372,14 +372,6 @@ export class ForwardRenderer implements IRenderPipeline {
   }
 
   /**
-   * Set light uniforms for multi-light rendering (legacy method for compatibility).
-   */
-  private setLightUniforms(gl: WebGL2RenderingContext): void {
-    this.cacheLightUniforms();
-    this.setLightUniformsForShader(gl, 'default');
-  }
-
-  /**
    * End the render frame.
    */
   endFrame(): void {

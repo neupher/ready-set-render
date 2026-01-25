@@ -1,15 +1,28 @@
 import { defineConfig } from 'vite';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+import glsl from 'vite-plugin-glsl';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
   base: process.env.NODE_ENV === 'production' ? '/ready-set-render/' : '/',
 
+  plugins: [
+    glsl({
+      include: ['**/*.glsl', '**/*.vert', '**/*.frag'],
+      warnDuplicatedImports: true,
+      compress: false
+    })
+  ],
+
   resolve: {
     alias: {
-      '@core': path.resolve(__dirname, './src/core'),
-      '@plugins': path.resolve(__dirname, './src/plugins'),
-      '@utils': path.resolve(__dirname, './src/utils'),
-      '@ui': path.resolve(__dirname, './src/ui')
+      '@core': resolve(__dirname, './src/core'),
+      '@plugins': resolve(__dirname, './src/plugins'),
+      '@utils': resolve(__dirname, './src/utils'),
+      '@ui': resolve(__dirname, './src/ui')
     }
   },
 

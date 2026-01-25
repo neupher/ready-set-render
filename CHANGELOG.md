@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.4] - 2026-01-25
+
+### Added
+
+- **Raw GLSL File Support**: Migrated shader modules from `.glsl.ts` wrappers to raw `.glsl` files
+  - Added `vite-plugin-glsl` for development/production builds with `#include` directive support
+  - Created custom `glslRawPlugin` for Vitest compatibility (vite-plugin-glsl breaks test pipeline)
+  - Added `src/shaders.d.ts` TypeScript declarations for `.glsl`, `.vert`, `.frag` imports
+
+- **Migrated Common Shader Modules**:
+  - `common/math.glsl` - Math utilities (PI, saturate, sqr, remap)
+  - `common/brdf.glsl` - Cook-Torrance BRDF functions (GGX, Smith, Fresnel)
+  - `common/lighting.glsl` - Tone mapping, gamma correction, hemisphere ambient
+
+### Changed
+
+- `vite.config.ts`: Added GLSL plugin configuration with ESM-compatible path resolution
+- `vitest.config.ts`: Conditional plugin loading - uses raw loader in tests, full plugin in dev
+- `common/index.ts`: Updated to use default imports from raw `.glsl` files
+- `pbr/pbr.frag.glsl.ts`: Updated imports to use barrel export from `../common`
+- `tsconfig.json`: Added `src/shaders.d.ts` to includes
+
+### Removed
+
+- `common/math.glsl.ts` - Replaced by `math.glsl`
+- `common/brdf.glsl.ts` - Replaced by `brdf.glsl`
+- `common/lighting.glsl.ts` - Replaced by `lighting.glsl`
+
+### Fixed
+
+- Removed unused `_setLightUniforms` method from `ForwardRenderer.ts`
+- Fixed unused parameter warning in `PBRShader.test.ts`
+
+---
+
 ## [0.8.3] - 2026-01-24
 
 ### Added

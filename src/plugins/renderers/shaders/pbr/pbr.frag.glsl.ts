@@ -15,10 +15,7 @@
  * @module shaders/pbr
  */
 
-import { GLSL_MATH } from '../common/math.glsl';
-import { GLSL_BRDF } from '../common/brdf.glsl';
-import { GLSL_LIGHTING } from '../common/lighting.glsl';
-import { composeShader } from '../common';
+import { GLSL_MATH, GLSL_BRDF, GLSL_LIGHTING, composeShader } from '../common';
 
 /**
  * Main PBR fragment shader code (uniforms and main function)

@@ -1,13 +1,3 @@
-/**
- * Common Lighting Functions for GLSL Shaders
- *
- * Reusable lighting utilities including tone mapping and
- * color space conversions.
- *
- * @module shaders/common
- */
-
-export const GLSL_LIGHTING = `
 //=============================================================================
 // LIGHTING UTILITIES
 //=============================================================================
@@ -99,4 +89,3 @@ float lightAttenuation(float distance, float range) {
   float attenuation = saturate(1.0 - pow(distance / range, 4.0));
   return attenuation * attenuation / (distance * distance + 1.0);
 }
-`;

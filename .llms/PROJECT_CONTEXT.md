@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-24T22:54:00Z
-> **Version:** 0.8.3
+> **Last Updated:** 2026-01-25T00:41:00Z
+> **Version:** 0.8.4
 > **Status:** Phase 6 In Progress (6.8-6.13 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.8.3)
+## Current State (v0.8.4)
 
 ### What's Working
 
@@ -44,6 +44,10 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - Fresnel-Schlick approximation
   - Metallic/roughness workflow
   - ACES tone mapping, sRGB gamma correction
+- **Raw GLSL Support**: Shader modules now use raw `.glsl` files instead of `.glsl.ts` wrappers
+  - `vite-plugin-glsl` for development/production (with `#include` directive support)
+  - Custom `glslRawPlugin` for Vitest compatibility
+  - TypeScript declarations for `.glsl`, `.vert`, `.frag` imports
 - **Modular Shaders**: Reusable GLSL modules (math, brdf, lighting) via `composeShader()`
 - **Primitives**: Cube, Sphere (via IMeshProvider/MeshGPUCache architecture)
 - **Lights**: DirectionalLight with transform-based direction, LightGizmoRenderer
@@ -85,14 +89,24 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 | 6.13 | Settings Window | Not Started |
 | 6.14 | ~~Hierarchy Context Menu~~ | ✅ Complete |
 
+### GLSL Migration (In Progress)
+
+Raw `.glsl` file support has been implemented. Migration status:
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Build Configuration (vite-plugin-glsl, Vitest fix) | ✅ Complete |
+| Phase 2 | Migrate Common Shader Modules (math, brdf, lighting) | ✅ Complete |
+| Phase 3 | Migrate PBR Shaders (vertex, fragment with #include) | Not Started |
+
 ---
 
 ## Next Steps (Recommended Order)
 
-1. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
-2. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
-3. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
-4. **Phase 6.10: Render Mode Dropdown** - Solid/Wireframe/Textured switching
+1. **GLSL Migration Phase 3**: Migrate PBR shaders to use `#include` directives
+2. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
+3. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
+4. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
 
 ---
 
@@ -103,6 +117,7 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 | Renderer | WebGL2 (native) | No heavy abstractions |
 | Language | TypeScript 5.7.2 | Strict mode enabled |
 | Build Tool | Vite 6.3.5 | Dev server and bundling |
+| GLSL Plugin | vite-plugin-glsl 1.5.5 | Raw `.glsl` file support with `#include` |
 | Testing | Vitest 2.1.8 | 85% coverage thresholds |
 | Package Manager | npm | Standard tooling |
 
@@ -127,11 +142,12 @@ ready-set-render/
 │   ├── core/                 # Core engine modules
 │   ├── plugins/              # Plugin modules (renderers, primitives, lights, tools)
 │   │   └── renderers/
-│   │       └── shaders/      # Modular GLSL shader system (NEW)
-│   │           ├── common/   # Reusable GLSL snippets (math, brdf, lighting)
+│   │       └── shaders/      # Modular GLSL shader system
+│   │           ├── common/   # Raw .glsl modules (math.glsl, brdf.glsl, lighting.glsl)
 │   │           └── pbr/      # PBR shader (Cook-Torrance BRDF)
 │   ├── ui/                   # UI components and panels
 │   ├── utils/                # Shared utilities (math, etc.)
+│   ├── shaders.d.ts          # TypeScript declarations for .glsl imports
 │   └── index.ts              # Entry point
 ├── tests/                    # Test suites
 ├── CHANGELOG.md              # Version history
@@ -158,6 +174,7 @@ For detailed history of completed phases, see:
 | **Undo/Redo** | Command pattern required for all data changes - see [GUIDELINES.md](./GUIDELINES.md) §6 |
 | **Render Pipelines** | Must implement IRenderPipeline interface - see [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | **PBR Materials** | Set `shaderName: 'pbr'` on material to enable Cook-Torrance BRDF |
+| **GLSL Imports** | Use raw `.glsl` files with default imports - see `src/shaders.d.ts` |
 
 ---
 

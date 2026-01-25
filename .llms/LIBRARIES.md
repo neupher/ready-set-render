@@ -1,7 +1,7 @@
 # Library Tracking: WebGL Editor
 
-> **Last Updated:** 2026-01-22T18:17:00Z
-> **Version:** 0.1.2
+> **Last Updated:** 2026-01-25T00:42:00Z
+> **Version:** 0.1.3
 
 ---
 
@@ -18,6 +18,7 @@ This is a **MANDATORY** requirement. See [GUIDELINES.md](./GUIDELINES.md) for ru
 | Library | Category | Size | Status |
 |---------|----------|------|--------|
 | monaco-editor | UI / Editor | ~700KB gzip | ✅ Approved |
+| vite-plugin-glsl | Build / GLSL | ~15KB | ✅ Approved |
 
 ---
 
