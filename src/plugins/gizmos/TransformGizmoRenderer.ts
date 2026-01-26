@@ -150,12 +150,14 @@ export class TransformGizmoRenderer {
    * @param position - World position of the gizmo
    * @param mode - Gizmo mode (translate, rotate, scale)
    * @param hoveredAxis - Currently hovered axis for highlighting
+   * @param rotation - Optional rotation in Euler angles (degrees) for local space gizmos
    */
   render(
     camera: ICamera,
     position: [number, number, number],
     mode: GizmoMode,
-    hoveredAxis: GizmoAxis
+    hoveredAxis: GizmoAxis,
+    _rotation?: [number, number, number]
   ): void {
     if (!this.initialized || !this.program) return;
 

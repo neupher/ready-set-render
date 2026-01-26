@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.1] - 2026-01-26
+
+### Changed
+
+- **Transform Gizmo Visual Improvements**
+  - Arrow heads now use filled cones (12 segments) instead of wireframe lines
+  - Arrow shafts now use cylindrical geometry (6-sided prisms) instead of single lines
+  - Plane handles (XY, XZ, YZ) reduced by ~30% for cleaner appearance
+  - Center cube handle slightly smaller for better proportions
+
+### Fixed
+
+- **Plane handles now render from both sides** - Double-sided triangles ensure visibility from any camera angle
+- **Hover highlighting for plane handles and center cube** - Now fill with yellow when hovered instead of just outline
+
+---
+
 ## [0.9.0] - 2026-01-26
 
 ### Added

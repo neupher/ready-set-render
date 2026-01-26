@@ -35,10 +35,11 @@ import { GIZMO_COLORS } from './interfaces';
 const ARROW_LENGTH = 1.0;
 const ARROW_HEAD_LENGTH = 0.2;
 const ARROW_HEAD_RADIUS = 0.08;
-const CENTER_SIZE = 0.15;
-const PLANE_HANDLE_SIZE = 0.3;
-const PLANE_HANDLE_OFFSET = 0.3;
+const CENTER_SIZE = 0.12;
+const PLANE_HANDLE_SIZE = 0.2;  // Reduced by ~30% from 0.3
+const PLANE_HANDLE_OFFSET = 0.35;
 const HIT_THRESHOLD = 0.1;
+const CONE_SEGMENTS = 12;  // Segments for filled cone
 
 /**
  * Translation gizmo with arrows for each axis.
@@ -87,16 +88,17 @@ export class TranslateGizmo implements IGizmo {
       hoveredAxis === 'z' || hoveredAxis === 'xz' || hoveredAxis === 'yz' ? GIZMO_COLORS.hover : GIZMO_COLORS.z
     );
 
-    // Generate center handle (yellow square)
+    // Generate center handle (yellow square) - fill when hovered
     this.addCenterHandle(
       vertices,
       colors,
       position,
       scale,
-      hoveredAxis === 'xyz' ? GIZMO_COLORS.hover : GIZMO_COLORS.free
+      hoveredAxis === 'xyz' ? GIZMO_COLORS.hover : GIZMO_COLORS.free,
+      hoveredAxis === 'xyz'
     );
 
-    // Generate plane handles (XY, XZ, YZ)
+    // Generate plane handles (XY, XZ, YZ) - fill when hovered
     this.addPlaneHandle(
       vertices,
       colors,
@@ -105,7 +107,7 @@ export class TranslateGizmo implements IGizmo {
       [0, 1, 0],
       scale,
       hoveredAxis === 'xy' ? GIZMO_COLORS.hover : GIZMO_COLORS.free,
-      0.3 // Alpha for plane fills
+      hoveredAxis === 'xy'
     );
 
     this.addPlaneHandle(
@@ -116,7 +118,7 @@ export class TranslateGizmo implements IGizmo {
       [0, 0, 1],
       scale,
       hoveredAxis === 'xz' ? GIZMO_COLORS.hover : GIZMO_COLORS.free,
-      0.3
+      hoveredAxis === 'xz'
     );
 
     this.addPlaneHandle(
@@ -127,14 +129,14 @@ export class TranslateGizmo implements IGizmo {
       [0, 0, 1],
       scale,
       hoveredAxis === 'yz' ? GIZMO_COLORS.hover : GIZMO_COLORS.free,
-      0.3
+      hoveredAxis === 'yz'
     );
 
     return {
       vertices: new Float32Array(vertices),
       vertexCount: vertices.length / 3,
       colors: new Float32Array(colors),
-      drawMode: WebGL2RenderingContext.LINES,
+      drawMode: WebGL2RenderingContext.TRIANGLES,
     };
   }
 
@@ -280,7 +282,7 @@ export class TranslateGizmo implements IGizmo {
   }
 
   /**
-   * Add arrow geometry for a single axis.
+   * Add arrow geometry for a single axis with filled cone head.
    */
   private addArrow(
     vertices: number[],
@@ -292,22 +294,14 @@ export class TranslateGizmo implements IGizmo {
   ): void {
     const length = ARROW_LENGTH * scale;
     const headLength = ARROW_HEAD_LENGTH * scale;
+    const shaftRadius = 0.02 * scale;
 
-    // Arrow shaft (line from origin to tip)
+    // Arrow tip position
     const tipX = origin[0] + direction[0] * length;
     const tipY = origin[1] + direction[1] * length;
     const tipZ = origin[2] + direction[2] * length;
 
-    vertices.push(
-      origin[0], origin[1], origin[2],
-      tipX, tipY, tipZ
-    );
-    colors.push(
-      color[0], color[1], color[2],
-      color[0], color[1], color[2]
-    );
-
-    // Arrow head (cone represented as lines)
+    // Cone base position
     const headBaseX = tipX - direction[0] * headLength;
     const headBaseY = tipY - direction[1] * headLength;
     const headBaseZ = tipZ - direction[2] * headLength;
@@ -317,18 +311,18 @@ export class TranslateGizmo implements IGizmo {
     const perp2 = this.crossProduct(direction, perp1);
 
     const headRadius = ARROW_HEAD_RADIUS * scale;
-    const segments = 8;
 
-    for (let i = 0; i < segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const nextAngle = ((i + 1) / segments) * Math.PI * 2;
+    // Generate filled cone triangles
+    for (let i = 0; i < CONE_SEGMENTS; i++) {
+      const angle = (i / CONE_SEGMENTS) * Math.PI * 2;
+      const nextAngle = ((i + 1) / CONE_SEGMENTS) * Math.PI * 2;
 
       const cos1 = Math.cos(angle);
       const sin1 = Math.sin(angle);
       const cos2 = Math.cos(nextAngle);
       const sin2 = Math.sin(nextAngle);
 
-      // Point on cone base
+      // Points on cone base
       const base1X = headBaseX + (perp1[0] * cos1 + perp2[0] * sin1) * headRadius;
       const base1Y = headBaseY + (perp1[1] * cos1 + perp2[1] * sin1) * headRadius;
       const base1Z = headBaseZ + (perp1[2] * cos1 + perp2[2] * sin1) * headRadius;
@@ -337,56 +331,231 @@ export class TranslateGizmo implements IGizmo {
       const base2Y = headBaseY + (perp1[1] * cos2 + perp2[1] * sin2) * headRadius;
       const base2Z = headBaseZ + (perp1[2] * cos2 + perp2[2] * sin2) * headRadius;
 
-      // Lines from tip to base
-      vertices.push(tipX, tipY, tipZ, base1X, base1Y, base1Z);
-      colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+      // Triangle from tip to two adjacent base points (cone side)
+      vertices.push(tipX, tipY, tipZ);
+      vertices.push(base1X, base1Y, base1Z);
+      vertices.push(base2X, base2Y, base2Z);
+      colors.push(
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2]
+      );
 
-      // Lines around base circle
-      vertices.push(base1X, base1Y, base1Z, base2X, base2Y, base2Z);
-      colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+      // Triangle for cone base cap (close the bottom)
+      vertices.push(headBaseX, headBaseY, headBaseZ);
+      vertices.push(base2X, base2Y, base2Z);
+      vertices.push(base1X, base1Y, base1Z);
+      colors.push(
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2]
+      );
+    }
+
+    // Arrow shaft as a thin cylinder (6-sided prism for efficiency)
+    const shaftSegments = 6;
+    const shaftEndX = headBaseX;
+    const shaftEndY = headBaseY;
+    const shaftEndZ = headBaseZ;
+
+    for (let i = 0; i < shaftSegments; i++) {
+      const angle = (i / shaftSegments) * Math.PI * 2;
+      const nextAngle = ((i + 1) / shaftSegments) * Math.PI * 2;
+
+      const cos1 = Math.cos(angle);
+      const sin1 = Math.sin(angle);
+      const cos2 = Math.cos(nextAngle);
+      const sin2 = Math.sin(nextAngle);
+
+      // Points at shaft start (origin)
+      const start1X = origin[0] + (perp1[0] * cos1 + perp2[0] * sin1) * shaftRadius;
+      const start1Y = origin[1] + (perp1[1] * cos1 + perp2[1] * sin1) * shaftRadius;
+      const start1Z = origin[2] + (perp1[2] * cos1 + perp2[2] * sin1) * shaftRadius;
+
+      const start2X = origin[0] + (perp1[0] * cos2 + perp2[0] * sin2) * shaftRadius;
+      const start2Y = origin[1] + (perp1[1] * cos2 + perp2[1] * sin2) * shaftRadius;
+      const start2Z = origin[2] + (perp1[2] * cos2 + perp2[2] * sin2) * shaftRadius;
+
+      // Points at shaft end (where cone base starts)
+      const end1X = shaftEndX + (perp1[0] * cos1 + perp2[0] * sin1) * shaftRadius;
+      const end1Y = shaftEndY + (perp1[1] * cos1 + perp2[1] * sin1) * shaftRadius;
+      const end1Z = shaftEndZ + (perp1[2] * cos1 + perp2[2] * sin1) * shaftRadius;
+
+      const end2X = shaftEndX + (perp1[0] * cos2 + perp2[0] * sin2) * shaftRadius;
+      const end2Y = shaftEndY + (perp1[1] * cos2 + perp2[1] * sin2) * shaftRadius;
+      const end2Z = shaftEndZ + (perp1[2] * cos2 + perp2[2] * sin2) * shaftRadius;
+
+      // Two triangles for this quad of the shaft
+      vertices.push(start1X, start1Y, start1Z);
+      vertices.push(end1X, end1Y, end1Z);
+      vertices.push(start2X, start2Y, start2Z);
+      colors.push(
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2]
+      );
+
+      vertices.push(start2X, start2Y, start2Z);
+      vertices.push(end1X, end1Y, end1Z);
+      vertices.push(end2X, end2Y, end2Z);
+      colors.push(
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2]
+      );
     }
   }
 
   /**
-   * Add center handle geometry.
+   * Add center handle geometry - filled cube when hovered.
    */
   private addCenterHandle(
     vertices: number[],
     colors: number[],
     origin: [number, number, number],
     scale: number,
-    color: [number, number, number]
+    color: [number, number, number],
+    isHovered: boolean = false
   ): void {
     const size = CENTER_SIZE * scale;
     const halfSize = size / 2;
 
-    // Draw a small cube outline at the center
+    // Cube corners
     const corners = [
-      [origin[0] - halfSize, origin[1] - halfSize, origin[2] - halfSize],
-      [origin[0] + halfSize, origin[1] - halfSize, origin[2] - halfSize],
-      [origin[0] + halfSize, origin[1] + halfSize, origin[2] - halfSize],
-      [origin[0] - halfSize, origin[1] + halfSize, origin[2] - halfSize],
-      [origin[0] - halfSize, origin[1] - halfSize, origin[2] + halfSize],
-      [origin[0] + halfSize, origin[1] - halfSize, origin[2] + halfSize],
-      [origin[0] + halfSize, origin[1] + halfSize, origin[2] + halfSize],
-      [origin[0] - halfSize, origin[1] + halfSize, origin[2] + halfSize],
+      [origin[0] - halfSize, origin[1] - halfSize, origin[2] - halfSize], // 0: -X -Y -Z
+      [origin[0] + halfSize, origin[1] - halfSize, origin[2] - halfSize], // 1: +X -Y -Z
+      [origin[0] + halfSize, origin[1] + halfSize, origin[2] - halfSize], // 2: +X +Y -Z
+      [origin[0] - halfSize, origin[1] + halfSize, origin[2] - halfSize], // 3: -X +Y -Z
+      [origin[0] - halfSize, origin[1] - halfSize, origin[2] + halfSize], // 4: -X -Y +Z
+      [origin[0] + halfSize, origin[1] - halfSize, origin[2] + halfSize], // 5: +X -Y +Z
+      [origin[0] + halfSize, origin[1] + halfSize, origin[2] + halfSize], // 6: +X +Y +Z
+      [origin[0] - halfSize, origin[1] + halfSize, origin[2] + halfSize], // 7: -X +Y +Z
     ];
 
-    // Bottom face edges
-    const edges = [
-      [0, 1], [1, 2], [2, 3], [3, 0], // Bottom
-      [4, 5], [5, 6], [6, 7], [7, 4], // Top
-      [0, 4], [1, 5], [2, 6], [3, 7], // Verticals
-    ];
+    if (isHovered) {
+      // Draw filled cube with triangles
+      // Face indices: each face is 2 triangles
+      const faces = [
+        [0, 1, 2, 0, 2, 3], // Bottom (-Z)
+        [4, 6, 5, 4, 7, 6], // Top (+Z)
+        [0, 4, 5, 0, 5, 1], // Front (-Y)
+        [2, 6, 7, 2, 7, 3], // Back (+Y)
+        [0, 3, 7, 0, 7, 4], // Left (-X)
+        [1, 5, 6, 1, 6, 2], // Right (+X)
+      ];
 
-    for (const [a, b] of edges) {
-      vertices.push(...corners[a], ...corners[b]);
-      colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+      for (const face of faces) {
+        for (const idx of face) {
+          vertices.push(...corners[idx]);
+          colors.push(color[0], color[1], color[2]);
+        }
+      }
+    } else {
+      // Draw wireframe cube using thin quads (degenerate triangles for lines)
+      const edges: [number, number][] = [
+        [0, 1], [1, 2], [2, 3], [3, 0], // Bottom
+        [4, 5], [5, 6], [6, 7], [7, 4], // Top
+        [0, 4], [1, 5], [2, 6], [3, 7], // Verticals
+      ];
+
+      const lineWidth = 0.008 * scale;
+      for (const [a, b] of edges) {
+        this.addThickLine(vertices, colors, corners[a] as [number, number, number], corners[b] as [number, number, number], color, lineWidth);
+      }
     }
   }
 
   /**
-   * Add plane handle geometry (small square).
+   * Add a thick line as two triangles (quad).
+   */
+  private addThickLine(
+    vertices: number[],
+    colors: number[],
+    p1: [number, number, number],
+    p2: [number, number, number],
+    color: [number, number, number],
+    width: number
+  ): void {
+    // Calculate line direction and a perpendicular
+    const dir: [number, number, number] = [
+      p2[0] - p1[0],
+      p2[1] - p1[1],
+      p2[2] - p1[2],
+    ];
+    const perp = this.getPerpendicularVector(this.normalizeVector(dir));
+
+    const halfW = width / 2;
+
+    // Quad corners
+    const v1 = [p1[0] + perp[0] * halfW, p1[1] + perp[1] * halfW, p1[2] + perp[2] * halfW];
+    const v2 = [p1[0] - perp[0] * halfW, p1[1] - perp[1] * halfW, p1[2] - perp[2] * halfW];
+    const v3 = [p2[0] - perp[0] * halfW, p2[1] - perp[1] * halfW, p2[2] - perp[2] * halfW];
+    const v4 = [p2[0] + perp[0] * halfW, p2[1] + perp[1] * halfW, p2[2] + perp[2] * halfW];
+
+    // Two triangles
+    vertices.push(...v1, ...v2, ...v3);
+    vertices.push(...v1, ...v3, ...v4);
+    colors.push(
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2]
+    );
+  }
+
+  /**
+   * Add a thick line as a double-sided quad (visible from both sides).
+   */
+  private addThickLineDoubleSided(
+    vertices: number[],
+    colors: number[],
+    p1: [number, number, number],
+    p2: [number, number, number],
+    color: [number, number, number],
+    width: number
+  ): void {
+    // Calculate line direction and a perpendicular
+    const dir: [number, number, number] = [
+      p2[0] - p1[0],
+      p2[1] - p1[1],
+      p2[2] - p1[2],
+    ];
+    const perp = this.getPerpendicularVector(this.normalizeVector(dir));
+
+    const halfW = width / 2;
+
+    // Quad corners
+    const v1 = [p1[0] + perp[0] * halfW, p1[1] + perp[1] * halfW, p1[2] + perp[2] * halfW];
+    const v2 = [p1[0] - perp[0] * halfW, p1[1] - perp[1] * halfW, p1[2] - perp[2] * halfW];
+    const v3 = [p2[0] - perp[0] * halfW, p2[1] - perp[1] * halfW, p2[2] - perp[2] * halfW];
+    const v4 = [p2[0] + perp[0] * halfW, p2[1] + perp[1] * halfW, p2[2] + perp[2] * halfW];
+
+    // Front face (two triangles)
+    vertices.push(...v1, ...v2, ...v3);
+    vertices.push(...v1, ...v3, ...v4);
+    // Back face (reversed winding)
+    vertices.push(...v1, ...v3, ...v2);
+    vertices.push(...v1, ...v4, ...v3);
+    colors.push(
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2],
+      color[0], color[1], color[2]
+    );
+  }
+
+  /**
+   * Add plane handle geometry (small square) - filled when hovered.
    */
   private addPlaneHandle(
     vertices: number[],
@@ -396,7 +565,7 @@ export class TranslateGizmo implements IGizmo {
     axis2: [number, number, number],
     scale: number,
     color: [number, number, number],
-    _alpha: number
+    isHovered: boolean
   ): void {
     const size = PLANE_HANDLE_SIZE * scale;
     const offset = PLANE_HANDLE_OFFSET * scale;
@@ -423,18 +592,35 @@ export class TranslateGizmo implements IGizmo {
       origin[2] + axis1[2] * offset + axis2[2] * (offset + size),
     ];
 
-    // Draw as lines (outline)
-    vertices.push(...corner1, ...corner2);
-    colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
-
-    vertices.push(...corner2, ...corner3);
-    colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
-
-    vertices.push(...corner3, ...corner4);
-    colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
-
-    vertices.push(...corner4, ...corner1);
-    colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+    if (isHovered) {
+      // Draw filled quad (two triangles for front face)
+      vertices.push(...corner1, ...corner2, ...corner3);
+      vertices.push(...corner1, ...corner3, ...corner4);
+      // Back face (reversed winding order)
+      vertices.push(...corner1, ...corner3, ...corner2);
+      vertices.push(...corner1, ...corner4, ...corner3);
+      colors.push(
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2]
+      );
+    } else {
+      // Draw wireframe square using thick lines (double-sided)
+      const lineWidth = 0.015 * scale;
+      this.addThickLineDoubleSided(vertices, colors, corner1 as [number, number, number], corner2 as [number, number, number], color, lineWidth);
+      this.addThickLineDoubleSided(vertices, colors, corner2 as [number, number, number], corner3 as [number, number, number], color, lineWidth);
+      this.addThickLineDoubleSided(vertices, colors, corner3 as [number, number, number], corner4 as [number, number, number], color, lineWidth);
+      this.addThickLineDoubleSided(vertices, colors, corner4 as [number, number, number], corner1 as [number, number, number], color, lineWidth);
+    }
   }
 
   /**

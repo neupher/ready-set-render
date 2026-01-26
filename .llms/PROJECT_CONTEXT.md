@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-26T13:40:00Z
-> **Version:** 0.9.0
+> **Last Updated:** 2026-01-26T15:33:00Z
+> **Version:** 0.9.1
 > **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---

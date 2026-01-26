@@ -145,7 +145,8 @@ export class TransformGizmoController {
     // Get entity position
     const position = selected.transform.position;
 
-    // Render gizmo
+    // Render gizmo (in world space - gizmo axes always align with world coordinates)
+    // This is the standard behavior for translate gizmos in most 3D editors
     this.renderer.render(
       camera,
       [...position] as [number, number, number],
