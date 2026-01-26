@@ -314,11 +314,11 @@ export class TransformGizmoController {
 
   /**
    * Start a drag operation.
-   * 
+   *
    * Note: We trust hoveredAxis which was set by updateHover()'s hitTest.
    * We don't do a redundant hitTest here because the mouse position
    * can differ slightly between mousemove and mousedown, causing spurious failures.
-   * 
+   *
    * IMPORTANT: We store the entity reference in dragState so that endDrag()
    * doesn't depend on selection state. This prevents lost commands when
    * selection changes during the drag (e.g., from SelectionController's mouseUp).
@@ -333,15 +333,20 @@ export class TransformGizmoController {
     }
 
     const position = [...entity.transform.position] as [number, number, number];
-    
+
     const ray = this.screenToRay(mousePos);
     if (!ray) {
       return;
     }
 
     // Calculate starting intersection point for drag delta calculation
-    // Use the gizmo origin as the starting point along the drag axis
-    const startIntersection: [number, number, number] = [...position];
+    // This must be the actual intersection point where the user clicked,
+    // not the gizmo center, to avoid "jumping" when the drag starts.
+    const startIntersection = this.calculateDragStartIntersection(
+      ray.origin,
+      ray.direction,
+      position
+    );
 
     this.dragState = {
       active: true,
@@ -360,6 +365,202 @@ export class TransformGizmoController {
       mode: this.mode,
       axis: this.hoveredAxis,
     });
+  }
+
+  /**
+   * Calculate the starting intersection point for drag operations.
+   *
+   * For translate single-axis: Projects ray onto the axis line to find closest point
+   * For translate plane: Intersects ray with the plane
+   * For rotate: Intersects ray with the rotation plane
+   * For scale: Projects ray onto the axis line
+   *
+   * This ensures drag deltas are calculated from where the user actually clicked,
+   * preventing "jumping" at drag start.
+   */
+  private calculateDragStartIntersection(
+    rayOrigin: [number, number, number],
+    rayDirection: [number, number, number],
+    gizmoPosition: [number, number, number]
+  ): [number, number, number] {
+    if (this.hoveredAxis === null) {
+      return [...gizmoPosition] as [number, number, number];
+    }
+
+    switch (this.mode) {
+      case 'translate':
+        return this.calculateTranslateStartIntersection(rayOrigin, rayDirection, gizmoPosition);
+
+      case 'rotate':
+        return this.calculateRotateStartIntersection(rayOrigin, rayDirection, gizmoPosition);
+
+      case 'scale':
+        return this.calculateScaleStartIntersection(rayOrigin, rayDirection, gizmoPosition);
+
+      default:
+        return [...gizmoPosition] as [number, number, number];
+    }
+  }
+
+  /**
+   * Calculate start intersection for translate gizmo.
+   */
+  private calculateTranslateStartIntersection(
+    rayOrigin: [number, number, number],
+    rayDirection: [number, number, number],
+    gizmoPosition: [number, number, number]
+  ): [number, number, number] {
+    switch (this.hoveredAxis) {
+      case 'x':
+        return this.projectRayOntoAxis(rayOrigin, rayDirection, gizmoPosition, [1, 0, 0]);
+      case 'y':
+        return this.projectRayOntoAxis(rayOrigin, rayDirection, gizmoPosition, [0, 1, 0]);
+      case 'z':
+        return this.projectRayOntoAxis(rayOrigin, rayDirection, gizmoPosition, [0, 0, 1]);
+      case 'xy':
+        return this.intersectRayWithPlane(rayOrigin, rayDirection, gizmoPosition, [0, 0, 1]);
+      case 'xz':
+        return this.intersectRayWithPlane(rayOrigin, rayDirection, gizmoPosition, [0, 1, 0]);
+      case 'yz':
+        return this.intersectRayWithPlane(rayOrigin, rayDirection, gizmoPosition, [1, 0, 0]);
+      case 'xyz':
+        // For free movement, use camera-aligned plane through gizmo position
+        return this.intersectRayWithPlane(rayOrigin, rayDirection, gizmoPosition, rayDirection);
+      default:
+        return [...gizmoPosition] as [number, number, number];
+    }
+  }
+
+  /**
+   * Calculate start intersection for rotate gizmo.
+   * Uses the ring's plane for intersection.
+   */
+  private calculateRotateStartIntersection(
+    rayOrigin: [number, number, number],
+    rayDirection: [number, number, number],
+    gizmoPosition: [number, number, number]
+  ): [number, number, number] {
+    let planeNormal: [number, number, number];
+    switch (this.hoveredAxis) {
+      case 'x':
+        planeNormal = [1, 0, 0];
+        break;
+      case 'y':
+        planeNormal = [0, 1, 0];
+        break;
+      case 'z':
+        planeNormal = [0, 0, 1];
+        break;
+      default:
+        return [...gizmoPosition] as [number, number, number];
+    }
+
+    return this.intersectRayWithPlane(rayOrigin, rayDirection, gizmoPosition, planeNormal);
+  }
+
+  /**
+   * Calculate start intersection for scale gizmo.
+   */
+  private calculateScaleStartIntersection(
+    rayOrigin: [number, number, number],
+    rayDirection: [number, number, number],
+    gizmoPosition: [number, number, number]
+  ): [number, number, number] {
+    switch (this.hoveredAxis) {
+      case 'x':
+        return this.projectRayOntoAxis(rayOrigin, rayDirection, gizmoPosition, [1, 0, 0]);
+      case 'y':
+        return this.projectRayOntoAxis(rayOrigin, rayDirection, gizmoPosition, [0, 1, 0]);
+      case 'z':
+        return this.projectRayOntoAxis(rayOrigin, rayDirection, gizmoPosition, [0, 0, 1]);
+      case 'xyz':
+        // For uniform scale, use camera-aligned plane
+        return this.intersectRayWithPlane(rayOrigin, rayDirection, gizmoPosition, rayDirection);
+      default:
+        return [...gizmoPosition] as [number, number, number];
+    }
+  }
+
+  /**
+   * Project a ray onto an axis line and find the closest point on the axis.
+   * Returns the closest point on the axis to the ray.
+   */
+  private projectRayOntoAxis(
+    rayOrigin: [number, number, number],
+    rayDirection: [number, number, number],
+    axisOrigin: [number, number, number],
+    axisDirection: [number, number, number]
+  ): [number, number, number] {
+    // Find closest points between the ray and the axis line
+    const w: [number, number, number] = [
+      rayOrigin[0] - axisOrigin[0],
+      rayOrigin[1] - axisOrigin[1],
+      rayOrigin[2] - axisOrigin[2],
+    ];
+
+    const a = this.dotProduct3(rayDirection, rayDirection);
+    const b = this.dotProduct3(rayDirection, axisDirection);
+    const c = this.dotProduct3(axisDirection, axisDirection);
+    const d = this.dotProduct3(rayDirection, w);
+    const e = this.dotProduct3(axisDirection, w);
+
+    const denom = a * c - b * b;
+    if (Math.abs(denom) < 1e-6) {
+      // Lines are parallel, return axis origin
+      return [...axisOrigin] as [number, number, number];
+    }
+
+    // t2 is the parameter along the axis
+    const t2 = (a * e - b * d) / denom;
+
+    // Return point on axis
+    return [
+      axisOrigin[0] + axisDirection[0] * t2,
+      axisOrigin[1] + axisDirection[1] * t2,
+      axisOrigin[2] + axisDirection[2] * t2,
+    ];
+  }
+
+  /**
+   * Intersect a ray with a plane.
+   * Returns the intersection point, or the gizmo position if no intersection.
+   */
+  private intersectRayWithPlane(
+    rayOrigin: [number, number, number],
+    rayDirection: [number, number, number],
+    planePoint: [number, number, number],
+    planeNormal: [number, number, number]
+  ): [number, number, number] {
+    const denom = this.dotProduct3(planeNormal, rayDirection);
+    if (Math.abs(denom) < 1e-6) {
+      // Ray is parallel to plane
+      return [...planePoint] as [number, number, number];
+    }
+
+    const diff: [number, number, number] = [
+      planePoint[0] - rayOrigin[0],
+      planePoint[1] - rayOrigin[1],
+      planePoint[2] - rayOrigin[2],
+    ];
+    const t = this.dotProduct3(diff, planeNormal) / denom;
+
+    if (t < 0) {
+      // Intersection is behind the camera
+      return [...planePoint] as [number, number, number];
+    }
+
+    return [
+      rayOrigin[0] + rayDirection[0] * t,
+      rayOrigin[1] + rayDirection[1] * t,
+      rayOrigin[2] + rayDirection[2] * t,
+    ];
+  }
+
+  /**
+   * Dot product of two 3D vectors.
+   */
+  private dotProduct3(a: [number, number, number], b: [number, number, number]): number {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
   }
 
   /**
@@ -399,7 +600,7 @@ export class TransformGizmoController {
 
   /**
    * End drag operation and commit changes via CommandHistory.
-   * 
+   *
    * IMPORTANT: Uses the entity stored in dragState from startDrag(), not the
    * current selection. This ensures commands are created even if selection
    * changed during the drag (e.g., from SelectionController's mouseUp handler).
@@ -412,7 +613,7 @@ export class TransformGizmoController {
     // Use the entity stored at drag start, NOT the current selection
     // This prevents lost commands when selection changes during drag
     const entity = this.dragState.entity;
-    
+
     // Create commands for changed properties
     this.commitTransformChanges(entity);
 

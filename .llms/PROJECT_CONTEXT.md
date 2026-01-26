@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-26T22:10:00Z
-> **Version:** 0.9.2
+> **Last Updated:** 2026-01-26T22:35:00Z
+> **Version:** 0.9.3
 > **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.9.2)
+## Current State (v0.9.3)
 
 ### What's Working
 
@@ -60,13 +60,16 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - Screen-space constant size rendering
   - Ray casting hit detection for interaction
   - Full undo/redo integration via PropertyChangeCommand (batched)
+  - **Fixed**: Proper drag start intersection calculation prevents initial jump
+  - **Fixed**: Rotation gizmo now accepts input (calculates proper start point on ring)
+  - **Improved**: Rotation rings rendered as thick bands (10% width) for better visibility
 - **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
 - **Default Scene**: Cube primitive auto-created on startup for faster testing
 
 ### Test Coverage
 
-- **454 tests passing**
+- **479 tests passing** (25 new gizmo command tests added)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -77,6 +80,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **ICloneable** enables polymorphic entity duplication
 - **PBRShaderProgram** encapsulates PBR shader with automatic material switching
 - **GizmoDragState** stores entity reference to avoid selection race conditions
+- **calculateDragStartIntersection()** computes actual click point for smooth dragging
 
 ---
 

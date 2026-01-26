@@ -104,7 +104,7 @@ export class CommandHistory {
   constructor(options: CommandHistoryOptions) {
     this.eventBus = options.eventBus;
     this.maxStackSize = options.maxStackSize ?? 100;
-    
+
     if (DEBUG_UNDO) {
       console.log('[CommandHistory] Initialized with maxStackSize:', this.maxStackSize);
     }
@@ -121,7 +121,7 @@ export class CommandHistory {
    */
   execute(command: ICommand): void {
     if (DEBUG_UNDO) {
-      console.log('[CommandHistory] execute:', command.description, 
+      console.log('[CommandHistory] execute:', command.description,
         this.batchCommands !== null ? '(in batch)' : '');
     }
 
@@ -176,7 +176,7 @@ export class CommandHistory {
     // Emit events
     this.eventBus.emit('command:executed', { command });
     this.emitStackChanged();
-    
+
     if (DEBUG_UNDO) {
       console.log('[CommandHistory] Stack size:', this.undoStack.length);
     }

@@ -32,6 +32,7 @@ import { GIZMO_COLORS } from './interfaces';
  * Gizmo dimensions (relative to scale factor).
  */
 const RING_RADIUS = 0.8;
+const RING_WIDTH_RATIO = 0.1; // 10% of radius - inner edge is 90% of outer radius
 const RING_SEGMENTS = 48;
 const HIT_THRESHOLD = 0.1;
 
@@ -180,6 +181,7 @@ export class RotateGizmo implements IGizmo {
 
   /**
    * Add ring geometry for a single rotation axis.
+   * Renders the ring as a thick band (ribbon) for better visibility.
    */
   private addRing(
     vertices: number[],
@@ -189,13 +191,15 @@ export class RotateGizmo implements IGizmo {
     scale: number,
     color: [number, number, number]
   ): void {
-    const radius = RING_RADIUS * scale;
+    const outerRadius = RING_RADIUS * scale;
+    const innerRadius = outerRadius * (1 - RING_WIDTH_RATIO); // 90% of outer radius
 
     // Get perpendicular vectors to create the ring plane
     const perp1 = this.getPerpendicularVector(normal);
     const perp2 = this.crossProduct(normal, perp1);
 
-    // Generate ring as line segments
+    // Generate ring as a thick band using line segments
+    // Draw both inner and outer rings plus radial connections
     for (let i = 0; i < RING_SEGMENTS; i++) {
       const angle1 = (i / RING_SEGMENTS) * Math.PI * 2;
       const angle2 = ((i + 1) / RING_SEGMENTS) * Math.PI * 2;
@@ -205,17 +209,37 @@ export class RotateGizmo implements IGizmo {
       const cos2 = Math.cos(angle2);
       const sin2 = Math.sin(angle2);
 
-      // Points on the ring
-      const p1X = center[0] + (perp1[0] * cos1 + perp2[0] * sin1) * radius;
-      const p1Y = center[1] + (perp1[1] * cos1 + perp2[1] * sin1) * radius;
-      const p1Z = center[2] + (perp1[2] * cos1 + perp2[2] * sin1) * radius;
+      // Outer ring points
+      const outer1X = center[0] + (perp1[0] * cos1 + perp2[0] * sin1) * outerRadius;
+      const outer1Y = center[1] + (perp1[1] * cos1 + perp2[1] * sin1) * outerRadius;
+      const outer1Z = center[2] + (perp1[2] * cos1 + perp2[2] * sin1) * outerRadius;
 
-      const p2X = center[0] + (perp1[0] * cos2 + perp2[0] * sin2) * radius;
-      const p2Y = center[1] + (perp1[1] * cos2 + perp2[1] * sin2) * radius;
-      const p2Z = center[2] + (perp1[2] * cos2 + perp2[2] * sin2) * radius;
+      const outer2X = center[0] + (perp1[0] * cos2 + perp2[0] * sin2) * outerRadius;
+      const outer2Y = center[1] + (perp1[1] * cos2 + perp2[1] * sin2) * outerRadius;
+      const outer2Z = center[2] + (perp1[2] * cos2 + perp2[2] * sin2) * outerRadius;
 
-      vertices.push(p1X, p1Y, p1Z, p2X, p2Y, p2Z);
+      // Inner ring points
+      const inner1X = center[0] + (perp1[0] * cos1 + perp2[0] * sin1) * innerRadius;
+      const inner1Y = center[1] + (perp1[1] * cos1 + perp2[1] * sin1) * innerRadius;
+      const inner1Z = center[2] + (perp1[2] * cos1 + perp2[2] * sin1) * innerRadius;
+
+      const inner2X = center[0] + (perp1[0] * cos2 + perp2[0] * sin2) * innerRadius;
+      const inner2Y = center[1] + (perp1[1] * cos2 + perp2[1] * sin2) * innerRadius;
+      const inner2Z = center[2] + (perp1[2] * cos2 + perp2[2] * sin2) * innerRadius;
+
+      // Outer ring segment
+      vertices.push(outer1X, outer1Y, outer1Z, outer2X, outer2Y, outer2Z);
       colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+
+      // Inner ring segment
+      vertices.push(inner1X, inner1Y, inner1Z, inner2X, inner2Y, inner2Z);
+      colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+
+      // Radial connection (every few segments for cleaner look)
+      if (i % 4 === 0) {
+        vertices.push(outer1X, outer1Y, outer1Z, inner1X, inner1Y, inner1Z);
+        colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+      }
     }
   }
 

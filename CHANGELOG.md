@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.3] - 2026-01-26
+
+### Added
+
+- **Transform Gizmo Undo/Redo Test Coverage**
+  - New test file `tests/unit/plugins/gizmos/TransformGizmoCommands.test.ts` (25 tests)
+  - Coverage for translate, rotate, and scale operations on all axes
+  - Tests for batch operations, redo functionality, event emission, and edge cases
+  - Tests for command coalescing behavior
+
+### Fixed
+
+- **Rotation Gizmo Now Accepts Input**
+  - Root cause: `startIntersection` was set to gizmo center instead of actual click point on ring
+  - Rotation angle calculation failed because start vector was zero-length
+  - Added `calculateRotateStartIntersection()` to compute actual click point on rotation plane
+
+- **Eliminated Initial Jump When Dragging Gizmos**
+  - All gizmo modes (translate, rotate, scale) now calculate proper start intersection
+  - Translate: Uses `projectRayOntoAxis()` for single-axis, `intersectRayWithPlane()` for plane moves
+  - Scale: Same approach as translate for axis constraints
+  - Free/uniform movements use camera-aligned plane through gizmo position
+
+### Changed
+
+- **Rotation Gizmo Visual Improvements**
+  - Rings now render as thick bands (10% width) instead of single lines
+  - Outer ring at full radius, inner ring at 90% radius
+  - Radial connections every 4 segments for cleaner look
+  - Improved visual clarity for understanding rotation axis orientation
+
+---
+
 ## [0.9.2] - 2026-01-26
 
 ### Fixed
