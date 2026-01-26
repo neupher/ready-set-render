@@ -33,6 +33,7 @@ import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { LightGizmoRenderer } from '@plugins/renderers/gizmos/LightGizmoRenderer';
 import { ViewportGizmoRenderer } from '@plugins/renderers/gizmos/ViewportGizmoRenderer';
+import { TransformGizmoController } from '@plugins/gizmos';
 import { OrbitController } from '@plugins/navigation';
 import { DirectionalLight } from '@plugins/lights/DirectionalLight';
 import { LightManager } from '@core/LightManager';
@@ -92,6 +93,9 @@ export class Application {
   // Navigation
   private orbitController!: OrbitController;
 
+  // Transform gizmos
+  private transformGizmoController!: TransformGizmoController;
+
   // UI
   private layout!: EditorLayout;
 
@@ -133,6 +137,13 @@ export class Application {
     this.primitiveRegistry.register(new CubeFactory());
     this.primitiveRegistry.register(new SphereFactory());
     console.log('Primitive registry initialized with Cube and Sphere factories');
+
+    // Create default Cube primitive for testing
+    const defaultCube = this.primitiveRegistry.create('Cube');
+    if (defaultCube) {
+      this.sceneGraph.add(defaultCube);
+      console.log('Default Cube added to scene');
+    }
 
     // Initialize camera as scene entity
     this.cameraEntity = new CameraEntity({
@@ -240,6 +251,18 @@ export class Application {
     });
     console.log('Property change handler initialized');
 
+    // Initialize transform gizmo controller
+    this.transformGizmoController = new TransformGizmoController({
+      gl: this.gl,
+      eventBus: this.eventBus,
+      sceneGraph: this.sceneGraph,
+      selectionManager: this.selectionManager,
+      commandHistory: this.commandHistory,
+      canvas: viewportCanvas,
+    });
+    this.transformGizmoController.initialize();
+    console.log('Transform gizmo controller initialized');
+
     // Create render camera adapter
     this.renderCamera = this.cameraEntity.asRenderCamera(1);
 
@@ -307,6 +330,9 @@ export class Application {
 
       // Render light gizmos for selected light entities
       this.renderSelectedLightGizmos();
+
+      // Render transform gizmos for selected entities (after scene, depth disabled)
+      this.transformGizmoController.render(this.renderCamera);
 
       // Render viewport orientation gizmo (always visible in corner)
       this.viewportGizmoRenderer.render(this.renderCamera);

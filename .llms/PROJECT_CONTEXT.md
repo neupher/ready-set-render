@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-25T21:58:00Z
-> **Version:** 0.8.5
-> **Status:** Phase 6 In Progress (6.8-6.13 remaining)
+> **Last Updated:** 2026-01-26T13:40:00Z
+> **Version:** 0.9.0
+> **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.8.4)
+## Current State (v0.9.0)
 
 ### What's Working
 
@@ -54,12 +54,17 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **Camera**: CameraEntity with composition pattern, OrbitController (Maya-style navigation)
 - **Selection**: Ray picking, Ctrl+Click multi-select, F key framing
 - **Undo/Redo**: Command pattern with coalescing (Ctrl+Z/Y)
+- **Transform Gizmos**: Visual handles for translate/rotate/scale with W/E/R shortcuts
+  - Screen-space constant size rendering
+  - Ray casting hit detection for interaction
+  - Full undo/redo integration via PropertyChangeCommand
 - **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
+- **Default Scene**: Cube primitive auto-created on startup for faster testing
 
 ### Test Coverage
 
-- **453 tests passing**
+- **454 tests passing**
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -81,7 +86,7 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 6.7 | PBR Uber Shader (Cook-Torrance BRDF) | ✅ Complete |
-| 6.8 | Transform Gizmos (W/E/R) | Not Started |
+| 6.8 | Transform Gizmos (W/E/R) | ✅ Complete |
 | 6.9 | Live Shader Editor | Not Started |
 | 6.10 | Render Mode Dropdown | Not Started |
 | 6.11 | ~~Undo/Redo~~ | ✅ Moved earlier, complete |
@@ -103,9 +108,9 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Phase 6.8: Transform Gizmos** - Visual handles for manipulation (W/E/R keys)
-2. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
-3. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
+1. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
+2. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
+3. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 

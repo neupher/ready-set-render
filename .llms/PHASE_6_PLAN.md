@@ -1,8 +1,8 @@
 # Phase 6: Functional WebGL Editor - Remaining Work
 
-> **Last Updated:** 2026-01-24T22:55:00Z
-> **Version:** 0.8.3
-> **Status:** 6.8-6.13 remaining (6.1-6.7 complete)
+> **Last Updated:** 2026-01-26T13:40:00Z
+> **Version:** 0.9.0
+> **Status:** 6.9-6.13 remaining (6.1-6.8 complete)
 
 ---
 
@@ -61,9 +61,30 @@ This document covers the **remaining work** for Phase 6. For completed phases (6
 
 ## Remaining Phases
 
-### Phase 6.8: Transform Gizmos
+### Phase 6.8: Transform Gizmos ✅ Complete
 
-**Goal**: Visual handles for position/rotation/scale manipulation.
+**Implemented in v0.9.0**
+
+**Features Delivered**:
+- Visual handles for position/rotation/scale manipulation
+- `TranslateGizmo` - Arrow handles for X/Y/Z translation + plane handles (XY/XZ/YZ) + center handle
+- `RotateGizmo` - Ring handles for X/Y/Z rotation with drag angle calculation  
+- `ScaleGizmo` - Box handles for X/Y/Z axis scaling + center cube for uniform scaling
+- `TransformGizmoRenderer` - WebGL rendering with per-vertex colors, depth disabled (always on top)
+- `TransformGizmoController` - Main controller with W/E/R keyboard shortcuts, mouse interaction
+- Screen-space constant size calculation for consistent visual appearance
+- Ray casting hit detection (ray-line, ray-plane intersection)
+- Full undo/redo integration via PropertyChangeCommand
+
+**Files Created**:
+- `src/plugins/gizmos/interfaces/IGizmo.ts`
+- `src/plugins/gizmos/interfaces/index.ts`
+- `src/plugins/gizmos/TranslateGizmo.ts`
+- `src/plugins/gizmos/RotateGizmo.ts`
+- `src/plugins/gizmos/ScaleGizmo.ts`
+- `src/plugins/gizmos/TransformGizmoRenderer.ts`
+- `src/plugins/gizmos/TransformGizmoController.ts`
+- `src/plugins/gizmos/index.ts`
 
 **Gizmo Types**:
 | Mode | Shortcut | Geometry |
@@ -72,21 +93,7 @@ This document covers the **remaining work** for Phase 6. For completed phases (6
 | Rotate | E | 3 rings |
 | Scale | R | 3 boxes |
 
-**Colors**: X=Red, Y=Green, Z=Blue, Free=Yellow
-
-**Tasks**:
-1. Create `GizmoRenderer` - render after scene, depth disabled, fixed screen size
-2. Create geometry: TranslateGizmo, RotateGizmo, ScaleGizmo
-3. Create `GizmoInteraction` - axis hover, drag handling
-4. Keyboard shortcuts (W/E/R)
-5. **Integrate with existing Undo/Redo** (CommandHistory)
-
-**Files**:
-- `src/plugins/gizmos/GizmoRenderer.ts` (new)
-- `src/plugins/gizmos/TranslateGizmo.ts` (new)
-- `src/plugins/gizmos/RotateGizmo.ts` (new)
-- `src/plugins/gizmos/ScaleGizmo.ts` (new)
-- `src/plugins/gizmos/GizmoInteraction.ts` (new)
+**Colors**: X=Red (#E53935), Y=Green (#43A047), Z=Blue (#1E88E5), Free=Yellow (#FDD835)
 
 ---
 

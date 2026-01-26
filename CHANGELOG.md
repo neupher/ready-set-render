@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.0] - 2026-01-26
+
+### Added
+
+- **Transform Gizmos (Phase 6.8)**: Visual handles for position/rotation/scale manipulation
+  - `TranslateGizmo.ts` - Arrow handles for X/Y/Z translation + plane handles (XY/XZ/YZ) + center handle
+  - `RotateGizmo.ts` - Ring handles for X/Y/Z rotation with drag angle calculation
+  - `ScaleGizmo.ts` - Box handles for X/Y/Z axis scaling + center cube for uniform scaling
+  - `TransformGizmoRenderer.ts` - WebGL rendering with per-vertex colors, depth disabled (always on top)
+  - `TransformGizmoController.ts` - Main controller with W/E/R keyboard shortcuts, mouse interaction
+  - `IGizmo.ts` - Interfaces for GizmoMode, GizmoAxis, GIZMO_COLORS constant
+  - Axis colors: X=Red (#E53935), Y=Green (#43A047), Z=Blue (#1E88E5), Free=Yellow (#FDD835)
+  - Screen-space constant size calculation for consistent visual appearance
+  - Ray casting hit detection (ray-line, ray-plane intersection)
+  - Full undo/redo integration via PropertyChangeCommand
+
+- **Default Cube on Startup**: Scene now initializes with a Cube primitive for faster testing
+
+### Changed
+
+- `Application.ts`: Integrated TransformGizmoController and default cube creation
+- `src/plugins/index.ts`: Added gizmos module export
+
+---
+
 ## [0.8.5] - 2026-01-25
 
 ### Changed
