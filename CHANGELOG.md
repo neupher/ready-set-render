@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.2] - 2026-01-26
+
+### Fixed
+
+- **Transform Gizmo Undo/Redo Now Works Correctly**
+  - Gizmo drags now create a single batched undo entry (previously created separate entries per axis)
+  - Fixed race condition where drag commands were lost when selection changed during mouseup
+  - Stored entity reference in dragState to avoid dependency on current selection state
+  - Removed duplicate undo/redo shortcut registration that could cause issues
+
+### Changed
+
+- Added `entity` field to `GizmoDragState` interface to track dragged entity independently of selection
+- `TransformGizmoController.commitTransformChanges()` now uses `beginBatch()`/`endBatch()` for atomic undo
+- Debug logging added to CommandHistory and PropertyChangeCommand (can be disabled via DEBUG flags)
+
+---
+
 ## [0.9.1] - 2026-01-26
 
 ### Changed

@@ -98,6 +98,9 @@ export interface GizmoDragState {
   /** Currently dragging */
   active: boolean;
 
+  /** The entity being dragged (stored at drag start to avoid selection dependency) */
+  entity: ISceneObject;
+
   /** Initial mouse position in screen space */
   startMouse: [number, number];
 

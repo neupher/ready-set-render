@@ -38,6 +38,11 @@ import { isMergeableCommand } from './ICommand';
 const COALESCE_WINDOW_MS = 300;
 
 /**
+ * Enable debug logging for undo/redo operations.
+ */
+const DEBUG_UNDO = false;
+
+/**
  * Events emitted by CommandHistory.
  */
 export interface CommandHistoryEvents {
@@ -99,6 +104,10 @@ export class CommandHistory {
   constructor(options: CommandHistoryOptions) {
     this.eventBus = options.eventBus;
     this.maxStackSize = options.maxStackSize ?? 100;
+    
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Initialized with maxStackSize:', this.maxStackSize);
+    }
   }
 
   /**
@@ -111,10 +120,18 @@ export class CommandHistory {
    * @param command - The command to execute
    */
   execute(command: ICommand): void {
-    // If in batch mode, collect command without executing
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] execute:', command.description, 
+        this.batchCommands !== null ? '(in batch)' : '');
+    }
+
+    // If in batch mode, collect command without adding to stack yet
     if (this.batchCommands !== null) {
       this.batchCommands.push(command);
       command.execute();
+      if (DEBUG_UNDO) {
+        console.log('[CommandHistory] Added to batch, batch size:', this.batchCommands.length);
+      }
       return;
     }
 
@@ -135,6 +152,9 @@ export class CommandHistory {
         this.undoStack.push(merged);
         this.clearRedoStack();
         this.emitStackChanged();
+        if (DEBUG_UNDO) {
+          console.log('[CommandHistory] Merged with previous command');
+        }
         return;
       }
     }
@@ -156,6 +176,10 @@ export class CommandHistory {
     // Emit events
     this.eventBus.emit('command:executed', { command });
     this.emitStackChanged();
+    
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Stack size:', this.undoStack.length);
+    }
   }
 
   /**
@@ -165,9 +189,20 @@ export class CommandHistory {
    * @returns True if a command was undone, false if nothing to undo
    */
   undo(): boolean {
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] undo() called, stack size:', this.undoStack.length);
+    }
+
     const command = this.undoStack.pop();
     if (!command) {
+      if (DEBUG_UNDO) {
+        console.log('[CommandHistory] Nothing to undo');
+      }
       return false;
+    }
+
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Undoing:', command.description, '(type:', command.type, ')');
     }
 
     command.undo();
@@ -175,6 +210,10 @@ export class CommandHistory {
 
     this.eventBus.emit('command:undone', { command });
     this.emitStackChanged();
+
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Undo complete, undo stack:', this.undoStack.length, 'redo stack:', this.redoStack.length);
+    }
 
     return true;
   }
@@ -186,9 +225,20 @@ export class CommandHistory {
    * @returns True if a command was redone, false if nothing to redo
    */
   redo(): boolean {
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] redo() called, redo stack size:', this.redoStack.length);
+    }
+
     const command = this.redoStack.pop();
     if (!command) {
+      if (DEBUG_UNDO) {
+        console.log('[CommandHistory] Nothing to redo');
+      }
       return false;
+    }
+
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Redoing:', command.description);
     }
 
     command.execute();
@@ -249,6 +299,20 @@ export class CommandHistory {
   }
 
   /**
+   * Get a copy of the undo stack for debugging/display.
+   */
+  getUndoStack(): ReadonlyArray<ICommand> {
+    return [...this.undoStack];
+  }
+
+  /**
+   * Get a copy of the redo stack for debugging/display.
+   */
+  getRedoStack(): ReadonlyArray<ICommand> {
+    return [...this.redoStack];
+  }
+
+  /**
    * Begin a batch operation.
    * All commands executed until endBatch() are combined into a single undo entry.
    *
@@ -267,6 +331,9 @@ export class CommandHistory {
       return;
     }
     this.batchCommands = [];
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] beginBatch()');
+    }
   }
 
   /**
@@ -282,6 +349,10 @@ export class CommandHistory {
 
     const commands = this.batchCommands;
     this.batchCommands = null;
+
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] endBatch():', description, 'with', commands.length, 'commands');
+    }
 
     if (commands.length === 0) {
       return;
@@ -301,6 +372,10 @@ export class CommandHistory {
 
     this.eventBus.emit('command:executed', { command: composite });
     this.emitStackChanged();
+
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Batch created as CompositeCommand, stack size:', this.undoStack.length);
+    }
   }
 
   /**
@@ -314,6 +389,10 @@ export class CommandHistory {
     // Undo all commands in reverse order
     const commands = this.batchCommands;
     this.batchCommands = null;
+
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] cancelBatch(), undoing', commands.length, 'commands');
+    }
 
     for (let i = commands.length - 1; i >= 0; i--) {
       commands[i].undo();
@@ -329,6 +408,9 @@ export class CommandHistory {
     this.redoStack.length = 0;
     this.batchCommands = null;
     this.emitStackChanged();
+    if (DEBUG_UNDO) {
+      console.log('[CommandHistory] Cleared all stacks');
+    }
   }
 
   /**
@@ -359,24 +441,35 @@ class CompositeCommand implements ICommand {
   readonly type = 'Composite';
   readonly description: string;
   readonly timestamp: number;
+  private readonly commands: ICommand[];
 
   constructor(
-    private readonly commands: ICommand[],
+    commands: ICommand[],
     description: string
   ) {
+    this.commands = commands;
     this.description = description;
     this.timestamp = commands.length > 0 ? commands[0].timestamp : Date.now();
   }
 
   execute(): void {
+    if (DEBUG_UNDO) {
+      console.log('[CompositeCommand] execute():', this.description, 'with', this.commands.length, 'sub-commands');
+    }
     for (const command of this.commands) {
       command.execute();
     }
   }
 
   undo(): void {
+    if (DEBUG_UNDO) {
+      console.log('[CompositeCommand] undo():', this.description, 'with', this.commands.length, 'sub-commands');
+    }
     // Undo in reverse order
     for (let i = this.commands.length - 1; i >= 0; i--) {
+      if (DEBUG_UNDO) {
+        console.log('[CompositeCommand] Undoing sub-command:', this.commands[i].description);
+      }
       this.commands[i].undo();
     }
   }

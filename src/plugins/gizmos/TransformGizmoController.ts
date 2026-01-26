@@ -314,31 +314,45 @@ export class TransformGizmoController {
 
   /**
    * Start a drag operation.
+   * 
+   * Note: We trust hoveredAxis which was set by updateHover()'s hitTest.
+   * We don't do a redundant hitTest here because the mouse position
+   * can differ slightly between mousemove and mousedown, causing spurious failures.
+   * 
+   * IMPORTANT: We store the entity reference in dragState so that endDrag()
+   * doesn't depend on selection state. This prevents lost commands when
+   * selection changes during the drag (e.g., from SelectionController's mouseUp).
    */
   private startDrag(entity: ISceneObject, mousePos: [number, number]): void {
     if (!this.currentCamera || this.hoveredAxis === null) return;
 
+    // Check if we're already in a drag - this would be a bug
+    if (this.dragState?.active) {
+      console.warn('[TransformGizmo] startDrag called while already dragging! Ending previous drag first.');
+      this.endDrag();
+    }
+
     const position = [...entity.transform.position] as [number, number, number];
+    
     const ray = this.screenToRay(mousePos);
-    if (!ray) return;
+    if (!ray) {
+      return;
+    }
 
-    // Get hit point for drag start
-    const scale = this.calculateGizmoScale(position);
-    const gizmo = this.getGizmoForMode(this.mode);
-    if (!gizmo) return;
-
-    const hit = gizmo.hitTest(ray.origin, ray.direction, position, scale);
-    if (!hit) return;
+    // Calculate starting intersection point for drag delta calculation
+    // Use the gizmo origin as the starting point along the drag axis
+    const startIntersection: [number, number, number] = [...position];
 
     this.dragState = {
       active: true,
+      entity: entity, // Store entity reference to avoid selection dependency
       startMouse: mousePos,
       currentMouse: mousePos,
       startPosition: [...entity.transform.position] as [number, number, number],
       startRotation: [...entity.transform.rotation] as [number, number, number],
       startScale: [...entity.transform.scale] as [number, number, number],
       axis: this.hoveredAxis,
-      startIntersection: hit.hitPoint,
+      startIntersection: startIntersection,
     };
 
     this.eventBus.emit('gizmo:dragStart', {
@@ -385,15 +399,22 @@ export class TransformGizmoController {
 
   /**
    * End drag operation and commit changes via CommandHistory.
+   * 
+   * IMPORTANT: Uses the entity stored in dragState from startDrag(), not the
+   * current selection. This ensures commands are created even if selection
+   * changed during the drag (e.g., from SelectionController's mouseUp handler).
    */
   private endDrag(): void {
-    if (!this.dragState?.active) return;
-
-    const selected = this.selectionManager.getPrimary();
-    if (selected) {
-      // Create commands for changed properties
-      this.commitTransformChanges(selected);
+    if (!this.dragState?.active) {
+      return;
     }
+
+    // Use the entity stored at drag start, NOT the current selection
+    // This prevents lost commands when selection changes during drag
+    const entity = this.dragState.entity;
+    
+    // Create commands for changed properties
+    this.commitTransformChanges(entity);
 
     this.eventBus.emit('gizmo:dragEnd', {
       mode: this.mode,
@@ -468,9 +489,15 @@ export class TransformGizmoController {
 
   /**
    * Commit transform changes via CommandHistory.
+   *
+   * Uses batch mode to combine all axis changes into a single undo entry.
+   * This ensures that undoing a gizmo drag restores ALL axes at once,
+   * not just one axis at a time.
    */
   private commitTransformChanges(entity: ISceneObject): void {
-    if (!this.dragState) return;
+    if (!this.dragState) {
+      return;
+    }
 
     const axes = ['x', 'y', 'z'] as const;
     let propertyPrefix: string;
@@ -480,51 +507,75 @@ export class TransformGizmoController {
     switch (this.mode) {
       case 'translate':
         propertyPrefix = 'position';
-        startValues = this.dragState.startPosition;
+        startValues = [...this.dragState.startPosition] as [number, number, number];
         endValues = [...entity.transform.position] as [number, number, number];
         break;
 
       case 'rotate':
         propertyPrefix = 'rotation';
-        startValues = this.dragState.startRotation;
+        startValues = [...this.dragState.startRotation] as [number, number, number];
         endValues = [...entity.transform.rotation] as [number, number, number];
         break;
 
       case 'scale':
         propertyPrefix = 'scale';
-        startValues = this.dragState.startScale;
+        startValues = [...this.dragState.startScale] as [number, number, number];
         endValues = [...entity.transform.scale] as [number, number, number];
         break;
     }
 
-    // Create commands for each changed axis
+    // Check if any axis actually changed
+    const changedAxes: number[] = [];
     for (let i = 0; i < 3; i++) {
       if (Math.abs(startValues[i] - endValues[i]) > 0.0001) {
-        // Temporarily restore old value so command execution works correctly
-        switch (this.mode) {
-          case 'translate':
-            entity.transform.position[i] = startValues[i];
-            break;
-          case 'rotate':
-            entity.transform.rotation[i] = startValues[i];
-            break;
-          case 'scale':
-            entity.transform.scale[i] = startValues[i];
-            break;
-        }
-
-        const command = new PropertyChangeCommand({
-          entityId: entity.id,
-          property: `${propertyPrefix}.${axes[i]}`,
-          oldValue: startValues[i],
-          newValue: endValues[i],
-          sceneGraph: this.sceneGraph,
-          eventBus: this.eventBus,
-        });
-
-        this.commandHistory.execute(command);
+        changedAxes.push(i);
       }
     }
+
+    // If nothing changed, no command needed
+    if (changedAxes.length === 0) {
+      return;
+    }
+
+    // Restore all values to their start state BEFORE creating commands
+    // This ensures command.execute() will apply the correct new values
+    switch (this.mode) {
+      case 'translate':
+        entity.transform.position[0] = startValues[0];
+        entity.transform.position[1] = startValues[1];
+        entity.transform.position[2] = startValues[2];
+        break;
+      case 'rotate':
+        entity.transform.rotation[0] = startValues[0];
+        entity.transform.rotation[1] = startValues[1];
+        entity.transform.rotation[2] = startValues[2];
+        break;
+      case 'scale':
+        entity.transform.scale[0] = startValues[0];
+        entity.transform.scale[1] = startValues[1];
+        entity.transform.scale[2] = startValues[2];
+        break;
+    }
+
+    // Use batch mode to combine all axis changes into one undo entry
+    this.commandHistory.beginBatch();
+
+    for (const i of changedAxes) {
+      const command = new PropertyChangeCommand({
+        entityId: entity.id,
+        property: `${propertyPrefix}.${axes[i]}`,
+        oldValue: startValues[i],
+        newValue: endValues[i],
+        sceneGraph: this.sceneGraph,
+        eventBus: this.eventBus,
+      });
+
+      this.commandHistory.execute(command);
+    }
+
+    // End batch with descriptive message
+    const modeLabel = this.mode.charAt(0).toUpperCase() + this.mode.slice(1);
+    this.commandHistory.endBatch(`${modeLabel} ${entity.name}`);
   }
 
   /**

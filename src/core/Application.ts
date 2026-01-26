@@ -23,7 +23,7 @@ import { CameraEntity } from '@core/CameraEntity';
 import { SelectionManager } from '@core/SelectionManager';
 import { PropertyChangeHandler } from '@core/PropertyChangeHandler';
 import { CommandHistory } from '@core/commands/CommandHistory';
-import { KeyboardShortcutManager, registerUndoRedoShortcuts } from '@core/KeyboardShortcutManager';
+import { KeyboardShortcutManager } from '@core/KeyboardShortcutManager';
 import { InputManager } from '@core/InputManager';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
@@ -239,8 +239,8 @@ export class Application {
     console.log('Command history initialized');
 
     // Initialize keyboard shortcuts
+    // NOTE: Undo/redo shortcuts are registered in index.ts to avoid duplication
     this.shortcutManager = new KeyboardShortcutManager({ eventBus: this.eventBus });
-    registerUndoRedoShortcuts(this.shortcutManager, this.commandHistory);
     console.log('Keyboard shortcuts initialized');
 
     // Initialize property change handler (bridges UI → Entity data)

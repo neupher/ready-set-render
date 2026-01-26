@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-26T15:33:00Z
-> **Version:** 0.9.1
+> **Last Updated:** 2026-01-26T22:10:00Z
+> **Version:** 0.9.2
 > **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.9.0)
+## Current State (v0.9.2)
 
 ### What's Working
 
@@ -53,11 +53,13 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **Lights**: DirectionalLight with transform-based direction, LightGizmoRenderer
 - **Camera**: CameraEntity with composition pattern, OrbitController (Maya-style navigation)
 - **Selection**: Ray picking, Ctrl+Click multi-select, F key framing
-- **Undo/Redo**: Command pattern with coalescing (Ctrl+Z/Y)
+- **Undo/Redo**: Command pattern with coalescing and batch mode (Ctrl+Z/Y)
+  - Batched operations for atomic undo (e.g., multi-axis gizmo drags)
+  - Entity reference stored in dragState for reliable command creation
 - **Transform Gizmos**: Visual handles for translate/rotate/scale with W/E/R shortcuts
   - Screen-space constant size rendering
   - Ray casting hit detection for interaction
-  - Full undo/redo integration via PropertyChangeCommand
+  - Full undo/redo integration via PropertyChangeCommand (batched)
 - **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
 - **Default Scene**: Cube primitive auto-created on startup for faster testing
@@ -74,6 +76,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **MeshGPUCache** centralized GPU resource management
 - **ICloneable** enables polymorphic entity duplication
 - **PBRShaderProgram** encapsulates PBR shader with automatic material switching
+- **GizmoDragState** stores entity reference to avoid selection race conditions
 
 ---
 

@@ -74,6 +74,11 @@ function isEntity(obj: unknown): obj is IEntity {
 }
 
 /**
+ * Enable debug logging for PropertyChangeCommand.
+ */
+const DEBUG_PROPERTY_CMD = false;
+
+/**
  * Command for entity property changes.
  * Supports undo/redo and coalescing.
  */
@@ -126,6 +131,9 @@ export class PropertyChangeCommand implements ICommand {
    * Execute the command (apply newValue).
    */
   execute(): void {
+    if (DEBUG_PROPERTY_CMD) {
+      console.log(`[PropertyChangeCommand] execute(): ${this.property} = ${this.newValue} (was ${this.oldValue})`);
+    }
     this.applyValue(this.newValue);
   }
 
@@ -133,6 +141,9 @@ export class PropertyChangeCommand implements ICommand {
    * Undo the command (restore oldValue).
    */
   undo(): void {
+    if (DEBUG_PROPERTY_CMD) {
+      console.log(`[PropertyChangeCommand] undo(): ${this.property} = ${this.oldValue} (was ${this.newValue})`);
+    }
     this.applyValue(this.oldValue);
   }
 

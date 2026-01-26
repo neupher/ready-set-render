@@ -68,7 +68,7 @@ This document covers the **remaining work** for Phase 6. For completed phases (6
 **Features Delivered**:
 - Visual handles for position/rotation/scale manipulation
 - `TranslateGizmo` - Arrow handles for X/Y/Z translation + plane handles (XY/XZ/YZ) + center handle
-- `RotateGizmo` - Ring handles for X/Y/Z rotation with drag angle calculation  
+- `RotateGizmo` - Ring handles for X/Y/Z rotation with drag angle calculation
 - `ScaleGizmo` - Box handles for X/Y/Z axis scaling + center cube for uniform scaling
 - `TransformGizmoRenderer` - WebGL rendering with per-vertex colors, depth disabled (always on top)
 - `TransformGizmoController` - Main controller with W/E/R keyboard shortcuts, mouse interaction
