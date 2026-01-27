@@ -8,15 +8,11 @@
  * - X ring (red): Rotation around X axis
  * - Y ring (green): Rotation around Y axis (forward)
  * - Z ring (blue): Rotation around Z axis (up)
- * - Center handle (yellow): All-axis rotation
- *
- * The rings are rendered as solid torus segments with alpha fading
- * based on their orientation to the camera (rings facing away fade out).
  *
  * @example
  * ```typescript
  * const gizmo = new RotateGizmo();
- * const geometry = gizmo.generateGeometry([0, 0, 0], 1.0, null, cameraDirection);
+ * const geometry = gizmo.generateGeometry([0, 0, 0], 1.0, null);
  * renderer.drawGizmo(geometry);
  * ```
  */
@@ -35,10 +31,8 @@ import { GIZMO_COLORS } from './interfaces';
  * Gizmo dimensions (relative to scale factor).
  */
 const RING_RADIUS = 0.8;
-const RING_WIDTH_RATIO = 0.08; // 8% of radius for solid rings
 const RING_SEGMENTS = 48;
-const HIT_THRESHOLD = 0.1;
-const CENTER_HIT_RADIUS = 0.15; // Radius for center all-axis hit detection
+const HIT_THRESHOLD = 0.15; // Larger threshold for easier ring selection
 
 /**
  * Rotation gizmo with rings for each axis.
@@ -48,100 +42,51 @@ export class RotateGizmo implements IGizmo {
 
   /**
    * Generate geometry for rendering.
-   * @param cameraDirection - Optional camera view direction for fading rings facing away
    */
   generateGeometry(
     position: [number, number, number],
     scale: number,
-    hoveredAxis: GizmoAxis,
-    cameraDirection?: [number, number, number]
+    hoveredAxis: GizmoAxis
   ): GizmoGeometry {
     const vertices: number[] = [];
     const colors: number[] = [];
 
-    // Default camera direction if not provided (looking down -Y)
-    const viewDir = cameraDirection ?? [0, -1, 0];
-
     // Generate X ring (red) - rotation around X axis
-    const xColor = hoveredAxis === 'x' || hoveredAxis === 'xyz'
-      ? GIZMO_COLORS.hover
-      : GIZMO_COLORS.x;
-    const xFade = this.calculateRingFade([1, 0, 0], viewDir);
-    this.addRingWithFade(
+    this.addRing(
       vertices,
       colors,
       position,
-      [1, 0, 0], // Ring normal (perpendicular to rotation plane)
+      [1, 0, 0],
       scale,
-      xColor,
-      xFade,
-      viewDir
+      hoveredAxis === 'x' ? GIZMO_COLORS.hover : GIZMO_COLORS.x
     );
 
     // Generate Y ring (green) - rotation around Y axis
-    const yColor = hoveredAxis === 'y' || hoveredAxis === 'xyz'
-      ? GIZMO_COLORS.hover
-      : GIZMO_COLORS.y;
-    const yFade = this.calculateRingFade([0, 1, 0], viewDir);
-    this.addRingWithFade(
+    this.addRing(
       vertices,
       colors,
       position,
       [0, 1, 0],
       scale,
-      yColor,
-      yFade,
-      viewDir
+      hoveredAxis === 'y' ? GIZMO_COLORS.hover : GIZMO_COLORS.y
     );
 
     // Generate Z ring (blue) - rotation around Z axis
-    const zColor = hoveredAxis === 'z' || hoveredAxis === 'xyz'
-      ? GIZMO_COLORS.hover
-      : GIZMO_COLORS.z;
-    const zFade = this.calculateRingFade([0, 0, 1], viewDir);
-    this.addRingWithFade(
+    this.addRing(
       vertices,
       colors,
       position,
       [0, 0, 1],
       scale,
-      zColor,
-      zFade,
-      viewDir
+      hoveredAxis === 'z' ? GIZMO_COLORS.hover : GIZMO_COLORS.z
     );
 
     return {
       vertices: new Float32Array(vertices),
       vertexCount: vertices.length / 3,
       colors: new Float32Array(colors),
-      drawMode: WebGL2RenderingContext.TRIANGLES,
+      drawMode: WebGL2RenderingContext.LINES,
     };
-  }
-
-  /**
-   * Calculate fade factor for a ring based on its orientation to the camera.
-   * Returns 1.0 for rings facing camera (perpendicular to view), fades to ~0 when edge-on.
-   */
-  private calculateRingFade(
-    ringNormal: [number, number, number],
-    cameraDirection: [number, number, number]
-  ): number {
-    // When the ring normal is perpendicular to the view direction,
-    // the ring is "facing" the camera (we see it as a circle).
-    // When the ring normal is parallel to the view direction,
-    // the ring is "edge-on" (we see it as a line) - this should fade out.
-
-    // Dot product: 0 when perpendicular (ring facing camera), ±1 when parallel (edge-on)
-    const dot = Math.abs(this.dotProduct(ringNormal, cameraDirection));
-
-    // We want full opacity (1.0) when dot is 0 (ring facing camera)
-    // and low opacity when dot approaches 1 (ring edge-on to camera)
-    // Using a smooth curve: fade = 1 - dot^2 gives smooth falloff
-    // Clamp minimum to 0.1 so rings never fully disappear
-    const minFade = 0.15;
-    const fade = Math.max(minFade, 1 - dot * dot);
-
-    return fade;
   }
 
   /**
@@ -156,13 +101,6 @@ export class RotateGizmo implements IGizmo {
     const threshold = HIT_THRESHOLD * scale;
     let closestHit: GizmoHitResult | null = null;
     let closestDistance = Infinity;
-
-    // First, test center hit for all-axis rotation (takes priority if hit)
-    const centerHit = this.testCenterHit(rayOrigin, rayDirection, gizmoPosition, scale);
-    if (centerHit !== null && centerHit.distance < closestDistance) {
-      closestDistance = centerHit.distance;
-      closestHit = { axis: 'xyz', distance: centerHit.distance, hitPoint: centerHit.point };
-    }
 
     // Test X ring
     const xHit = this.testRingHit(rayOrigin, rayDirection, gizmoPosition, [1, 0, 0], scale, threshold);
@@ -188,40 +126,6 @@ export class RotateGizmo implements IGizmo {
   }
 
   /**
-   * Test hit for center handle (all-axis rotation).
-   * Detects clicks near the center origin of the gizmo.
-   */
-  private testCenterHit(
-    rayOrigin: [number, number, number],
-    rayDirection: [number, number, number],
-    gizmoPosition: [number, number, number],
-    scale: number
-  ): { distance: number; point: [number, number, number] } | null {
-    // Calculate closest point on ray to gizmo position
-    const diff = this.subtractVectors(gizmoPosition, rayOrigin);
-    const t = this.dotProduct(diff, rayDirection);
-
-    if (t < 0) return null;
-
-    const closestPoint: [number, number, number] = [
-      rayOrigin[0] + rayDirection[0] * t,
-      rayOrigin[1] + rayDirection[1] * t,
-      rayOrigin[2] + rayDirection[2] * t,
-    ];
-
-    // Check distance from closest point to gizmo center
-    const dx = closestPoint[0] - gizmoPosition[0];
-    const dy = closestPoint[1] - gizmoPosition[1];
-    const dz = closestPoint[2] - gizmoPosition[2];
-    const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-    const centerRadius = CENTER_HIT_RADIUS * scale;
-    if (dist > centerRadius) return null;
-
-    return { distance: t, point: closestPoint };
-  }
-
-  /**
    * Calculate transform delta from drag movement.
    * Returns rotation angles in degrees [rx, ry, rz].
    */
@@ -233,11 +137,6 @@ export class RotateGizmo implements IGizmo {
   ): [number, number, number] {
     if (!dragState.active || !dragState.axis) {
       return [0, 0, 0];
-    }
-
-    // Handle all-axis (trackball) rotation
-    if (dragState.axis === 'xyz') {
-      return this.calculateTrackballRotation(dragState, rayOrigin, rayDirection, gizmoPosition);
     }
 
     // Get the rotation axis
@@ -279,70 +178,23 @@ export class RotateGizmo implements IGizmo {
   }
 
   /**
-   * Calculate trackball-style rotation for all-axis mode.
-   * Converts screen-space mouse movement to rotation around two axes.
+   * Add ring geometry for a single rotation axis.
    */
-  private calculateTrackballRotation(
-    dragState: GizmoDragState,
-    rayOrigin: [number, number, number],
-    rayDirection: [number, number, number],
-    gizmoPosition: [number, number, number]
-  ): [number, number, number] {
-    // Calculate closest point on ray to gizmo position
-    const diff = this.subtractVectors(gizmoPosition, rayOrigin);
-    const t = this.dotProduct(diff, rayDirection);
-
-    const currentPoint: [number, number, number] = [
-      rayOrigin[0] + rayDirection[0] * t,
-      rayOrigin[1] + rayDirection[1] * t,
-      rayOrigin[2] + rayDirection[2] * t,
-    ];
-
-    // Get vectors from center to start and current
-    const startVec = this.subtractVectors(dragState.startIntersection, gizmoPosition);
-    const currentVec = this.subtractVectors(currentPoint, gizmoPosition);
-
-    // Calculate delta in view space
-    const deltaX = currentVec[0] - startVec[0];
-    const deltaY = currentVec[1] - startVec[1];
-    const deltaZ = currentVec[2] - startVec[2];
-
-    // Scale sensitivity
-    const sensitivity = 2.0;
-
-    // Convert delta to rotation:
-    // - Horizontal movement (X) rotates around Z (up axis)
-    // - Vertical movement (Z in Z-up coords) rotates around X
-    // - Y movement rotates around Y (could also use for forward tilt)
-    const rotX = deltaZ * sensitivity * 100; // Convert to degrees
-    const rotY = deltaY * sensitivity * 100;
-    const rotZ = -deltaX * sensitivity * 100;
-
-    return [rotX, rotY, rotZ];
-  }
-
-  /**
-   * Add ring geometry with per-segment fading based on camera orientation.
-   * Segments facing away from the camera (edge-on) fade out.
-   */
-  private addRingWithFade(
+  private addRing(
     vertices: number[],
     colors: number[],
     center: [number, number, number],
     normal: [number, number, number],
     scale: number,
-    baseColor: [number, number, number],
-    globalFade: number,
-    cameraDirection: [number, number, number]
+    color: [number, number, number]
   ): void {
-    const outerRadius = RING_RADIUS * scale;
-    const innerRadius = outerRadius * (1 - RING_WIDTH_RATIO);
+    const radius = RING_RADIUS * scale;
 
     // Get perpendicular vectors to create the ring plane
     const perp1 = this.getPerpendicularVector(normal);
     const perp2 = this.crossProduct(normal, perp1);
 
-    // Generate ring as solid triangles with per-segment fading
+    // Generate ring as line segments
     for (let i = 0; i < RING_SEGMENTS; i++) {
       const angle1 = (i / RING_SEGMENTS) * Math.PI * 2;
       const angle2 = ((i + 1) / RING_SEGMENTS) * Math.PI * 2;
@@ -352,75 +204,17 @@ export class RotateGizmo implements IGizmo {
       const cos2 = Math.cos(angle2);
       const sin2 = Math.sin(angle2);
 
-      // Outer ring points
-      const outer1: [number, number, number] = [
-        center[0] + (perp1[0] * cos1 + perp2[0] * sin1) * outerRadius,
-        center[1] + (perp1[1] * cos1 + perp2[1] * sin1) * outerRadius,
-        center[2] + (perp1[2] * cos1 + perp2[2] * sin1) * outerRadius,
-      ];
+      // Points on the ring
+      const p1X = center[0] + (perp1[0] * cos1 + perp2[0] * sin1) * radius;
+      const p1Y = center[1] + (perp1[1] * cos1 + perp2[1] * sin1) * radius;
+      const p1Z = center[2] + (perp1[2] * cos1 + perp2[2] * sin1) * radius;
 
-      const outer2: [number, number, number] = [
-        center[0] + (perp1[0] * cos2 + perp2[0] * sin2) * outerRadius,
-        center[1] + (perp1[1] * cos2 + perp2[1] * sin2) * outerRadius,
-        center[2] + (perp1[2] * cos2 + perp2[2] * sin2) * outerRadius,
-      ];
+      const p2X = center[0] + (perp1[0] * cos2 + perp2[0] * sin2) * radius;
+      const p2Y = center[1] + (perp1[1] * cos2 + perp2[1] * sin2) * radius;
+      const p2Z = center[2] + (perp1[2] * cos2 + perp2[2] * sin2) * radius;
 
-      // Inner ring points
-      const inner1: [number, number, number] = [
-        center[0] + (perp1[0] * cos1 + perp2[0] * sin1) * innerRadius,
-        center[1] + (perp1[1] * cos1 + perp2[1] * sin1) * innerRadius,
-        center[2] + (perp1[2] * cos1 + perp2[2] * sin1) * innerRadius,
-      ];
-
-      const inner2: [number, number, number] = [
-        center[0] + (perp1[0] * cos2 + perp2[0] * sin2) * innerRadius,
-        center[1] + (perp1[1] * cos2 + perp2[1] * sin2) * innerRadius,
-        center[2] + (perp1[2] * cos2 + perp2[2] * sin2) * innerRadius,
-      ];
-
-      // Calculate segment direction at this point on the ring (tangent to ring center)
-      const midAngle = (angle1 + angle2) / 2;
-      const segmentDir: [number, number, number] = [
-        perp1[0] * Math.cos(midAngle) + perp2[0] * Math.sin(midAngle),
-        perp1[1] * Math.cos(midAngle) + perp2[1] * Math.sin(midAngle),
-        perp1[2] * Math.cos(midAngle) + perp2[2] * Math.sin(midAngle),
-      ];
-
-      // Calculate fade for this segment based on whether it faces the camera
-      // Segments where the direction points toward/away from camera should be more visible
-      // Segments where direction is perpendicular to camera view are "edge-on"
-      const segmentDot = Math.abs(this.dotProduct(segmentDir, cameraDirection));
-
-      // segmentDot = 0 when segment faces camera (visible)
-      // segmentDot = 1 when segment is perpendicular to view (edge-on)
-      // We want high fade when facing camera, low fade when edge-on
-      const segmentFade = Math.max(0.2, 1 - segmentDot * 0.7);
-
-      // Combine global ring fade with segment fade
-      const combinedFade = globalFade * segmentFade;
-
-      // Apply fade by dimming the color (multiply by fade factor)
-      const fadedColor: [number, number, number] = [
-        baseColor[0] * combinedFade,
-        baseColor[1] * combinedFade,
-        baseColor[2] * combinedFade,
-      ];
-
-      // Triangle 1: outer1, inner1, outer2
-      vertices.push(...outer1, ...inner1, ...outer2);
-      colors.push(
-        fadedColor[0], fadedColor[1], fadedColor[2],
-        fadedColor[0], fadedColor[1], fadedColor[2],
-        fadedColor[0], fadedColor[1], fadedColor[2]
-      );
-
-      // Triangle 2: outer2, inner1, inner2
-      vertices.push(...outer2, ...inner1, ...inner2);
-      colors.push(
-        fadedColor[0], fadedColor[1], fadedColor[2],
-        fadedColor[0], fadedColor[1], fadedColor[2],
-        fadedColor[0], fadedColor[1], fadedColor[2]
-      );
+      vertices.push(p1X, p1Y, p1Z, p2X, p2Y, p2Z);
+      colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
     }
   }
 

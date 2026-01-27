@@ -194,10 +194,10 @@ export class Application {
     console.log('Forward renderer initialized');
 
     // Create default directional light
-    // Direction is now computed from rotation - default [50, -30, 0] gives nice sun angle
+    // Direction is now computed from rotation - default [50, -30, 180] gives nice sun angle
     this.directionalLight = new DirectionalLight({
       name: 'Directional Light',
-      rotation: [50, -30, 0], // Tilted down and rotated for typical sun angle
+      rotation: [50, -30, 180], // Tilted down, rotated, and Z=180 to face scene
       color: [1, 0.98, 0.95],
       intensity: 1.0,
       enabled: true,

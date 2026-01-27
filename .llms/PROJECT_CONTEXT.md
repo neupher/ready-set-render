@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-27T14:11:00Z
-> **Version:** 0.9.5
+> **Last Updated:** 2026-01-27T15:06:00Z
+> **Version:** 0.9.6
 > **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.9.5)
+## Current State (v0.9.6)
 
 ### What's Working
 
@@ -51,18 +51,21 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **Modular Shaders**: Reusable GLSL modules (math, brdf, lighting) via `composeShader()`
 - **Primitives**: Cube, Sphere (via IMeshProvider/MeshGPUCache architecture)
 - **Lights**: DirectionalLight with transform-based direction, LightGizmoRenderer (always visible)
+  - Lights can now be transformed using standard gizmos
 - **Camera**: CameraEntity with composition pattern, OrbitController (Maya-style navigation)
+  - Alt+LMB orbit no longer conflicts with gizmo interactions
 - **Selection**: Ray picking, Ctrl+Click multi-select, F key framing
 - **Undo/Redo**: Command pattern with coalescing and batch mode (Ctrl+Z/Y)
   - Batched operations for atomic undo (e.g., multi-axis gizmo drags)
   - Entity reference stored in dragState for reliable command creation
 - **Transform Gizmos**: Visual handles for translate/rotate/scale with W/E/R shortcuts
   - Screen-space constant size rendering
-  - Ray casting hit detection for interaction
+  - Ray casting hit detection for interaction (fixed scale factor matching)
   - Full undo/redo integration via PropertyChangeCommand (batched)
-  - **Rotation gizmo**: Solid filled rings with camera-based fading, center all-axis rotation
+  - **Rotation gizmo**: Clean line rendering with accurate hit detection
   - **Scale gizmo**: Solid axis cubes, wireframe→solid center cube on hover
   - **Translate gizmo**: Maya-style plane handles starting from origin
+  - Yellow hover highlight color for consistency
 - **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
 - **Default Scene**: Cube primitive auto-created on startup for faster testing

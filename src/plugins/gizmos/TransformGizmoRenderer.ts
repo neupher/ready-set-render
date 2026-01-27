@@ -260,7 +260,7 @@ export class TransformGizmoRenderer {
 
     // Scale factor based on distance (larger distance = larger scale)
     // The multiplier controls the screen size of the gizmo
-    const baseScale = 0.15;
+    const baseScale = 0.08;
     return distance * baseScale;
   }
 

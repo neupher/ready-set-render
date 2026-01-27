@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.6] - 2026-01-27
+
+### Fixed
+
+- **Rotation Gizmo Hit Detection**
+  - Fixed scale factor mismatch between renderer (0.08) and controller (0.15) that made rings nearly impossible to select
+  - Hit testing now uses matching scale factor for accurate ring selection
+
+- **Alt+Click Camera Orbit Conflict**
+  - Gizmo controller now ignores mouse events when Alt key is pressed
+  - Prevents accidental object transforms while orbiting camera with Alt+LMB
+
+- **DirectionalLight Default Rotation**
+  - Fixed Z rotation defaulting to 0° instead of 180° in Application.ts
+  - DirectionalLight now correctly starts with rotation [50, -30, 180]
+
+### Changed
+
+- **Rotation Gizmo Simplified**
+  - Reverted from solid filled rings to clean line rendering
+  - Removed camera-based fading effects for cleaner appearance
+  - Simplified hit detection code (removed unnecessary fallback sampling)
+
+- **Gizmo Hover Color**
+  - Changed hover highlight from white to yellow for consistency with other gizmo colors
+
+- **Transform Gizmos on Lights**
+  - Lights (DirectionalLight) can now be transformed using the standard gizmos
+  - Only Camera entities are skipped for gizmo rendering
+
+---
+
 ## [0.9.5] - 2026-01-27
 
 ### Security

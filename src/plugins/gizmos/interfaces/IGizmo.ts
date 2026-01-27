@@ -30,7 +30,7 @@ export const GIZMO_COLORS = {
   y: [0.2, 1, 0.2] as [number, number, number], // Green
   z: [0.2, 0.5, 1] as [number, number, number], // Blue
   free: [1, 1, 0.2] as [number, number, number], // Yellow
-  hover: [1, 1, 1] as [number, number, number], // White (highlighted)
+  hover: [1, 1, 0.2] as [number, number, number], // Yellow (highlighted)
 } as const;
 
 /**

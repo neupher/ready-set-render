@@ -208,6 +208,12 @@ export class TransformGizmoController {
   private onMouseMove(event: MouseEvent): void {
     if (!this.enabled || !this.currentCamera) return;
 
+    // Ignore when Alt is pressed (camera controls)
+    if (event.altKey) {
+      this.hoveredAxis = null;
+      return;
+    }
+
     const mousePos = this.getCanvasMousePosition(event);
 
     if (this.dragState?.active) {
@@ -227,6 +233,9 @@ export class TransformGizmoController {
 
     // Only handle left mouse button
     if (event.button !== 0) return;
+
+    // Ignore when Alt is pressed (camera controls)
+    if (event.altKey) return;
 
     // Check if we have a hovered axis
     if (this.hoveredAxis === null) return;
@@ -869,18 +878,20 @@ export class TransformGizmoController {
     const dz = position[2] - cameraPos[2];
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    return distance * 0.15;
+    // MUST match TransformGizmoRenderer.calculateScreenScale baseScale (0.08)
+    return distance * 0.08;
   }
 
   /**
    * Check if entity should be skipped for gizmo rendering.
+   * Only skips Camera entities - lights can now use transform gizmos.
    */
   private shouldSkipEntity(entity: ISceneObject): boolean {
-    // Skip entities that have their own specialized gizmos
+    // Skip entities that have their own specialized gizmos (cameras only)
+    // Lights can now use transform gizmos for positioning
     const entityWithComponent = entity as { hasComponent?: (type: string) => boolean };
     if (typeof entityWithComponent.hasComponent === 'function') {
       if (entityWithComponent.hasComponent('camera')) return true;
-      if (entityWithComponent.hasComponent('light')) return true;
     }
     return false;
   }
