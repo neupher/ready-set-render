@@ -9,10 +9,10 @@ import { DraggableNumberInput } from '@ui/components/DraggableNumberInput';
 
 describe('DraggableNumberInput', () => {
   let input: DraggableNumberInput;
-  let onChange: ReturnType<typeof vi.fn>;
+  let onChange: ReturnType<typeof vi.fn<(value: number) => void>>;
 
   beforeEach(() => {
-    onChange = vi.fn();
+    onChange = vi.fn<(value: number) => void>();
     input = new DraggableNumberInput({
       value: 5.0,
       step: 0.1,

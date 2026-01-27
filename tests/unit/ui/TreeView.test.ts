@@ -9,8 +9,8 @@ import { TreeView, TreeNode } from '@ui/components/TreeView';
 
 describe('TreeView', () => {
   let treeView: TreeView;
-  let onSelect: ReturnType<typeof vi.fn>;
-  let onToggle: ReturnType<typeof vi.fn>;
+  let onSelect: ReturnType<typeof vi.fn<(id: string, node: TreeNode) => void>>;
+  let onToggle: ReturnType<typeof vi.fn<(id: string, expanded: boolean) => void>>;
 
   const mockData: TreeNode[] = [
     {
@@ -33,8 +33,8 @@ describe('TreeView', () => {
   ];
 
   beforeEach(() => {
-    onSelect = vi.fn();
-    onToggle = vi.fn();
+    onSelect = vi.fn<(id: string, node: TreeNode) => void>();
+    onToggle = vi.fn<(id: string, expanded: boolean) => void>();
     treeView = new TreeView({
       onSelect,
       onToggle,

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.5] - 2026-01-27
+
+### Security
+
+- **Fixed esbuild CORS vulnerability**
+  - Upgraded vitest 2.1.9 → 4.0.18 to resolve CVE in transitive esbuild dependency
+  - esbuild@0.21.5 allowed any website to read dev server responses due to `Access-Control-Allow-Origin: *`
+  - All esbuild instances now at 0.25.12 (patched)
+
+### Changed
+
+- **Vitest major version upgrade**
+  - vitest upgraded from 2.1.9 to 4.0.18
+  - @vitest/coverage-v8 upgraded to match
+  - Fixed mock type annotations for vitest 4.x compatibility in test files
+
+---
+
 ## [0.9.4] - 2026-01-27
 
 ### Added

@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-27T00:37:00Z
-> **Version:** 0.9.4
+> **Last Updated:** 2026-01-27T14:11:00Z
+> **Version:** 0.9.5
 > **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.9.4)
+## Current State (v0.9.5)
 
 ### What's Working
 
@@ -129,7 +129,7 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 | Language | TypeScript 5.7.2 | Strict mode enabled |
 | Build Tool | Vite 6.3.5 | Dev server and bundling |
 | GLSL Plugin | vite-plugin-glsl 1.5.5 | Raw `.glsl` file support with `#include` |
-| Testing | Vitest 2.1.8 | 85% coverage thresholds |
+| Testing | Vitest 4.0.18 | 85% coverage thresholds |
 | Package Manager | npm | Standard tooling |
 
 ---
