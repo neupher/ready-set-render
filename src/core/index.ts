@@ -33,6 +33,10 @@ export { SceneGraph, SceneObject } from './SceneGraph';
 // Camera
 export { Camera } from './Camera';
 
+// Settings
+export { SettingsService } from './SettingsService';
+export type { GridSettings, AppSettings, SettingsServiceOptions } from './SettingsService';
+
 // Plugin Manager
 export {
   PluginManager,

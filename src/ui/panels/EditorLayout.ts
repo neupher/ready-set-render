@@ -12,7 +12,8 @@
  *   gl,
  *   eventBus,
  *   sceneGraph,
- *   primitiveRegistry
+ *   primitiveRegistry,
+ *   settingsService
  * });
  * layout.initialize();
  * ```
@@ -20,6 +21,7 @@
 
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
+import type { SettingsService } from '@core/SettingsService';
 import { PrimitiveRegistry } from '@plugins/primitives';
 import { TopMenuBar, DEFAULT_MENUS } from '../components/TopMenuBar';
 import { ResizablePanel } from '../components/ResizablePanel';
@@ -39,6 +41,8 @@ export interface EditorLayoutOptions {
   sceneGraph: SceneGraph;
   /** Primitive registry for creating objects */
   primitiveRegistry: PrimitiveRegistry;
+  /** Settings service for application settings (optional for backward compatibility) */
+  settingsService?: SettingsService;
 }
 
 /**
@@ -51,6 +55,7 @@ export class EditorLayout {
   private readonly eventBus: EventBus;
   private readonly sceneGraph: SceneGraph;
   private readonly primitiveRegistry: PrimitiveRegistry;
+  private readonly settingsService: SettingsService | null;
 
   private root: HTMLDivElement | null = null;
   private menuBar: TopMenuBar | null = null;
@@ -69,6 +74,7 @@ export class EditorLayout {
     this.eventBus = options.eventBus;
     this.sceneGraph = options.sceneGraph;
     this.primitiveRegistry = options.primitiveRegistry;
+    this.settingsService = options.settingsService ?? null;
   }
 
   /**
@@ -113,7 +119,8 @@ export class EditorLayout {
     // Create viewport (center)
     this.viewportPanel = new ViewportPanel({
       eventBus: this.eventBus,
-      gl: this.gl
+      gl: this.gl,
+      settingsService: this.settingsService ?? undefined
     });
     main.appendChild(this.viewportPanel.element);
 

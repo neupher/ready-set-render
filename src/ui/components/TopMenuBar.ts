@@ -301,7 +301,8 @@ export const DEFAULT_MENUS: Menu[] = [
       { label: 'Import', separator: true, disabled: true },
       { label: 'Export', disabled: true },
       { label: 'Save', shortcut: 'Ctrl+S', disabled: true },
-      { label: 'Save As', shortcut: 'Ctrl+Shift+S', disabled: true }
+      { label: 'Save As', shortcut: 'Ctrl+Shift+S', separator: true, disabled: true },
+      { label: 'Settings', shortcut: 'Ctrl+,' }
     ]
   },
   {

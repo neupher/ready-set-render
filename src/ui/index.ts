@@ -1,7 +1,7 @@
 /**
  * UI System Barrel Export
  *
- * Exports all UI components, panels, and theme.
+ * Exports all UI components, panels, windows, and theme.
  */
 
 // Components
@@ -9,6 +9,9 @@ export * from './components';
 
 // Panels
 export * from './panels';
+
+// Windows
+export * from './windows';
 
 // Shared
 export * from './shared';

@@ -1,8 +1,8 @@
 # Phase 6: Functional WebGL Editor - Remaining Work
 
-> **Last Updated:** 2026-01-26T13:40:00Z
-> **Version:** 0.9.0
-> **Status:** 6.9-6.13 remaining (6.1-6.8 complete)
+> **Last Updated:** 2026-01-27T15:40:00Z
+> **Version:** 0.10.0
+> **Status:** 6.9-6.10 remaining (6.1-6.8, 6.11-6.14 complete)
 
 ---
 
@@ -279,12 +279,12 @@ Phase 6 is complete when:
 5. ✅ Clicking objects selects them; selection syncs with Hierarchy
 6. ✅ Directional light is in scene, editable, affects shading
 7. ⬜ Default material is PBR (responds to light realistically)
-8. ⬜ Transform gizmos appear on selection (W/E/R to switch modes)
+8. ✅ Transform gizmos appear on selection (W/E/R to switch modes)
 9. ⬜ Editing shader in Properties tab updates object in real-time
 10. ⬜ Render mode dropdown switches between Shaded/Wireframe/Both
 11. ✅ Ctrl+Z/Ctrl+Y undo/redo works for all scene operations
-12. ⬜ Viewport grid displays with toggle button
-13. ⬜ Settings window opens from File menu with Grid settings panel
+12. ✅ Viewport grid displays with toggle button
+13. ✅ Settings window opens from File menu with Grid settings panel
 14. ✅ Right-click context menu in Hierarchy (Delete, Duplicate, Rename)
 
 ---

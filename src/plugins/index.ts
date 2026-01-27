@@ -9,3 +9,4 @@ export * from './primitives';
 export * from './navigation';
 export * from './lights';
 export * from './gizmos';
+export * from './viewport';

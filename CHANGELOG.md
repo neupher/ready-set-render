@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.0] - 2026-01-27
+
+### Added
+
+- **Phase 6.12: Viewport Grid**
+  - Procedural grid renderer on XY plane at Z=0 (Z-up convention)
+  - Major/minor line subdivisions with configurable colors
+  - Axis indicator lines (X=Red, Y=Green, Z=Blue) with small Z-up indicator at origin
+  - Distance-based fade effect for cleaner appearance at edges
+  - Alpha blending for transparency
+  - Grid toggle button with icon in viewport header toolbar
+  - Grid visibility persisted across sessions via localStorage
+
+- **Phase 6.13: Settings Window**
+  - Modal settings window accessible from File → Settings (Ctrl+,)
+  - Two-panel layout: category list (left) + content panel (right)
+  - Escape key and click-outside to close
+  - Grid settings panel with:
+    - Show/hide grid checkbox
+    - Grid size slider (5-50 world units)
+    - Subdivisions slider (5-50)
+    - Major/minor line color pickers
+    - Show axis lines checkbox
+    - Opacity slider (0-100%)
+    - Reset to defaults button
+
+- **SettingsService**
+  - Centralized settings management with localStorage persistence
+  - Type-safe get/set methods with overloaded signatures
+  - Event-based change notifications (`settings:changed`)
+  - Default values with merge-on-load for forward compatibility
+  - Reset section/all functionality
+
+- **New Tests**
+  - 17 tests for SettingsService (persistence, events, error handling)
+  - 24 tests for GridRenderer (initialization, rendering, settings integration)
+  - Total: 520 tests passing
+
+### Changed
+
+- **ViewportPanel** now accepts optional `settingsService` for grid toggle integration
+- **EditorLayout** passes `settingsService` to ViewportPanel
+- **Application** orchestrates GridRenderer and SettingsWindow initialization
+- **TopMenuBar** File menu now includes Settings item with Ctrl+, shortcut
+- **WebGL mock** (tests) extended with `blendFunc`, `depthMask`, `BLEND` constants
+
+---
+
 ## [0.9.6] - 2026-01-27
 
 ### Fixed

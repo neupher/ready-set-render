@@ -32,6 +32,7 @@ export function createMockGL(): WebGL2RenderingContext {
     BACK: 1029,
     CCW: 2305,
     LEQUAL: 515,
+    LESS: 513,
     COLOR_BUFFER_BIT: 16384,
     DEPTH_BUFFER_BIT: 256,
     NO_ERROR: 0,
@@ -39,6 +40,12 @@ export function createMockGL(): WebGL2RenderingContext {
     ELEMENT_ARRAY_BUFFER: 34963,
     STATIC_DRAW: 35044,
     FLOAT: 5126,
+    LINES: 1,
+    TRIANGLES: 4,
+    UNSIGNED_SHORT: 5123,
+    BLEND: 3042,
+    SRC_ALPHA: 770,
+    ONE_MINUS_SRC_ALPHA: 771,
 
     // Shader methods
     createShader: vi.fn(() => mockShader),
@@ -76,6 +83,7 @@ export function createMockGL(): WebGL2RenderingContext {
     enable: vi.fn(),
     disable: vi.fn(),
     depthFunc: vi.fn(),
+    depthMask: vi.fn(),
     cullFace: vi.fn(),
     frontFace: vi.fn(),
     clearColor: vi.fn(),
@@ -83,6 +91,7 @@ export function createMockGL(): WebGL2RenderingContext {
     clear: vi.fn(),
     viewport: vi.fn(),
     getError: vi.fn(() => 0),
+    blendFunc: vi.fn(),
 
     // Uniform methods
     uniform1f: vi.fn(),

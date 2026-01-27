@@ -25,14 +25,17 @@ import { PropertyChangeHandler } from '@core/PropertyChangeHandler';
 import { CommandHistory } from '@core/commands/CommandHistory';
 import { KeyboardShortcutManager } from '@core/KeyboardShortcutManager';
 import { InputManager } from '@core/InputManager';
+import { SettingsService } from '@core/SettingsService';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
+import { SettingsWindow } from '@ui/windows/SettingsWindow';
 
 import { CubeFactory, SphereFactory, PrimitiveRegistry } from '@plugins/primitives';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { LightGizmoRenderer } from '@plugins/renderers/gizmos/LightGizmoRenderer';
 import { ViewportGizmoRenderer } from '@plugins/renderers/gizmos/ViewportGizmoRenderer';
+import { GridRenderer } from '@plugins/viewport/GridRenderer';
 import { TransformGizmoController } from '@plugins/gizmos';
 import { OrbitController } from '@plugins/navigation';
 import { DirectionalLight } from '@plugins/lights/DirectionalLight';
@@ -76,6 +79,7 @@ export class Application {
   private commandHistory!: CommandHistory;
   private shortcutManager!: KeyboardShortcutManager;
   private primitiveRegistry!: PrimitiveRegistry;
+  private settingsService!: SettingsService;
 
   // Rendering
   private gl!: WebGL2RenderingContext;
@@ -83,6 +87,7 @@ export class Application {
   private forwardRenderer!: ForwardRenderer;
   private lightGizmoRenderer!: LightGizmoRenderer;
   private viewportGizmoRenderer!: ViewportGizmoRenderer;
+  private gridRenderer!: GridRenderer;
   private lightManager!: LightManager;
   private renderCamera!: RenderCameraAdapter;
   private cameraEntity!: CameraEntity;
@@ -98,6 +103,7 @@ export class Application {
 
   // UI
   private layout!: EditorLayout;
+  private settingsWindow!: SettingsWindow;
 
   // State
   private isInitialized = false;
@@ -138,6 +144,10 @@ export class Application {
     this.primitiveRegistry.register(new SphereFactory());
     console.log('Primitive registry initialized with Cube and Sphere factories');
 
+    // Initialize settings service
+    this.settingsService = new SettingsService({ eventBus: this.eventBus });
+    console.log('Settings service initialized');
+
     // Create default Cube primitive for testing
     const defaultCube = this.primitiveRegistry.create('Cube');
     if (defaultCube) {
@@ -163,9 +173,22 @@ export class Application {
       eventBus: this.eventBus,
       sceneGraph: this.sceneGraph,
       primitiveRegistry: this.primitiveRegistry,
+      settingsService: this.settingsService,
     });
     this.layout.initialize();
     console.log('UI layout initialized');
+
+    // Initialize settings window
+    this.settingsWindow = new SettingsWindow({
+      settingsService: this.settingsService,
+      eventBus: this.eventBus,
+    });
+
+    // Handle settings menu command
+    this.eventBus.on('command:settings', () => {
+      this.settingsWindow.show();
+    });
+    console.log('Settings window initialized');
 
     // Initialize line renderer (for wireframe mode)
     this.lineRenderer = new LineRenderer();
@@ -217,6 +240,15 @@ export class Application {
     this.viewportGizmoRenderer = new ViewportGizmoRenderer(this.gl);
     this.viewportGizmoRenderer.initialize();
     console.log('Viewport gizmo renderer initialized');
+
+    // Initialize grid renderer
+    this.gridRenderer = new GridRenderer({
+      gl: this.gl,
+      eventBus: this.eventBus,
+      settingsService: this.settingsService,
+    });
+    this.gridRenderer.initialize();
+    console.log('Grid renderer initialized');
 
     // Initialize input manager
     const viewportCanvas = this.layout.getViewport()!.getCanvas();
@@ -327,6 +359,9 @@ export class Application {
       // Use Forward Renderer for solid shaded rendering
       this.forwardRenderer.beginFrame(this.renderCamera);
       this.forwardRenderer.render(this.sceneGraph);
+
+      // Render grid (after scene, before gizmos)
+      this.gridRenderer.render(this.renderCamera);
 
       // Render light gizmos for all light entities (always visible)
       this.renderAllLightGizmos();

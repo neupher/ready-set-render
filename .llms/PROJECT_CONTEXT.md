@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-27T15:06:00Z
-> **Version:** 0.9.6
-> **Status:** Phase 6 In Progress (6.9-6.13 remaining)
+> **Last Updated:** 2026-01-27T15:40:00Z
+> **Version:** 0.10.0
+> **Status:** Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
 
@@ -32,11 +32,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.9.6)
+## Current State (v0.10.0)
 
 ### What's Working
 
-- **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory
+- **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
@@ -66,13 +66,22 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - **Scale gizmo**: Solid axis cubes, wireframe→solid center cube on hover
   - **Translate gizmo**: Maya-style plane handles starting from origin
   - Yellow hover highlight color for consistency
-- **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar
+- **Viewport Grid**: Procedural grid on XY plane at Z=0
+  - Major/minor line subdivisions with configurable colors
+  - Axis indicator lines (X=Red, Y=Green, Z=Blue)
+  - Distance-based fade effect
+  - Toggle button with icon in viewport header
+- **Settings System**: Centralized settings with localStorage persistence
+  - SettingsService with type-safe get/set methods
+  - Settings window (File → Settings, Ctrl+,)
+  - Grid settings panel with full configuration options
+- **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar, SettingsWindow
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
 - **Default Scene**: Cube primitive auto-created on startup for faster testing
 
 ### Test Coverage
 
-- **479 tests passing** (25 new gizmo command tests added)
+- **520 tests passing** (41 new tests for SettingsService and GridRenderer)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -83,7 +92,8 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **ICloneable** enables polymorphic entity duplication
 - **PBRShaderProgram** encapsulates PBR shader with automatic material switching
 - **GizmoDragState** stores entity reference to avoid selection race conditions
-- **calculateDragStartIntersection()** computes actual click point for smooth dragging
+- **SettingsService** centralized settings with localStorage persistence and events
+- **GridRenderer** procedural grid with settings integration
 
 ---
 
@@ -100,8 +110,8 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 | 6.9 | Live Shader Editor | Not Started |
 | 6.10 | Render Mode Dropdown | Not Started |
 | 6.11 | ~~Undo/Redo~~ | ✅ Moved earlier, complete |
-| 6.12 | Viewport Grid | Not Started |
-| 6.13 | Settings Window | Not Started |
+| 6.12 | Viewport Grid | ✅ Complete |
+| 6.13 | Settings Window | ✅ Complete |
 | 6.14 | ~~Hierarchy Context Menu~~ | ✅ Complete |
 
 ### GLSL Migration ✅ Complete
