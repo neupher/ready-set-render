@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-27T16:57:00Z
+> **Last Updated:** 2026-01-27T17:50:00Z
 > **Version:** 0.10.1
-> **Status:** Phase 6 In Progress (6.9-6.10 remaining)
+> **Status:** Asset System Planning Complete → Implementation Ready
 
 ---
 
@@ -129,9 +129,27 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
-2. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
-3. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+### Asset System Implementation (Pre-requisite for Phase 6.9)
+
+See **[ASSET_SYSTEM_PLAN.md](./ASSET_SYSTEM_PLAN.md)** for complete specification.
+
+| Order | Phase | Description |
+|-------|-------|-------------|
+| 1 | Phase A | Asset Foundation (Serialization, Registry, FileSystemAssetStore) |
+| 2 | Phase B | Shader Assets (IShaderAsset, built-in shaders, compilation service) |
+| 3 | Phase C | Material Assets (IMaterialAsset, material-entity binding) |
+| 4 | Phase E | Asset Browser UI (new tab in Properties panel) |
+| 5 | Phase D | Scene Serialization (File menu: New/Open/Save Scene) |
+| 6 | Phase F | Live Shader Editor (Monaco, live compilation) |
+
+### Remaining Phase 6
+
+After Asset System is complete:
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 6.9 | Live Shader Editor | Blocked → Asset System Phase F |
+| 6.10 | Render Mode Dropdown | Not Started |
 
 ---
 
