@@ -61,7 +61,25 @@ export const DEFAULT_GIZMO_CONFIG: GizmoConfig = {
 };
 
 /**
+ * Gizmo geometry batch for a single draw call.
+ */
+export interface GizmoGeometryBatch {
+  /** Vertex positions (x, y, z) */
+  vertices: Float32Array;
+
+  /** Number of vertices */
+  vertexCount: number;
+
+  /** Colors per vertex (r, g, b) */
+  colors: Float32Array;
+
+  /** Drawing mode (gl.LINES, gl.TRIANGLES, etc.) */
+  drawMode: number;
+}
+
+/**
  * Gizmo geometry data for rendering.
+ * Supports multiple batches with different draw modes.
  */
 export interface GizmoGeometry {
   /** Vertex positions (x, y, z) */
@@ -75,6 +93,9 @@ export interface GizmoGeometry {
 
   /** Drawing mode (gl.LINES, gl.TRIANGLES, etc.) */
   drawMode: number;
+
+  /** Additional batches with different draw modes (optional) */
+  additionalBatches?: GizmoGeometryBatch[];
 }
 
 /**
@@ -136,11 +157,13 @@ export interface IGizmo {
    * @param position - World position of the target entity
    * @param scale - Screen-space scale factor for consistent size
    * @param hoveredAxis - Currently hovered axis for highlighting
+   * @param cameraDirection - Optional camera view direction for view-dependent rendering
    */
   generateGeometry(
     position: [number, number, number],
     scale: number,
-    hoveredAxis: GizmoAxis
+    hoveredAxis: GizmoAxis,
+    cameraDirection?: [number, number, number]
   ): GizmoGeometry;
 
   /**

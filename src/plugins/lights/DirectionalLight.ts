@@ -71,14 +71,18 @@ export class DirectionalLight implements IEntity, ICloneable, ILightDirectionPro
     this.name = config.name ?? 'Directional Light';
     this.transform = createDefaultTransform();
 
+    // Set default position for gizmo/visual placement
+    // Positioned along -Y axis (in front of origin in Z-up space)
+    this.transform.position = [0, -6, 0];
+
     // Set initial rotation (affects light direction)
-    // Default: X=50° (tilted down), Y=-30° (rotated around Y)
-    // This produces a direction similar to [-0.5, -0.77, -0.4]
+    // Default: X=50° (tilted down), Y=-30° (rotated around Y), Z=180° (flipped)
+    // This produces a direction pointing toward the scene
     if (config.rotation) {
       this.transform.rotation = [...config.rotation];
     } else {
       // Default rotation for a nice sun-like angle
-      this.transform.rotation = [50, -30, 0];
+      this.transform.rotation = [50, -30, 180];
     }
 
     // Initialize light component

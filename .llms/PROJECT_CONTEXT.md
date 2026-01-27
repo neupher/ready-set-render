@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-26T22:35:00Z
-> **Version:** 0.9.3
+> **Last Updated:** 2026-01-27T00:37:00Z
+> **Version:** 0.9.4
 > **Status:** Phase 6 In Progress (6.9-6.13 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.9.3)
+## Current State (v0.9.4)
 
 ### What's Working
 
@@ -50,7 +50,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - TypeScript declarations for `.glsl`, `.vert`, `.frag` imports
 - **Modular Shaders**: Reusable GLSL modules (math, brdf, lighting) via `composeShader()`
 - **Primitives**: Cube, Sphere (via IMeshProvider/MeshGPUCache architecture)
-- **Lights**: DirectionalLight with transform-based direction, LightGizmoRenderer
+- **Lights**: DirectionalLight with transform-based direction, LightGizmoRenderer (always visible)
 - **Camera**: CameraEntity with composition pattern, OrbitController (Maya-style navigation)
 - **Selection**: Ray picking, Ctrl+Click multi-select, F key framing
 - **Undo/Redo**: Command pattern with coalescing and batch mode (Ctrl+Z/Y)
@@ -60,9 +60,9 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - Screen-space constant size rendering
   - Ray casting hit detection for interaction
   - Full undo/redo integration via PropertyChangeCommand (batched)
-  - **Fixed**: Proper drag start intersection calculation prevents initial jump
-  - **Fixed**: Rotation gizmo now accepts input (calculates proper start point on ring)
-  - **Improved**: Rotation rings rendered as thick bands (10% width) for better visibility
+  - **Rotation gizmo**: Solid filled rings with camera-based fading, center all-axis rotation
+  - **Scale gizmo**: Solid axis cubes, wireframe→solid center cube on hover
+  - **Translate gizmo**: Maya-style plane handles starting from origin
 - **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
 - **Default Scene**: Cube primitive auto-created on startup for faster testing

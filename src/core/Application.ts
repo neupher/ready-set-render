@@ -328,8 +328,8 @@ export class Application {
       this.forwardRenderer.beginFrame(this.renderCamera);
       this.forwardRenderer.render(this.sceneGraph);
 
-      // Render light gizmos for selected light entities
-      this.renderSelectedLightGizmos();
+      // Render light gizmos for all light entities (always visible)
+      this.renderAllLightGizmos();
 
       // Render transform gizmos for selected entities (after scene, depth disabled)
       this.transformGizmoController.render(this.renderCamera);
@@ -350,12 +350,14 @@ export class Application {
   }
 
   /**
-   * Render gizmos for any selected light entities.
+   * Render gizmos for all light entities in the scene.
+   * Light gizmos are always visible, not just when selected.
    */
-  private renderSelectedLightGizmos(): void {
-    const selectedEntities = this.selectionManager.getSelected();
+  private renderAllLightGizmos(): void {
+    // Get all entities from scene graph
+    const allEntities = this.sceneGraph.getAllObjects();
 
-    for (const entity of selectedEntities) {
+    for (const entity of allEntities) {
       // Check if entity has a light component
       if (typeof entity === 'object' && entity !== null) {
         const e = entity as { hasComponent?: (type: string) => boolean };

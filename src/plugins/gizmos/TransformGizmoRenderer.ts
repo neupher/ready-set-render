@@ -170,11 +170,17 @@ export class TransformGizmoRenderer {
     // Calculate screen-space scale factor for constant size
     const scale = this.calculateScreenScale(camera, position);
 
+    // Calculate camera direction for view-dependent rendering (e.g., rotation gizmo fading)
+    const cameraDirection = this.getCameraDirection(camera);
+
     // Generate gizmo geometry
-    const geometry = gizmo.generateGeometry(position, scale, hoveredAxis);
+    const geometry = gizmo.generateGeometry(position, scale, hoveredAxis, cameraDirection);
 
     // Disable depth testing so gizmo renders on top
     gl.disable(gl.DEPTH_TEST);
+
+    // Disable backface culling for gizmos (rings/handles may face either direction)
+    gl.disable(gl.CULL_FACE);
 
     // Use shader program
     gl.useProgram(this.program);
@@ -192,13 +198,27 @@ export class TransformGizmoRenderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, geometry.colors, gl.DYNAMIC_DRAW);
 
-    // Draw gizmo
+    // Draw main batch
     gl.drawArrays(geometry.drawMode, 0, geometry.vertexCount);
+
+    // Draw additional batches if present
+    if (geometry.additionalBatches) {
+      for (const batch of geometry.additionalBatches) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, batch.vertices, gl.DYNAMIC_DRAW);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, batch.colors, gl.DYNAMIC_DRAW);
+
+        gl.drawArrays(batch.drawMode, 0, batch.vertexCount);
+      }
+    }
 
     gl.bindVertexArray(null);
 
-    // Re-enable depth testing
+    // Re-enable depth testing and culling
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
   }
 
   /**
@@ -242,6 +262,21 @@ export class TransformGizmoRenderer {
     // The multiplier controls the screen size of the gizmo
     const baseScale = 0.15;
     return distance * baseScale;
+  }
+
+  /**
+   * Get the camera's view direction from the view matrix.
+   */
+  private getCameraDirection(camera: ICamera): [number, number, number] {
+    const viewMatrix = camera.getViewMatrix();
+
+    // The camera forward direction is the negative Z axis of the view matrix
+    // In view matrix, row 2 (indices 8, 9, 10) gives the -Z direction
+    return [
+      -viewMatrix[8],
+      -viewMatrix[9],
+      -viewMatrix[10],
+    ];
   }
 
   /**

@@ -1,14 +1,15 @@
 /**
  * ScaleGizmo - Scale Gizmo for Size Manipulation
  *
- * Visual gizmo with 3 box handles (X, Y, Z axes) and center handle for uniform scaling.
+ * Visual gizmo with 3 box handles (X, Y, Z axes), plane handles, and center handle for uniform scaling.
  * Uses Z-up coordinate system (Blender convention).
  *
  * Geometry:
- * - X handle (red): Scale along X axis
- * - Y handle (green): Scale along Y axis (forward)
- * - Z handle (blue): Scale along Z axis (up)
- * - Center handle (yellow): Uniform scaling on all axes
+ * - X handle (red): Scale along X axis - solid cube
+ * - Y handle (green): Scale along Y axis (forward) - solid cube
+ * - Z handle (blue): Scale along Z axis (up) - solid cube
+ * - XY, XZ, YZ plane handles: 2-axis scaling (wireframe, solid when hovered)
+ * - Center handle (yellow): Uniform scaling on all axes - wireframe (solid when hovered)
  *
  * @example
  * ```typescript
@@ -25,6 +26,7 @@ import type {
   GizmoGeometry,
   GizmoHitResult,
   GizmoDragState,
+  GizmoGeometryBatch,
 } from './interfaces';
 import { GIZMO_COLORS } from './interfaces';
 
@@ -33,7 +35,7 @@ import { GIZMO_COLORS } from './interfaces';
  */
 const HANDLE_LENGTH = 1.0;
 const HANDLE_SIZE = 0.1;
-const CENTER_SIZE = 0.15;
+const CENTER_SIZE = 0.12;
 const HIT_THRESHOLD = 0.12;
 
 /**
@@ -50,53 +52,94 @@ export class ScaleGizmo implements IGizmo {
     scale: number,
     hoveredAxis: GizmoAxis
   ): GizmoGeometry {
-    const vertices: number[] = [];
-    const colors: number[] = [];
+    // Separate line and triangle geometry
+    const lineVertices: number[] = [];
+    const lineColors: number[] = [];
+    const triangleVertices: number[] = [];
+    const triangleColors: number[] = [];
 
-    // Generate X handle (red)
-    this.addScaleHandle(
-      vertices,
-      colors,
+    // Generate X handle (red) - line + solid cube
+    this.addScaleHandleLine(
+      lineVertices,
+      lineColors,
       position,
       [1, 0, 0],
       scale,
       hoveredAxis === 'x' ? GIZMO_COLORS.hover : GIZMO_COLORS.x
     );
+    this.addSolidBox(
+      triangleVertices,
+      triangleColors,
+      this.getHandleBoxCenter(position, [1, 0, 0], scale),
+      HANDLE_SIZE * scale,
+      hoveredAxis === 'x' ? GIZMO_COLORS.hover : GIZMO_COLORS.x
+    );
 
-    // Generate Y handle (green)
-    this.addScaleHandle(
-      vertices,
-      colors,
+    // Generate Y handle (green) - line + solid cube
+    this.addScaleHandleLine(
+      lineVertices,
+      lineColors,
       position,
       [0, 1, 0],
       scale,
       hoveredAxis === 'y' ? GIZMO_COLORS.hover : GIZMO_COLORS.y
     );
+    this.addSolidBox(
+      triangleVertices,
+      triangleColors,
+      this.getHandleBoxCenter(position, [0, 1, 0], scale),
+      HANDLE_SIZE * scale,
+      hoveredAxis === 'y' ? GIZMO_COLORS.hover : GIZMO_COLORS.y
+    );
 
-    // Generate Z handle (blue)
-    this.addScaleHandle(
-      vertices,
-      colors,
+    // Generate Z handle (blue) - line + solid cube
+    this.addScaleHandleLine(
+      lineVertices,
+      lineColors,
       position,
       [0, 0, 1],
       scale,
       hoveredAxis === 'z' ? GIZMO_COLORS.hover : GIZMO_COLORS.z
     );
-
-    // Generate center handle (yellow cube)
-    this.addCenterHandle(
-      vertices,
-      colors,
-      position,
-      scale,
-      hoveredAxis === 'xyz' ? GIZMO_COLORS.hover : GIZMO_COLORS.free
+    this.addSolidBox(
+      triangleVertices,
+      triangleColors,
+      this.getHandleBoxCenter(position, [0, 0, 1], scale),
+      HANDLE_SIZE * scale,
+      hoveredAxis === 'z' ? GIZMO_COLORS.hover : GIZMO_COLORS.z
     );
 
+    // Generate center handle (yellow cube)
+    // Solid when hovered, wireframe otherwise
+    const centerColor = hoveredAxis === 'xyz' ? GIZMO_COLORS.hover : GIZMO_COLORS.free;
+    if (hoveredAxis === 'xyz') {
+      // Solid center cube when hovered
+      this.addSolidBox(
+        triangleVertices,
+        triangleColors,
+        position,
+        CENTER_SIZE * scale,
+        centerColor
+      );
+    } else {
+      // Wireframe center cube when not hovered
+      this.addWireframeBox(lineVertices, lineColors, position, CENTER_SIZE * scale, centerColor);
+    }
+
+    // Create triangle batch for solid geometry
+    const triangleBatch: GizmoGeometryBatch = {
+      vertices: new Float32Array(triangleVertices),
+      vertexCount: triangleVertices.length / 3,
+      colors: new Float32Array(triangleColors),
+      drawMode: WebGL2RenderingContext.TRIANGLES,
+    };
+
     return {
-      vertices: new Float32Array(vertices),
-      vertexCount: vertices.length / 3,
-      colors: new Float32Array(colors),
+      vertices: new Float32Array(lineVertices),
+      vertexCount: lineVertices.length / 3,
+      colors: new Float32Array(lineColors),
       drawMode: WebGL2RenderingContext.LINES,
+      additionalBatches: [triangleBatch],
     };
   }
 
@@ -196,9 +239,9 @@ export class ScaleGizmo implements IGizmo {
   }
 
   /**
-   * Add scale handle geometry (line + box) for a single axis.
+   * Add just the line portion of a scale handle.
    */
-  private addScaleHandle(
+  private addScaleHandleLine(
     vertices: number[],
     colors: number[],
     origin: [number, number, number],
@@ -207,9 +250,8 @@ export class ScaleGizmo implements IGizmo {
     color: [number, number, number]
   ): void {
     const length = HANDLE_LENGTH * scale;
-    const boxSize = HANDLE_SIZE * scale;
 
-    // Line from origin to handle
+    // Line from origin to handle end
     const endX = origin[0] + direction[0] * length;
     const endY = origin[1] + direction[1] * length;
     const endZ = origin[2] + direction[2] * length;
@@ -222,29 +264,28 @@ export class ScaleGizmo implements IGizmo {
       color[0], color[1], color[2],
       color[0], color[1], color[2]
     );
-
-    // Box at the end of the handle
-    this.addBox(vertices, colors, [endX, endY, endZ], boxSize, color);
   }
 
   /**
-   * Add center handle geometry (cube).
+   * Get the center position of the box at the end of a handle.
    */
-  private addCenterHandle(
-    vertices: number[],
-    colors: number[],
+  private getHandleBoxCenter(
     origin: [number, number, number],
-    scale: number,
-    color: [number, number, number]
-  ): void {
-    const size = CENTER_SIZE * scale;
-    this.addBox(vertices, colors, origin, size, color);
+    direction: [number, number, number],
+    scale: number
+  ): [number, number, number] {
+    const length = HANDLE_LENGTH * scale;
+    return [
+      origin[0] + direction[0] * length,
+      origin[1] + direction[1] * length,
+      origin[2] + direction[2] * length,
+    ];
   }
 
   /**
-   * Add box geometry (wireframe cube).
+   * Add wireframe box geometry (cube outline).
    */
-  private addBox(
+  private addWireframeBox(
     vertices: number[],
     colors: number[],
     center: [number, number, number],
@@ -273,6 +314,57 @@ export class ScaleGizmo implements IGizmo {
     for (const [a, b] of edges) {
       vertices.push(...corners[a], ...corners[b]);
       colors.push(color[0], color[1], color[2], color[0], color[1], color[2]);
+    }
+  }
+
+  /**
+   * Add solid box geometry (filled cube with triangles).
+   */
+  private addSolidBox(
+    vertices: number[],
+    colors: number[],
+    center: [number, number, number],
+    size: number,
+    color: [number, number, number]
+  ): void {
+    const halfSize = size / 2;
+
+    // 8 corners of the cube
+    const corners: [number, number, number][] = [
+      [center[0] - halfSize, center[1] - halfSize, center[2] - halfSize], // 0: front-bottom-left
+      [center[0] + halfSize, center[1] - halfSize, center[2] - halfSize], // 1: front-bottom-right
+      [center[0] + halfSize, center[1] + halfSize, center[2] - halfSize], // 2: back-bottom-right
+      [center[0] - halfSize, center[1] + halfSize, center[2] - halfSize], // 3: back-bottom-left
+      [center[0] - halfSize, center[1] - halfSize, center[2] + halfSize], // 4: front-top-left
+      [center[0] + halfSize, center[1] - halfSize, center[2] + halfSize], // 5: front-top-right
+      [center[0] + halfSize, center[1] + halfSize, center[2] + halfSize], // 6: back-top-right
+      [center[0] - halfSize, center[1] + halfSize, center[2] + halfSize], // 7: back-top-left
+    ];
+
+    // 6 faces, 2 triangles each (12 triangles total)
+    // Each face: [v0, v1, v2], [v0, v2, v3] (counter-clockwise winding)
+    const faces = [
+      // Bottom face (z-)
+      [0, 2, 1], [0, 3, 2],
+      // Top face (z+)
+      [4, 5, 6], [4, 6, 7],
+      // Front face (y-)
+      [0, 1, 5], [0, 5, 4],
+      // Back face (y+)
+      [2, 3, 7], [2, 7, 6],
+      // Left face (x-)
+      [0, 4, 7], [0, 7, 3],
+      // Right face (x+)
+      [1, 2, 6], [1, 6, 5],
+    ];
+
+    for (const [a, b, c] of faces) {
+      vertices.push(...corners[a], ...corners[b], ...corners[c]);
+      colors.push(
+        color[0], color[1], color[2],
+        color[0], color[1], color[2],
+        color[0], color[1], color[2]
+      );
     }
   }
 

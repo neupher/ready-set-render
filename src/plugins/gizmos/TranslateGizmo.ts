@@ -36,8 +36,8 @@ const ARROW_LENGTH = 1.0;
 const ARROW_HEAD_LENGTH = 0.2;
 const ARROW_HEAD_RADIUS = 0.08;
 const CENTER_SIZE = 0.12;
-const PLANE_HANDLE_SIZE = 0.2;  // Reduced by ~30% from 0.3
-const PLANE_HANDLE_OFFSET = 0.35;
+const PLANE_HANDLE_SIZE = 0.25;  // Size of plane handle square (Maya style)
+const PLANE_HANDLE_OFFSET = 0;   // Start from origin (Maya style)
 const HIT_THRESHOLD = 0.1;
 const CONE_SEGMENTS = 12;  // Segments for filled cone
 

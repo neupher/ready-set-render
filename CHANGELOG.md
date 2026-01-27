@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.4] - 2026-01-27
+
+### Added
+
+- **Rotation Gizmo All-Axis Rotation**
+  - Click near center of rotation gizmo to enable trackball-style rotation on all axes
+  - Center hit detection with `CENTER_HIT_RADIUS = 0.15` scale factor
+  - `calculateTrackballRotation()` converts mouse movement to multi-axis rotation
+
+- **Rotation Gizmo Camera-Based Fading**
+  - Ring segments fade based on orientation to camera view direction
+  - Rings that are "edge-on" (facing away) fade out for reduced visual clutter
+  - Per-segment fading for smooth transitions
+  - Minimum fade of 15% so rings never fully disappear
+
+- **GizmoGeometryBatch Interface**
+  - New interface to support multiple draw calls with different draw modes
+  - Enables mixed GL.LINES and GL.TRIANGLES rendering in single gizmo
+
+### Changed
+
+- **Rotation Gizmo Now Renders Solid Circles**
+  - Changed from wireframe lines to solid filled triangles (torus bands)
+  - 8% ring width ratio for clean appearance
+  - Uses `GL.TRIANGLES` draw mode
+
+- **Scale Gizmo Solid Axis Cubes**
+  - Single-axis handles (X, Y, Z) now render as solid filled cubes
+  - Center cube: wireframe when not hovered, solid when hovered
+  - Uses `additionalBatches` for triangle geometry
+
+- **Position Gizmo Maya-Style Plane Handles**
+  - 2-axis plane handles now start from origin (offset = 0)
+  - Aligns with axis lines like in Maya
+  - Increased handle size to 0.25
+
+- **DirectionalLight Default Values**
+  - Default rotation changed to `[50, -30, 180]` (Z rotation now 180°)
+  - Default position changed to `[0, -6, 0]` (positioned in front of origin)
+
+- **Light Debug Visuals Always Visible**
+  - Light gizmos (sun icon + direction arrow) now render for ALL lights
+  - Previously only rendered for selected lights
+  - Renamed `renderSelectedLightGizmos()` → `renderAllLightGizmos()`
+
+### Fixed
+
+- **Rotation Gizmo Not Rendering**
+  - Added `gl.disable(gl.CULL_FACE)` in gizmo renderer
+  - Backface culling was hiding solid ring triangles
+  - Properly restore culling state after rendering
+
+---
+
 ## [0.9.3] - 2026-01-26
 
 ### Added
