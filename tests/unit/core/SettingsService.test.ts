@@ -51,7 +51,7 @@ describe('SettingsService', () => {
 
       expect(settings.grid).toBeDefined();
       expect(settings.grid.visible).toBe(true);
-      expect(settings.grid.size).toBe(10);
+      expect(settings.grid.size).toBe(1);
       expect(settings.grid.subdivisions).toBe(10);
     });
 
@@ -109,12 +109,12 @@ describe('SettingsService', () => {
 
       expect(gridSettings).toBeDefined();
       expect(gridSettings.visible).toBe(true);
-      expect(gridSettings.size).toBe(10);
+      expect(gridSettings.size).toBe(1);
     });
 
     it('should get specific property from section', () => {
       expect(settingsService.get('grid', 'visible')).toBe(true);
-      expect(settingsService.get('grid', 'size')).toBe(10);
+      expect(settingsService.get('grid', 'size')).toBe(1);
       expect(settingsService.get('grid', 'majorLineColor')).toBe('#444444');
     });
   });
@@ -197,7 +197,7 @@ describe('SettingsService', () => {
 
       // Should be back to defaults
       expect(settingsService.get('grid', 'visible')).toBe(true);
-      expect(settingsService.get('grid', 'size')).toBe(10);
+      expect(settingsService.get('grid', 'size')).toBe(1);
       expect(settingsService.get('grid', 'opacity')).toBe(0.8);
     });
   });

@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.10.1] - 2026-01-27
+
+### Fixed
+
+- **Grid Lines Extending Beyond Boundaries**
+  - Fixed grid generation bug where lines extended past grid edges
+  - Grid now correctly renders within -size to +size bounds
+
+- **Axis Lines Always at World Origin**
+  - Red (X) and Green (Y) axis lines now always render at world coordinates (0,0)
+  - Axis lines no longer shift position when changing subdivisions
+  - Removed Z axis indicator (not needed for XY plane grid)
+
+- **Grid Visibility on Zoom Out**
+  - Fixed grid disappearing when camera zooms out
+  - Added adaptive fade distance based on camera position
+  - Grid remains visible regardless of camera distance from origin
+
+- **Settings Window Scroll Position**
+  - Fixed scroll position resetting when clicking on sliders/inputs
+  - Window now uses z-index instead of DOM manipulation for focus
+
+### Changed
+
+- **Grid Size Default**
+  - Default grid size changed from 10 to 1 unit (1 meter)
+  - Documented unit system: 1 unit = 1 meter (Blender-compatible for 1:1 import/export)
+
+- **Settings Window Non-Modal**
+  - Settings window no longer darkens the rest of the editor
+  - Window is freely positionable and resizable
+  - Supports live editing while viewing viewport
+
+- **Grid Settings UI Improvements**
+  - Slider snaps to 0.5 increments for grid size
+  - Added editable number input fields alongside all sliders
+  - Size slider shows "m" (meters) suffix
+  - Slider ranges adjusted (0.5-100m for size, 2-50 for subdivisions)
+
+### Documentation
+
+- **Unit System Documentation**
+  - Added Unit System section to COORDINATE_SYSTEM.md
+  - Documented 1 unit = 1 meter convention
+  - Added implementation requirements and Blender compatibility notes
+
+---
+
 ## [0.10.0] - 2026-01-27
 
 ### Added

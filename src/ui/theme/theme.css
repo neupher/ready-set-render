@@ -737,29 +737,26 @@ body {
    Settings Window Styles
    ====================================== */
 
-.settings-overlay {
+/* Floating settings window (non-modal) */
+.settings-window.floating {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: var(--z-modal);
-}
-
-.settings-window {
   background: var(--bg-secondary);
   border: 1px solid var(--border-secondary);
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  width: 600px;
-  max-width: 90vw;
-  max-height: 80vh;
   display: flex;
   flex-direction: column;
+  z-index: var(--z-modal);
+  overflow: hidden;
+}
+
+.settings-window.floating.dragging {
+  cursor: move;
+  user-select: none;
+}
+
+.settings-window.floating.resizing {
+  user-select: none;
 }
 
 .settings-window-header {
@@ -942,6 +939,33 @@ body {
   text-align: right;
 }
 
+.settings-number-input {
+  width: 60px;
+  height: 24px;
+  padding: 0 var(--spacing-xs);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-family);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  text-align: right;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.settings-number-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.settings-number-input::-webkit-outer-spin-button,
+.settings-number-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .settings-color-input {
   width: 60px;
   height: 28px;
@@ -990,4 +1014,76 @@ body {
   height: 200px;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* Settings Window Resize Handles */
+.settings-resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+/* Edge handles */
+.settings-resize-n {
+  top: -4px;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: n-resize;
+}
+
+.settings-resize-s {
+  bottom: -4px;
+  left: 8px;
+  right: 8px;
+  height: 8px;
+  cursor: s-resize;
+}
+
+.settings-resize-e {
+  top: 8px;
+  bottom: 8px;
+  right: -4px;
+  width: 8px;
+  cursor: e-resize;
+}
+
+.settings-resize-w {
+  top: 8px;
+  bottom: 8px;
+  left: -4px;
+  width: 8px;
+  cursor: w-resize;
+}
+
+/* Corner handles */
+.settings-resize-ne {
+  top: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: ne-resize;
+}
+
+.settings-resize-nw {
+  top: -4px;
+  left: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: nw-resize;
+}
+
+.settings-resize-se {
+  bottom: -4px;
+  right: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: se-resize;
+}
+
+.settings-resize-sw {
+  bottom: -4px;
+  left: -4px;
+  width: 12px;
+  height: 12px;
+  cursor: sw-resize;
 }

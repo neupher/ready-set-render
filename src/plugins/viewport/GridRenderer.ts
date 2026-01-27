@@ -7,7 +7,7 @@
  * Features:
  * - Procedural grid generation (no stored geometry)
  * - Major/minor line subdivisions
- * - Axis indicator lines (X=Red, Y=Green, Z=Blue)
+ * - Axis indicator lines (X=Red, Y=Green)
  * - Distance-based fade
  * - Anti-aliased lines
  * - Configurable via SettingsService
@@ -16,7 +16,6 @@
  * - Grid lies on XY plane at Z=0
  * - X axis = Red (right)
  * - Y axis = Green (forward)
- * - Z axis = Blue (up) - optional vertical indicator
  *
  * @example
  * ```typescript
@@ -73,6 +72,7 @@ void main() {
 /**
  * Fragment shader for grid rendering.
  * Applies distance-based fade and opacity.
+ * Fade is based on a large fixed distance to keep grid visible when zoomed out.
  */
 const GRID_FRAGMENT_SHADER = `#version 300 es
 precision highp float;
@@ -87,9 +87,16 @@ uniform float uFadeDistance;
 out vec4 outColor;
 
 void main() {
-  // Distance-based fade
-  float dist = length(vWorldPosition - uCameraPosition);
-  float fade = 1.0 - smoothstep(uFadeDistance * 0.5, uFadeDistance, dist);
+  // Distance-based fade using camera distance from origin for better zoom behavior
+  float distFromCamera = length(uCameraPosition);
+  float distFromFragment = length(vWorldPosition - uCameraPosition);
+
+  // Adaptive fade: use the larger of fixed distance or camera-based distance
+  // This keeps the grid visible even when camera is far from origin
+  float adaptiveFadeStart = max(uFadeDistance * 0.5, distFromCamera * 0.8);
+  float adaptiveFadeEnd = max(uFadeDistance, distFromCamera * 2.0);
+
+  float fade = 1.0 - smoothstep(adaptiveFadeStart, adaptiveFadeEnd, distFromFragment);
 
   // Apply opacity and fade
   outColor = vec4(vColor.rgb, vColor.a * uOpacity * fade);
@@ -317,6 +324,8 @@ export class GridRenderer {
   /**
    * Generate grid geometry based on settings.
    * Grid lies on XY plane at Z=0 (Z-up convention).
+   * Grid extends from -size to +size on both X and Y axes.
+   * Axis lines (red X, green Y) are always at world origin (0,0).
    */
   private generateGridGeometry(settings: GridSettings): GridLineData {
     const { size, subdivisions, majorLineColor, minorLineColor, showAxisLines } = settings;
@@ -324,71 +333,63 @@ export class GridRenderer {
     const halfSize = size;
     const step = (size * 2) / subdivisions;
 
-    // Parse colors
+    // Parse colors - use minor color for all grid lines (axis lines provide visual reference)
+    const gridColor = this.hexToRgba(minorLineColor);
     const majorColor = this.hexToRgba(majorLineColor);
-    const minorColor = this.hexToRgba(minorLineColor);
 
-    // Axis colors (thicker lines, full opacity)
+    // Axis colors (full opacity, always at origin)
     const xAxisColor: [number, number, number, number] = [0.9, 0.2, 0.2, 1.0]; // Red
     const yAxisColor: [number, number, number, number] = [0.2, 0.9, 0.2, 1.0]; // Green
-    const zAxisColor: [number, number, number, number] = [0.2, 0.2, 0.9, 1.0]; // Blue
 
     // Collect lines
     const positions: number[] = [];
     const colors: number[] = [];
 
-    // Generate grid lines parallel to X axis (running in Y direction)
-    for (let i = -subdivisions; i <= subdivisions; i++) {
-      const x = i * step;
-      const isMajor = i % 10 === 0;
-      const isCenter = i === 0;
+    // Generate grid lines parallel to Y axis (vertical lines in XY plane)
+    // Lines run from (x, -halfSize, 0) to (x, halfSize, 0)
+    for (let i = 0; i <= subdivisions; i++) {
+      const x = -halfSize + i * step;
 
-      // Skip center line if showing axis (will be drawn separately)
-      if (isCenter && showAxisLines) continue;
+      // Skip line at x=0 if showing axis (will be drawn as colored axis)
+      if (showAxisLines && Math.abs(x) < 0.0001) continue;
 
-      const color = isMajor ? majorColor : minorColor;
+      // Use major color for edge lines, minor for interior
+      const isEdge = i === 0 || i === subdivisions;
+      const color = isEdge ? majorColor : gridColor;
 
-      // Line from (-halfSize, x, 0) to (halfSize, x, 0) - parallel to Y
-      positions.push(-halfSize, x, 0);
-      positions.push(halfSize, x, 0);
+      positions.push(x, -halfSize, 0);
+      positions.push(x, halfSize, 0);
       colors.push(...color, ...color);
     }
 
-    // Generate grid lines parallel to Y axis (running in X direction)
-    for (let i = -subdivisions; i <= subdivisions; i++) {
-      const y = i * step;
-      const isMajor = i % 10 === 0;
-      const isCenter = i === 0;
+    // Generate grid lines parallel to X axis (horizontal lines in XY plane)
+    // Lines run from (-halfSize, y, 0) to (halfSize, y, 0)
+    for (let i = 0; i <= subdivisions; i++) {
+      const y = -halfSize + i * step;
 
-      // Skip center line if showing axis (will be drawn separately)
-      if (isCenter && showAxisLines) continue;
+      // Skip line at y=0 if showing axis (will be drawn as colored axis)
+      if (showAxisLines && Math.abs(y) < 0.0001) continue;
 
-      const color = isMajor ? majorColor : minorColor;
+      // Use major color for edge lines, minor for interior
+      const isEdge = i === 0 || i === subdivisions;
+      const color = isEdge ? majorColor : gridColor;
 
-      // Line from (y, -halfSize, 0) to (y, halfSize, 0) - parallel to X
-      positions.push(y, -halfSize, 0);
-      positions.push(y, halfSize, 0);
+      positions.push(-halfSize, y, 0);
+      positions.push(halfSize, y, 0);
       colors.push(...color, ...color);
     }
 
-    // Add axis indicator lines if enabled
+    // Add axis indicator lines if enabled - ALWAYS at world origin (0,0)
     if (showAxisLines) {
-      // X axis (red) - runs in +X direction
+      // X axis (red) - runs along X direction at Y=0, Z=0
       positions.push(-halfSize, 0, 0);
       positions.push(halfSize, 0, 0);
       colors.push(...xAxisColor, ...xAxisColor);
 
-      // Y axis (green) - runs in +Y direction
+      // Y axis (green) - runs along Y direction at X=0, Z=0
       positions.push(0, -halfSize, 0);
       positions.push(0, halfSize, 0);
       colors.push(...yAxisColor, ...yAxisColor);
-
-      // Z axis (blue) - small vertical indicator at origin
-      // Only show a small portion to indicate up direction
-      const zAxisLength = size * 0.1;
-      positions.push(0, 0, 0);
-      positions.push(0, 0, zAxisLength);
-      colors.push(...zAxisColor, ...zAxisColor);
     }
 
     return {

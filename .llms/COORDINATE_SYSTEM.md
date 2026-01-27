@@ -1,12 +1,46 @@
-# Coordinate System Convention: WebGL Editor
+# Coordinate System & Units: WebGL Editor
 
-> **Last Updated:** 2026-01-24T19:25:00Z
-> **Version:** 1.0.0
-> **Status:** CANONICAL - All rendering features MUST follow this convention
+> **Last Updated:** 2026-01-27T16:57:00Z
+> **Version:** 1.1.0
+> **Status:** CANONICAL - All rendering features MUST follow these conventions
 
 ---
 
-## Canonical Convention
+## Unit System
+
+This project uses **1 unit = 1 meter** to ensure 1:1 compatibility with Blender imports/exports.
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| **Base Unit** | Meter (m) | 1 world unit = 1 meter |
+| **Default Grid Cell** | 1m × 1m | Grid subdivisions show 0.1m increments |
+| **Blender Compatibility** | 1:1 scale | No conversion needed when Blender scene is set to meters |
+
+### Why 1 Unit = 1 Meter?
+
+| Reason | Explanation |
+|--------|-------------|
+| **Blender Default** | Blender's default unit system uses meters |
+| **Real-World Scale** | Makes it intuitive to model real-world objects |
+| **Industry Standard** | Most game engines use metric scale (1m per unit) |
+| **Physics Compatibility** | Future physics simulations expect real-world scale |
+
+### Implementation Requirements
+
+```typescript
+// ✅ CORRECT - Use metric scale
+const cubeSize = 1.0;           // 1 meter cube
+const characterHeight = 1.8;    // 1.8 meter character
+const roomWidth = 5.0;          // 5 meter room
+
+// Grid settings
+const defaultGridSize = 1;       // 1 meter grid extent
+const gridSubdivisions = 10;     // 10cm minor grid lines
+```
+
+---
+
+## Canonical Coordinate Convention
 
 This project uses a **Right-Handed, Z-Up** coordinate system, matching **Blender's** convention.
 

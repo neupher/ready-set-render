@@ -1,8 +1,9 @@
 /**
  * SettingsWindow
  *
- * Modal window for application settings with two-panel layout.
- * Left panel shows categories, right panel shows settings content.
+ * Non-modal, draggable, resizable window for application settings.
+ * Uses a two-panel layout: left panel shows categories, right panel shows settings content.
+ * Allows live editing while viewing the viewport.
  *
  * @example
  * ```typescript
@@ -48,14 +49,38 @@ export interface SettingsWindowOptions {
 }
 
 /**
+ * Drag state for window movement.
+ */
+interface DragState {
+  isDragging: boolean;
+  startX: number;
+  startY: number;
+  startLeft: number;
+  startTop: number;
+}
+
+/**
+ * Resize state for window resizing.
+ */
+interface ResizeState {
+  isResizing: boolean;
+  direction: string;
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
+  startLeft: number;
+  startTop: number;
+}
+
+/**
  * Settings window component.
- * Provides a modal dialog with categorized settings panels.
+ * Provides a non-modal, draggable, resizable dialog with categorized settings panels.
  */
 export class SettingsWindow {
   private readonly settingsService: SettingsService;
   private readonly eventBus: EventBus;
 
-  private overlay: HTMLDivElement | null = null;
   private container: HTMLDivElement | null = null;
   private contentArea: HTMLDivElement | null = null;
   private activeCategory: string = 'grid';
@@ -63,17 +88,55 @@ export class SettingsWindow {
   // Cached panels
   private gridSettingsPanel: GridSettingsPanel | null = null;
 
+  // Drag state
+  private dragState: DragState = {
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    startLeft: 0,
+    startTop: 0,
+  };
+
+  // Resize state
+  private resizeState: ResizeState = {
+    isResizing: false,
+    direction: '',
+    startX: 0,
+    startY: 0,
+    startWidth: 0,
+    startHeight: 0,
+    startLeft: 0,
+    startTop: 0,
+  };
+
+  // Window dimensions
+  private readonly minWidth = 400;
+  private readonly minHeight = 300;
+  private readonly defaultWidth = 500;
+  private readonly defaultHeight = 400;
+
+  // Bound handlers for cleanup
+  private boundHandleMouseMove: (e: MouseEvent) => void;
+  private boundHandleMouseUp: () => void;
+  private boundHandleKeyDown: (e: KeyboardEvent) => void;
+
   constructor(options: SettingsWindowOptions) {
     this.settingsService = options.settingsService;
     this.eventBus = options.eventBus;
+
+    // Bind handlers
+    this.boundHandleMouseMove = this.handleMouseMove.bind(this);
+    this.boundHandleMouseUp = this.handleMouseUp.bind(this);
+    this.boundHandleKeyDown = this.handleKeyDown.bind(this);
   }
 
   /**
    * Show the settings window.
    */
   show(): void {
-    if (this.overlay) {
-      // Already visible
+    if (this.container) {
+      // Already visible - bring to front
+      this.bringToFront();
       return;
     }
 
@@ -88,11 +151,15 @@ export class SettingsWindow {
    * Hide the settings window.
    */
   hide(): void {
-    if (this.overlay) {
-      this.overlay.remove();
-      this.overlay = null;
+    if (this.container) {
+      this.container.remove();
       this.container = null;
       this.contentArea = null;
+
+      // Remove global event listeners
+      document.removeEventListener('mousemove', this.boundHandleMouseMove);
+      document.removeEventListener('mouseup', this.boundHandleMouseUp);
+      document.removeEventListener('keydown', this.boundHandleKeyDown);
 
       // Emit event
       this.eventBus.emit('settings:window:closed');
@@ -114,33 +181,58 @@ export class SettingsWindow {
    * Check if the window is currently visible.
    */
   isVisible(): boolean {
-    return this.overlay !== null;
+    return this.container !== null;
+  }
+
+  /**
+   * Bring the window to front using z-index instead of DOM manipulation.
+   * This preserves scroll position and other state.
+   */
+  private bringToFront(): void {
+    if (this.container) {
+      // Use a high z-index to bring to front without DOM manipulation
+      // This preserves scroll position and avoids re-rendering
+      this.container.style.zIndex = '1001';
+
+      // Reset other settings windows to normal z-index (if multiple exist in future)
+      // For now, just ensure this one is on top
+    }
   }
 
   /**
    * Create the window DOM structure.
    */
   private createWindow(): void {
-    // Create overlay
-    this.overlay = document.createElement('div');
-    this.overlay.className = 'settings-overlay';
-    this.overlay.addEventListener('click', (e) => {
-      if (e.target === this.overlay) {
-        this.hide();
-      }
-    });
-
-    // Create container
+    // Create container (floating window, no overlay)
     this.container = document.createElement('div');
-    this.container.className = 'settings-window';
+    this.container.className = 'settings-window floating';
 
-    // Create header
+    // Set initial position and size
+    this.container.style.width = `${this.defaultWidth}px`;
+    this.container.style.height = `${this.defaultHeight}px`;
+
+    // Center on screen
+    const left = Math.max(50, (window.innerWidth - this.defaultWidth) / 2);
+    const top = Math.max(50, (window.innerHeight - this.defaultHeight) / 2);
+    this.container.style.left = `${left}px`;
+    this.container.style.top = `${top}px`;
+
+    // Create header (draggable)
     const header = document.createElement('div');
     header.className = 'settings-window-header';
     header.innerHTML = `
       <span class="settings-window-title">Settings</span>
-      <button class="settings-window-close" title="Close">×</button>
+      <button class="settings-window-close" title="Close (Esc)">×</button>
     `;
+
+    // Make header draggable
+    header.addEventListener('mousedown', (e) => {
+      // Don't drag if clicking on close button
+      if ((e.target as HTMLElement).classList.contains('settings-window-close')) {
+        return;
+      }
+      this.startDrag(e);
+    });
 
     const closeButton = header.querySelector('.settings-window-close');
     closeButton?.addEventListener('click', () => this.hide());
@@ -169,19 +261,177 @@ export class SettingsWindow {
     this.contentArea = document.createElement('div');
     this.contentArea.className = 'settings-content';
 
+    // Create resize handles
+    const resizeHandles = this.createResizeHandles();
+
     // Assemble
     body.appendChild(leftPanel);
     body.appendChild(this.contentArea);
     this.container.appendChild(header);
     this.container.appendChild(body);
-    this.overlay.appendChild(this.container);
+    resizeHandles.forEach((handle) => this.container!.appendChild(handle));
 
     // Add to document
-    document.body.appendChild(this.overlay);
+    document.body.appendChild(this.container);
 
-    // Handle Escape key
-    this.handleKeyDown = this.handleKeyDown.bind(this);
-    document.addEventListener('keydown', this.handleKeyDown);
+    // Add global event listeners
+    document.addEventListener('mousemove', this.boundHandleMouseMove);
+    document.addEventListener('mouseup', this.boundHandleMouseUp);
+    document.addEventListener('keydown', this.boundHandleKeyDown);
+
+    // Focus window for keyboard events
+    this.container.addEventListener('mousedown', () => this.bringToFront());
+  }
+
+  /**
+   * Create resize handles for all edges and corners.
+   */
+  private createResizeHandles(): HTMLDivElement[] {
+    const handles: HTMLDivElement[] = [];
+    const directions = ['n', 'ne', 'e', 'se', 's', 'sw', 'w', 'nw'];
+
+    for (const dir of directions) {
+      const handle = document.createElement('div');
+      handle.className = `settings-resize-handle settings-resize-${dir}`;
+      handle.addEventListener('mousedown', (e) => this.startResize(e, dir));
+      handles.push(handle);
+    }
+
+    return handles;
+  }
+
+  /**
+   * Start dragging the window.
+   */
+  private startDrag(e: MouseEvent): void {
+    if (!this.container) return;
+
+    e.preventDefault();
+
+    this.dragState = {
+      isDragging: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startLeft: this.container.offsetLeft,
+      startTop: this.container.offsetTop,
+    };
+
+    this.container.classList.add('dragging');
+  }
+
+  /**
+   * Start resizing the window.
+   */
+  private startResize(e: MouseEvent, direction: string): void {
+    if (!this.container) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    this.resizeState = {
+      isResizing: true,
+      direction,
+      startX: e.clientX,
+      startY: e.clientY,
+      startWidth: this.container.offsetWidth,
+      startHeight: this.container.offsetHeight,
+      startLeft: this.container.offsetLeft,
+      startTop: this.container.offsetTop,
+    };
+
+    this.container.classList.add('resizing');
+  }
+
+  /**
+   * Handle mouse move for dragging and resizing.
+   */
+  private handleMouseMove(e: MouseEvent): void {
+    if (this.dragState.isDragging) {
+      this.handleDrag(e);
+    } else if (this.resizeState.isResizing) {
+      this.handleResize(e);
+    }
+  }
+
+  /**
+   * Handle window drag.
+   */
+  private handleDrag(e: MouseEvent): void {
+    if (!this.container) return;
+
+    const dx = e.clientX - this.dragState.startX;
+    const dy = e.clientY - this.dragState.startY;
+
+    let newLeft = this.dragState.startLeft + dx;
+    let newTop = this.dragState.startTop + dy;
+
+    // Keep window within viewport bounds
+    newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - 100));
+    newTop = Math.max(0, Math.min(newTop, window.innerHeight - 50));
+
+    this.container.style.left = `${newLeft}px`;
+    this.container.style.top = `${newTop}px`;
+  }
+
+  /**
+   * Handle window resize.
+   */
+  private handleResize(e: MouseEvent): void {
+    if (!this.container) return;
+
+    const dx = e.clientX - this.resizeState.startX;
+    const dy = e.clientY - this.resizeState.startY;
+    const dir = this.resizeState.direction;
+
+    let newWidth = this.resizeState.startWidth;
+    let newHeight = this.resizeState.startHeight;
+    let newLeft = this.resizeState.startLeft;
+    let newTop = this.resizeState.startTop;
+
+    // Handle horizontal resize
+    if (dir.includes('e')) {
+      newWidth = Math.max(this.minWidth, this.resizeState.startWidth + dx);
+    }
+    if (dir.includes('w')) {
+      const proposedWidth = this.resizeState.startWidth - dx;
+      if (proposedWidth >= this.minWidth) {
+        newWidth = proposedWidth;
+        newLeft = this.resizeState.startLeft + dx;
+      }
+    }
+
+    // Handle vertical resize
+    if (dir.includes('s')) {
+      newHeight = Math.max(this.minHeight, this.resizeState.startHeight + dy);
+    }
+    if (dir.includes('n')) {
+      const proposedHeight = this.resizeState.startHeight - dy;
+      if (proposedHeight >= this.minHeight) {
+        newHeight = proposedHeight;
+        newTop = this.resizeState.startTop + dy;
+      }
+    }
+
+    // Apply changes
+    this.container.style.width = `${newWidth}px`;
+    this.container.style.height = `${newHeight}px`;
+    this.container.style.left = `${newLeft}px`;
+    this.container.style.top = `${newTop}px`;
+  }
+
+  /**
+   * Handle mouse up - end dragging or resizing.
+   */
+  private handleMouseUp(): void {
+    if (this.dragState.isDragging) {
+      this.dragState.isDragging = false;
+      this.container?.classList.remove('dragging');
+    }
+
+    if (this.resizeState.isResizing) {
+      this.resizeState.isResizing = false;
+      this.container?.classList.remove('resizing');
+    }
   }
 
   /**
@@ -190,7 +440,6 @@ export class SettingsWindow {
   private handleKeyDown(e: KeyboardEvent): void {
     if (e.key === 'Escape' && this.isVisible()) {
       this.hide();
-      document.removeEventListener('keydown', this.handleKeyDown);
     }
   }
 

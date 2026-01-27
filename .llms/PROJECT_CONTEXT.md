@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-27T15:40:00Z
-> **Version:** 0.10.0
+> **Last Updated:** 2026-01-27T16:57:00Z
+> **Version:** 0.10.1
 > **Status:** Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.10.0)
+## Current State (v0.10.1)
 
 ### What's Working
 
@@ -67,21 +67,22 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - **Translate gizmo**: Maya-style plane handles starting from origin
   - Yellow hover highlight color for consistency
 - **Viewport Grid**: Procedural grid on XY plane at Z=0
-  - Major/minor line subdivisions with configurable colors
-  - Axis indicator lines (X=Red, Y=Green, Z=Blue)
-  - Distance-based fade effect
+  - Axis indicator lines always at world origin (X=Red, Y=Green)
+  - Adaptive distance-based fade (visible when zoomed out)
   - Toggle button with icon in viewport header
+  - **Unit system**: 1 unit = 1 meter (Blender-compatible)
 - **Settings System**: Centralized settings with localStorage persistence
   - SettingsService with type-safe get/set methods
-  - Settings window (File → Settings, Ctrl+,)
-  - Grid settings panel with full configuration options
+  - **Non-modal settings window** (File → Settings, Ctrl+,)
+  - Draggable and resizable window for live editing
+  - Grid settings panel with sliders and editable number inputs
 - **UI**: EditorLayout, HierarchyPanel, PropertiesPanel, ViewportPanel, TopMenuBar, SettingsWindow
 - **Entity System**: IEntity, ICloneable, IMeshProvider interfaces
 - **Default Scene**: Cube primitive auto-created on startup for faster testing
 
 ### Test Coverage
 
-- **520 tests passing** (41 new tests for SettingsService and GridRenderer)
+- **520 tests passing**
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights

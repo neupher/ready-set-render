@@ -53,11 +53,13 @@ export interface AppSettings {
 
 /**
  * Default settings values.
+ *
+ * Unit System: 1 unit = 1 meter (Blender-compatible for 1:1 import/export)
  */
 const DEFAULT_SETTINGS: AppSettings = {
   grid: {
     visible: true,
-    size: 10,
+    size: 1,
     subdivisions: 10,
     majorLineColor: '#444444',
     minorLineColor: '#2a2a2a',
