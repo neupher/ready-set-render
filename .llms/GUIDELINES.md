@@ -1,7 +1,7 @@
 # Development Guidelines: WebGL Editor
 
-> **Last Updated:** 2026-01-24T01:35:00Z
-> **Version:** 0.1.2
+> **Last Updated:** 2026-01-28T12:15:00Z
+> **Version:** 0.1.3
 
 ---
 
@@ -241,7 +241,58 @@ Before implementing any new rendering feature:
 
 ⚠️ **Migration Note:** The codebase currently uses Y-up. See `COORDINATE_SYSTEM.md` Migration Status section for files requiring changes.
 
+### 9. No Meta Internal Data (MANDATORY)
+
+**This is a personal open-source project. NO Meta-internal data, conventions, tools, or references may be included.**
+
+#### The Rule
+
+This project must remain completely independent from Meta and suitable for public open-source distribution.
+
+#### What is FORBIDDEN
+
+| Category | Examples | Reason |
+|----------|----------|--------|
+| **Internal URLs** | internalfb.com, fburl.com, workplace.com | Internal systems |
+| **Email addresses** | @fb.com, @meta.com | PII/Internal |
+| **Employee names/IDs** | FBIDs, employee names in code comments | PII |
+| **Meta tools** | Sapling (sl), Buck, Hack, Mercurial (hg), jf | Internal tooling |
+| **Meta terminology** | SEV, oncall, diff D12345, task T12345 | Internal systems |
+| **Meta products** | References to Horizon, Oculus, Quest in code | Product names |
+| **Internal conventions** | Meta-specific coding patterns or standards | Internal knowledge |
+| **Phabricator references** | D12345678 diff IDs, arc commands | Internal VCS |
+
+#### What is ALLOWED
+
+| Category | Examples | Reason |
+|----------|----------|--------|
+| **Standard Git** | git commands, GitHub references | Public VCS |
+| **Public URLs** | github.com, npm, MDN, Khronos | Public resources |
+| **Industry standards** | Unity, Blender, WebGL conventions | Public knowledge |
+| **Author attribution** | Name in LICENSE, README (no email) | Standard OSS practice |
+
+#### Verification Checklist
+
+Before committing any code, verify:
+
+- [ ] No internal URLs (internalfb.com, fb.workplace.com, etc.)
+- [ ] No @fb.com or @meta.com email addresses
+- [ ] No references to Meta-specific tools (sl, jf, buck, hack)
+- [ ] No internal terminology (SEV, oncall, Phabricator diffs)
+- [ ] No employee FBIDs or internal team references
+- [ ] Code uses standard Git (not Sapling/Mercurial)
+- [ ] Documentation references public resources only
+
 #### Why This Matters
+
+- **Legal compliance:** Separates personal work from employer IP
+- **Open-source readiness:** Project can be publicly shared
+- **Portability:** Anyone can clone and build without Meta access
+- **Privacy:** No internal PII or organizational data exposed
+
+---
+
+### Reference Hierarchy (Rule 7 continued)
 
 - **Transferable knowledge:** Users familiar with Unity, Unreal, Blender, or other tools should recognize concepts immediately
 - **Documentation alignment:** Industry tutorials, papers, and resources use standard terms
