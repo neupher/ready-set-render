@@ -8,14 +8,28 @@
  * - AssetRegistry: Central registry for all loaded assets
  * - FileSystemAssetStore: File System Access API based persistence
  * - MigrationRunner: Schema migration support
+ * - ShaderAssetFactory: Factory for creating shader assets
+ * - ShaderCompilationService: Service for compiling shader assets
+ * - BuiltInShaders: Pre-defined PBR and Unlit shader assets
  *
  * @example
  * ```typescript
- * import { AssetRegistry, FileSystemAssetStore, MigrationRunner } from '@core/assets';
+ * import {
+ *   AssetRegistry,
+ *   FileSystemAssetStore,
+ *   MigrationRunner,
+ *   ShaderAssetFactory,
+ *   BUILT_IN_SHADERS,
+ * } from '@core/assets';
  *
  * const registry = new AssetRegistry(eventBus);
  * const store = new FileSystemAssetStore(eventBus);
- * const migrations = new MigrationRunner();
+ * const shaderFactory = new ShaderAssetFactory();
+ *
+ * // Register built-in shaders
+ * for (const shader of BUILT_IN_SHADERS) {
+ *   registry.register(shader);
+ * }
  * ```
  */
 
@@ -33,6 +47,11 @@ export type {
   IAssetSaveResult,
   IMigration,
   IMigrationResult,
+  // Shader interfaces
+  IShaderAsset,
+  IUniformDeclaration,
+  UniformType,
+  UniformUIType,
 } from './interfaces';
 
 export {
@@ -40,6 +59,9 @@ export {
   getAssetFileExtension,
   createAssetReference,
   isAssetReference,
+  // Shader type guards
+  isShaderAsset,
+  isUniformDeclaration,
 } from './interfaces';
 
 // Services
@@ -54,3 +76,29 @@ export { FileSystemAssetStore } from './FileSystemAssetStore';
 export type { AssetStoreOpenedEvent, AssetStoreClosedEvent } from './FileSystemAssetStore';
 
 export { MigrationRunner } from './MigrationRunner';
+
+// Shader Assets
+export { ShaderAssetFactory } from './ShaderAssetFactory';
+export type { IShaderCreateOptions } from './ShaderAssetFactory';
+export {
+  DEFAULT_UNLIT_VERTEX_SHADER,
+  DEFAULT_UNLIT_FRAGMENT_SHADER,
+  DEFAULT_UNLIT_UNIFORMS,
+  SHADER_ASSET_VERSION,
+} from './ShaderAssetFactory';
+
+export { ShaderCompilationService } from './ShaderCompilationService';
+export type {
+  ShaderErrorType,
+  IShaderError,
+  IShaderCompilationResult,
+} from './ShaderCompilationService';
+
+// Built-in Shaders
+export {
+  BUILT_IN_SHADER_IDS,
+  BUILT_IN_PBR_SHADER,
+  BUILT_IN_UNLIT_SHADER,
+  BUILT_IN_SHADERS,
+  isBuiltInShaderUUID,
+} from './BuiltInShaders';

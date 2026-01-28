@@ -33,3 +33,12 @@ export type {
 
 // Migrations
 export type { IMigration, IMigrationResult } from './IMigration';
+
+// Shader Assets
+export type {
+  IShaderAsset,
+  IUniformDeclaration,
+  UniformType,
+  UniformUIType,
+} from './IShaderAsset';
+export { isShaderAsset, isUniformDeclaration } from './IShaderAsset';

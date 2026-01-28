@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-28T13:40:00Z
-> **Version:** 0.11.0
-> **Status:** Asset System Phase A Complete | Phase 6 In Progress (6.9-6.10 remaining)
+> **Last Updated:** 2026-01-28T14:50:00Z
+> **Version:** 0.11.1
+> **Status:** Asset System Phase B Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.11.0)
+## Current State (v0.11.1)
 
 ### What's Working
 
@@ -43,6 +43,14 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `MigrationRunner`: Sequential schema migration with gap detection
   - Interfaces: `ISerializable`, `IAssetMetadata`, `IAssetReference`, `IAsset`, `IAssetStore`, `IMigration`
   - Type guards: `isAssetMetadata()`, `isAssetReference()`
+- **Asset System (Phase B)**: Shader Assets
+  - `IShaderAsset`: Shader program asset interface with uniform declarations
+  - `IUniformDeclaration`: Uniform metadata for auto-generated material editor UI
+  - `ShaderAssetFactory`: Create/duplicate shaders, JSON serialization
+  - `ShaderCompilationService`: Compile shaders with error parsing (line numbers, snippets)
+  - Built-in shaders: PBR (Cook-Torrance BRDF), Unlit (solid color)
+  - Type guards: `isShaderAsset()`, `isUniformDeclaration()`
+  - UUID utilities: `generateUUID()`, `isValidUUID()`
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
@@ -115,7 +123,7 @@ Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./A
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase A | Asset Foundation (Registry, Store, Migrations) | ✅ Complete |
-| Phase B | Shader Assets | Not Started |
+| Phase B | Shader Assets | ✅ Complete |
 | Phase C | Material Assets | Not Started |
 | Phase D | Scene Serialization | Not Started |
 | Phase E | Asset Browser UI | Not Started |

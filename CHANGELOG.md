@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.1] - 2026-01-28
+
+### Added
+
+- **Asset System Phase B: Shader Assets**
+  - `IShaderAsset` interface for shader program assets
+  - `IUniformDeclaration` interface with UI metadata for auto-generated material editors
+  - Support for uniform types: `float`, `vec2`, `vec3`, `vec4`, `int`, `bool`, `sampler2D`, `mat3`, `mat4`
+  - UI control types: `slider`, `color`, `number`, `checkbox`, `texture`
+  - Uniform grouping support for organized material inspector panels
+
+- **ShaderAssetFactory**
+  - `create()` - Create new shaders from unlit template
+  - `duplicate()` - Copy any shader (including built-ins) to create editable version
+  - `fromJSON()` / `toJSON()` - Serialization support for persistence
+  - Deep copying of uniform declarations to prevent mutation
+
+- **Built-in Shaders**
+  - **PBR Shader** - Cook-Torrance BRDF with metallic/roughness workflow
+    - GGX normal distribution, Smith geometry, Fresnel-Schlick
+    - Multi-light support (up to 8 directional lights)
+    - ACES tone mapping, hemisphere ambient
+    - Uniforms: Base Color, Metallic, Roughness, Emission, Emission Strength
+  - **Unlit Shader** - Simple solid color output
+    - Uniforms: Color, Opacity
+  - Both shaders marked as `isBuiltIn: true` (read-only, duplicatable)
+
+- **ShaderCompilationService**
+  - `compile()` - Full shader compilation returning WebGL program
+  - `validate()` - Validation-only mode (cleans up after)
+  - `compileFromSources()` - Compile from raw GLSL strings
+  - `getUniformLocations()` - Get all uniform locations for a shader
+  - Error parsing with line numbers and source snippets
+  - Supports vertex, fragment, and link error types
+
+- **UUID Utilities**
+  - `generateUUID()` - UUID v4 generation (uses native crypto.randomUUID when available)
+  - `isValidUUID()` - UUID format validation
+
+### Tests
+
+- 143 new tests (735 total)
+  - `IShaderAsset.test.ts` - 28 tests (type guards)
+  - `ShaderAssetFactory.test.ts` - 39 tests (create, duplicate, serialization)
+  - `BuiltInShaders.test.ts` - 33 tests (PBR, Unlit, utilities)
+  - `ShaderCompilationService.test.ts` - 28 tests (compilation, validation, error parsing)
+  - `uuid.test.ts` - 15 tests (generation, validation)
+
+---
+
 ## [0.11.0] - 2026-01-28
 
 ### Added

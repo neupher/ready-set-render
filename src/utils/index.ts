@@ -7,3 +7,6 @@ export * from './math';
 
 // Entity ID generation
 export { EntityIdGenerator } from './EntityIdGenerator';
+
+// UUID generation
+export { generateUUID, isValidUUID } from './uuid';
