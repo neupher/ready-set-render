@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-27T16:57:00Z
-> **Version:** 0.10.1
-> **Status:** Phase 6 In Progress (6.9-6.10 remaining)
+> **Last Updated:** 2026-01-28T13:40:00Z
+> **Version:** 0.11.0
+> **Status:** Asset System Phase A Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
 
@@ -25,18 +25,24 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 | 7 | Swappable render pipelines (forward/deferred/raytracing) | High | In Progress |
 | 8 | 3D model import (.obj, .gltf) | Medium | Not Started |
 | 9 | Texture support (.png, .jpg, .tga) | Medium | Not Started |
-| 10 | In-editor shader text editor | Medium | Placeholder |
+| 10 | In-editor shader text editor | Medium | In Progress |
 | 11 | Camera controls and scene navigation | High | ✅ Complete |
 | 12 | Comprehensive documentation | High | Ongoing |
 | 13 | Full test coverage | High | Ongoing |
 
 ---
 
-## Current State (v0.10.1)
+## Current State (v0.11.0)
 
 ### What's Working
 
 - **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService
+- **Asset System (Phase A)**: Foundation layer for asset persistence
+  - `AssetRegistry`: Central registry for all assets (CRUD, events, search, type indexing)
+  - `FileSystemAssetStore`: File System Access API based persistence
+  - `MigrationRunner`: Sequential schema migration with gap detection
+  - Interfaces: `ISerializable`, `IAssetMetadata`, `IAssetReference`, `IAsset`, `IAssetStore`, `IMigration`
+  - Type guards: `isAssetMetadata()`, `isAssetReference()`
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
@@ -82,7 +88,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **520 tests passing**
+- **592 tests passing** (72 new in v0.11.0)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -95,10 +101,25 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **GizmoDragState** stores entity reference to avoid selection race conditions
 - **SettingsService** centralized settings with localStorage persistence and events
 - **GridRenderer** procedural grid with settings integration
+- **AssetRegistry** central registry for all assets with EventBus integration
+- **FileSystemAssetStore** File System Access API based persistence
 
 ---
 
 ## In Progress
+
+### Asset System Implementation
+
+Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./ASSET_SYSTEM_PLAN.md):
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase A | Asset Foundation (Registry, Store, Migrations) | ✅ Complete |
+| Phase B | Shader Assets | Not Started |
+| Phase C | Material Assets | Not Started |
+| Phase D | Scene Serialization | Not Started |
+| Phase E | Asset Browser UI | Not Started |
+| Phase F | Live Shader Editor | Not Started |
 
 ### Phase 6: Functional WebGL Editor
 
@@ -108,7 +129,7 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 |-------|-------------|--------|
 | 6.7 | PBR Uber Shader (Cook-Torrance BRDF) | ✅ Complete |
 | 6.8 | Transform Gizmos (W/E/R) | ✅ Complete |
-| 6.9 | Live Shader Editor | Not Started |
+| 6.9 | Live Shader Editor | Blocked by Asset System |
 | 6.10 | Render Mode Dropdown | Not Started |
 | 6.11 | ~~Undo/Redo~~ | ✅ Moved earlier, complete |
 | 6.12 | Viewport Grid | ✅ Complete |
@@ -129,9 +150,11 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Phase 6.12: Viewport Grid** - Ground grid on XY plane at Z=0 (Z-up compliant)
-2. **Phase 6.9: Live Shader Editor** - In-editor GLSL editing
-3. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+1. **Asset System Phase B**: Shader Assets (IShaderAsset, built-in registration, compilation service)
+2. **Asset System Phase C**: Material Assets (IMaterialAsset, material-entity binding)
+3. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
+4. **Phase 6.9: Live Shader Editor** - After Asset System Phases B-E
+5. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 

@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.0] - 2026-01-28
+
+### Added
+
+- **Asset System Foundation (Phase A)**
+  - `ISerializable<T>` interface for JSON serialization/deserialization
+  - `IAssetMetadata` with UUID, name, type, version, and timestamps
+  - `IAssetReference` for lightweight asset linking by UUID
+  - `IAsset` base interface extending metadata
+  - `IAssetStore` interface for storage backends
+  - `IMigration` interface for schema version migrations
+  - Type guards: `isAssetMetadata()`, `isAssetReference()`
+  - Utility functions: `getAssetFileExtension()`, `createAssetReference()`
+
+- **AssetRegistry Service**
+  - Central registry for all loaded assets
+  - CRUD operations: `register()`, `unregister()`, `get()`, `has()`
+  - Type-indexed lookup via `getByType()`
+  - Asset reference resolution via `resolve()`
+  - Search functionality with type filtering
+  - EventBus integration: `asset:registered`, `asset:unregistered`, `asset:modified`
+
+- **FileSystemAssetStore**
+  - File System Access API based persistence
+  - Standard folder structure: `assets/{shaders,materials,scenes,textures}/`
+  - File format: `{uuid}.{type}.json`
+  - Async operations: `openFolder()`, `saveAsset()`, `loadAsset()`, `deleteAsset()`, `listAssets()`
+  - Browser support detection via `isSupported()`
+
+- **MigrationRunner Service**
+  - Sequential schema migration execution
+  - Migration chain validation with gap detection
+  - Graceful error handling with partial migration support
+  - Version tracking per asset type
+
+- **Type Declarations**
+  - `file-system-access.d.ts` for File System Access API types
+
+### Tests
+
+- 72 new tests (592 total)
+  - `AssetRegistry.test.ts` - 30 tests
+  - `MigrationRunner.test.ts` - 18 tests
+  - `AssetInterfaces.test.ts` - 24 tests
+
+---
+
 ## [0.10.1] - 2026-01-27
 
 ### Fixed
