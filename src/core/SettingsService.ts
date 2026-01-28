@@ -32,12 +32,20 @@ export interface GridSettings {
   visible: boolean;
   /** Grid size (extent in world units) */
   size: number;
-  /** Number of subdivisions per major grid cell */
+  /** Number of grid divisions */
   subdivisions: number;
-  /** Major line color (hex string) */
-  majorLineColor: string;
-  /** Minor line color (hex string) */
-  minorLineColor: string;
+  /** Grid line color (hex string) */
+  lineColor: string;
+  /** Axis indicator line color (hex string) */
+  axisLineColor: string;
+  /** Grid line width in pixels */
+  lineWidth: number;
+  /** Axis line width in pixels */
+  axisLineWidth: number;
+  /** Distance at which grid starts to fade (world units) */
+  fadeStartDistance: number;
+  /** Distance at which grid fully fades out (world units) */
+  fadeEndDistance: number;
   /** Whether to show axis indicator lines */
   showAxisLines: boolean;
   /** Grid line opacity (0-1) */
@@ -59,12 +67,16 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   grid: {
     visible: true,
-    size: 1,
+    size: 10,
     subdivisions: 10,
-    majorLineColor: '#444444',
-    minorLineColor: '#2a2a2a',
+    lineColor: '#444444',
+    axisLineColor: '#888888',
+    lineWidth: 1,
+    axisLineWidth: 2,
+    fadeStartDistance: 50,
+    fadeEndDistance: 100,
     showAxisLines: true,
-    opacity: 0.8,
+    opacity: 1.0,
   },
 };
 

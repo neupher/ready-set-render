@@ -51,7 +51,7 @@ describe('SettingsService', () => {
 
       expect(settings.grid).toBeDefined();
       expect(settings.grid.visible).toBe(true);
-      expect(settings.grid.size).toBe(1);
+      expect(settings.grid.size).toBe(10);
       expect(settings.grid.subdivisions).toBe(10);
     });
 
@@ -61,8 +61,12 @@ describe('SettingsService', () => {
           visible: false,
           size: 20,
           subdivisions: 5,
-          majorLineColor: '#555555',
-          minorLineColor: '#333333',
+          lineColor: '#555555',
+          axisLineColor: '#999999',
+          lineWidth: 2,
+          axisLineWidth: 3,
+          fadeStartDistance: 60,
+          fadeEndDistance: 120,
           showAxisLines: false,
           opacity: 0.5,
         },
@@ -98,8 +102,8 @@ describe('SettingsService', () => {
       expect(service.get('grid', 'size')).toBe(15);
 
       // Should have default values for missing keys
-      expect(service.get('grid', 'opacity')).toBe(0.8);
-      expect(service.get('grid', 'majorLineColor')).toBe('#444444');
+      expect(service.get('grid', 'opacity')).toBe(1.0);
+      expect(service.get('grid', 'lineColor')).toBe('#444444');
     });
   });
 
@@ -109,13 +113,13 @@ describe('SettingsService', () => {
 
       expect(gridSettings).toBeDefined();
       expect(gridSettings.visible).toBe(true);
-      expect(gridSettings.size).toBe(1);
+      expect(gridSettings.size).toBe(10);
     });
 
     it('should get specific property from section', () => {
       expect(settingsService.get('grid', 'visible')).toBe(true);
-      expect(settingsService.get('grid', 'size')).toBe(1);
-      expect(settingsService.get('grid', 'majorLineColor')).toBe('#444444');
+      expect(settingsService.get('grid', 'size')).toBe(10);
+      expect(settingsService.get('grid', 'lineColor')).toBe('#444444');
     });
   });
 
@@ -197,8 +201,8 @@ describe('SettingsService', () => {
 
       // Should be back to defaults
       expect(settingsService.get('grid', 'visible')).toBe(true);
-      expect(settingsService.get('grid', 'size')).toBe(1);
-      expect(settingsService.get('grid', 'opacity')).toBe(0.8);
+      expect(settingsService.get('grid', 'size')).toBe(10);
+      expect(settingsService.get('grid', 'opacity')).toBe(1.0);
     });
   });
 
@@ -206,7 +210,7 @@ describe('SettingsService', () => {
     it('should reset all settings to defaults', () => {
       // Change values
       settingsService.set('grid', 'visible', false);
-      settingsService.set('grid', 'majorLineColor', '#ffffff');
+      settingsService.set('grid', 'lineColor', '#ffffff');
 
       // Reset all
       settingsService.resetAll();
@@ -214,7 +218,7 @@ describe('SettingsService', () => {
       // Should be back to defaults
       const settings = settingsService.getAll();
       expect(settings.grid.visible).toBe(true);
-      expect(settings.grid.majorLineColor).toBe('#444444');
+      expect(settings.grid.lineColor).toBe('#444444');
     });
   });
 

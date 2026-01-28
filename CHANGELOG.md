@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.2] - 2026-01-28
+
+### Changed
+
+- **Grid Settings Overhaul**
+  - Expanded `GridSettings` interface with new properties:
+    - `lineColor` - Single line color (replaces `majorLineColor`/`minorLineColor`)
+    - `axisLineColor` - Separate color for axis indicator lines
+    - `lineWidth` - Grid line width in pixels
+    - `axisLineWidth` - Axis line width in pixels
+    - `fadeStartDistance` - Distance at which grid starts to fade
+    - `fadeEndDistance` - Distance at which grid fully fades out
+  - Updated default values:
+    - Grid size: 1 → 10 units
+    - Opacity: 0.8 → 1.0
+  - Added full UI controls in Settings window for all new properties
+
+### Fixed
+
+- Grid Settings Panel now includes controls for Line Width, Axis Line Width, Fade Start/End Distance
+
+---
+
 ## [0.11.1] - 2026-01-28
 
 ### Added

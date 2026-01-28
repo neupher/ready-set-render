@@ -258,7 +258,7 @@ describe('GridRenderer', () => {
       // Clear buffer data calls
       (gl.bufferData as ReturnType<typeof vi.fn>).mockClear();
 
-      settingsService.set('grid', 'majorLineColor', '#ffffff');
+      settingsService.set('grid', 'lineColor', '#ffffff');
 
       // Should have regenerated the grid
       expect(gl.bufferData).toHaveBeenCalled();

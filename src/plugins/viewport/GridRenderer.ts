@@ -313,7 +313,7 @@ export class GridRenderer {
     if (data.section === 'grid') {
       // Regenerate grid for structural changes
       if (data.property === 'size' || data.property === 'subdivisions' ||
-          data.property === 'majorLineColor' || data.property === 'minorLineColor' ||
+          data.property === 'lineColor' || data.property === 'axisLineColor' ||
           data.property === 'showAxisLines') {
         this.regenerateGrid();
       }
@@ -328,14 +328,13 @@ export class GridRenderer {
    * Axis lines (red X, green Y) are always at world origin (0,0).
    */
   private generateGridGeometry(settings: GridSettings): GridLineData {
-    const { size, subdivisions, majorLineColor, minorLineColor, showAxisLines } = settings;
+    const { size, subdivisions, lineColor, showAxisLines } = settings;
 
     const halfSize = size;
     const step = (size * 2) / subdivisions;
 
-    // Parse colors - use minor color for all grid lines (axis lines provide visual reference)
-    const gridColor = this.hexToRgba(minorLineColor);
-    const majorColor = this.hexToRgba(majorLineColor);
+    // Parse colors - use lineColor for all grid lines
+    const gridColor = this.hexToRgba(lineColor);
 
     // Axis colors (full opacity, always at origin)
     const xAxisColor: [number, number, number, number] = [0.9, 0.2, 0.2, 1.0]; // Red
@@ -353,13 +352,9 @@ export class GridRenderer {
       // Skip line at x=0 if showing axis (will be drawn as colored axis)
       if (showAxisLines && Math.abs(x) < 0.0001) continue;
 
-      // Use major color for edge lines, minor for interior
-      const isEdge = i === 0 || i === subdivisions;
-      const color = isEdge ? majorColor : gridColor;
-
       positions.push(x, -halfSize, 0);
       positions.push(x, halfSize, 0);
-      colors.push(...color, ...color);
+      colors.push(...gridColor, ...gridColor);
     }
 
     // Generate grid lines parallel to X axis (horizontal lines in XY plane)
@@ -370,13 +365,9 @@ export class GridRenderer {
       // Skip line at y=0 if showing axis (will be drawn as colored axis)
       if (showAxisLines && Math.abs(y) < 0.0001) continue;
 
-      // Use major color for edge lines, minor for interior
-      const isEdge = i === 0 || i === subdivisions;
-      const color = isEdge ? majorColor : gridColor;
-
       positions.push(-halfSize, y, 0);
       positions.push(halfSize, y, 0);
-      colors.push(...color, ...color);
+      colors.push(...gridColor, ...gridColor);
     }
 
     // Add axis indicator lines if enabled - ALWAYS at world origin (0,0)
