@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.4] - 2026-01-30
+
+### Added
+
+- **Asset System Phase D: Scene Serialization**
+  - `ISceneAsset` interface for scene assets with entities and settings
+  - `ISerializedEntity` interface for entity serialization
+  - `ISerializedTransform` interface for transform data
+  - `ISerializedComponent` interfaces for mesh, material, light, camera components
+  - `ISceneSettings` interface for scene-level settings
+  - Type guards: `isSceneAsset()`, `isSerializedEntity()`
+  - Helper: `createDefaultSceneSettings()`
+
+- **Entity Serialization**
+  - `ISerializable<ISerializedEntity>` implementation for all entity types:
+    - `Cube` - toJSON/fromJSON with transform, material, render mode
+    - `Sphere` - toJSON/fromJSON with transform, material, geometry params (segments, rings, radius)
+    - `DirectionalLight` - toJSON/fromJSON with transform, light color, intensity, enabled
+    - `CameraEntity` - toJSON/fromJSON with transform, FOV, clip planes, target
+
+- **EntitySerializer**
+  - Factory-based entity deserialization with type registry
+  - `serializeEntity()` / `deserializeEntity()` - single entity operations
+  - `serializeEntities()` / `deserializeEntities()` - batch operations with hierarchy reconstruction
+  - `registerEntityFactory()` - extensibility for new entity types
+  - `isTypeSupported()` / `getSupportedTypes()` - type introspection
+
+- **SceneAssetFactory**
+  - `create()` - Create new empty scene assets
+  - `createFromSceneGraph()` - Serialize current SceneGraph state
+  - `loadIntoSceneGraph()` - Deserialize scene into SceneGraph
+  - `duplicate()` - Copy scene with new UUIDs
+  - `fromJSON()` / `toJSON()` - JSON serialization
+  - `updateMetadata()` / `updateEntities()` - Scene sync operations
+
+### Notes
+
+- File menu integration (New/Open/Save/Save As) pending for next version
+- Unit tests for serialization pending for next version
+
+---
+
 ## [0.11.3] - 2026-01-30
 
 ### Added

@@ -118,3 +118,28 @@ export {
   BUILT_IN_MATERIALS,
   isBuiltInMaterialUUID,
 } from './BuiltInMaterials';
+
+// Scene Assets
+export { SceneAssetFactory } from './SceneAssetFactory';
+export type { CreateSceneOptions } from './SceneAssetFactory';
+
+// Re-export scene-related types from interfaces
+export type {
+  ISceneAsset,
+  ISerializedEntity,
+  ISerializedTransform,
+  ISerializedComponent,
+  ISerializedMeshComponent,
+  ISerializedMaterialComponent,
+  ISerializedLightComponent,
+  ISerializedCameraComponent,
+  ISceneSettings,
+  SerializedEntityType,
+} from './interfaces';
+
+export {
+  isSceneAsset,
+  isSerializedEntity,
+  createDefaultSceneSettings,
+  SCENE_ASSET_VERSION,
+} from './interfaces';

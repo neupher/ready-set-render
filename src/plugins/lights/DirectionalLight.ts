@@ -25,6 +25,12 @@ import { cloneEntityBase } from '@core/interfaces';
 import type { ILightComponent, ILightDirectionProvider } from '@core/interfaces/ILightComponent';
 import { createDefaultTransform } from '@core/interfaces';
 import { createDefaultDirectionalLightComponent } from '@core/interfaces/ILightComponent';
+import type { ISerializable } from '@core/assets/interfaces/ISerializable';
+import type {
+  ISerializedEntity,
+  ISerializedTransform,
+  ISerializedComponent,
+} from '@core/assets/interfaces/ISceneAsset';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
 import { degToRad } from '@utils/math';
 
@@ -55,7 +61,7 @@ export interface DirectionalLightConfig {
  * - Rotate the entity using transform.rotation
  * - The light will shine in the direction the entity's -Z axis points
  */
-export class DirectionalLight implements IEntity, ICloneable, ILightDirectionProvider {
+export class DirectionalLight implements IEntity, ICloneable, ILightDirectionProvider, ISerializable<ISerializedEntity> {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -288,5 +294,76 @@ export class DirectionalLight implements IEntity, ICloneable, ILightDirectionPro
     });
     cloneEntityBase(this, cloned);
     return cloned;
+  }
+
+  // =========================================
+  // ISerializable Implementation
+  // =========================================
+
+  /**
+   * Serialize this DirectionalLight to a JSON-compatible structure.
+   *
+   * @returns The serialized entity data
+   */
+  toJSON(): ISerializedEntity {
+    const transform: ISerializedTransform = {
+      position: [...this.transform.position],
+      rotation: [...this.transform.rotation],
+      scale: [...this.transform.scale],
+    };
+
+    const components: ISerializedComponent[] = [];
+
+    // Serialize light component
+    const lightComponent = this.getLightComponent();
+    components.push({
+      type: 'light',
+      lightType: lightComponent.lightType,
+      color: [...lightComponent.color],
+      intensity: lightComponent.intensity,
+      enabled: lightComponent.enabled,
+    });
+
+    return {
+      uuid: this.id,
+      name: this.name,
+      type: 'DirectionalLight',
+      parentUuid: this.parent?.id,
+      transform,
+      components,
+    };
+  }
+
+  /**
+   * Deserialize data from JSON into this DirectionalLight.
+   * This method mutates the current instance.
+   *
+   * @param data - The serialized entity data to load
+   */
+  fromJSON(data: ISerializedEntity): void {
+    // Restore name
+    this.name = data.name;
+
+    // Restore transform
+    if (data.transform) {
+      this.transform.position = [...data.transform.position];
+      this.transform.rotation = [...data.transform.rotation];
+      this.transform.scale = [...data.transform.scale];
+    }
+
+    // Restore light component
+    const lightData = data.components.find((c) => c.type === 'light');
+    if (lightData) {
+      const lightComponent = this.getLightComponent();
+      if (lightData.color !== undefined) {
+        lightComponent.color = [...(lightData.color as [number, number, number])];
+      }
+      if (lightData.intensity !== undefined) {
+        lightComponent.intensity = lightData.intensity as number;
+      }
+      if (lightData.enabled !== undefined) {
+        lightComponent.enabled = lightData.enabled as boolean;
+      }
+    }
   }
 }

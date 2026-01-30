@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-30T20:12:00Z
-> **Version:** 0.11.3
-> **Status:** Asset System Phase C Complete | Phase 6 In Progress (6.9-6.10 remaining)
+> **Last Updated:** 2026-01-30T20:32:00Z
+> **Version:** 0.11.4
+> **Status:** Asset System Phase D Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.11.3)
+## Current State (v0.11.4)
 
 ### What's Working
 
@@ -57,6 +57,13 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `BuiltInMaterials`: Built-in "Default PBR" material (neutral gray, references PBR shader)
   - `IMaterialComponent.materialAssetRef`: Optional asset reference for entity-material binding
   - Type guard: `isMaterialAsset()`
+- **Asset System (Phase D)**: Scene Serialization
+  - `ISceneAsset`: Scene asset interface with entities and settings
+  - `ISerializedEntity`: Entity serialization format with transform, components, metadata
+  - `EntitySerializer`: Factory-based entity serialization/deserialization with type registry
+  - `SceneAssetFactory`: Scene CRUD operations, SceneGraph integration
+  - All entity types support `ISerializable`: Cube, Sphere, DirectionalLight, CameraEntity
+  - Type guards: `isSceneAsset()`, `isSerializedEntity()`
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
@@ -131,7 +138,7 @@ Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./A
 | Phase A | Asset Foundation (Registry, Store, Migrations) | ✅ Complete |
 | Phase B | Shader Assets | ✅ Complete |
 | Phase C | Material Assets | ✅ Complete |
-| Phase D | Scene Serialization | Not Started |
+| Phase D | Scene Serialization | ✅ Complete |
 | Phase E | Asset Browser UI | Not Started |
 | Phase F | Live Shader Editor | Not Started |
 
@@ -164,10 +171,11 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
-2. **Asset System Phase D**: Scene Serialization (save/load scenes)
-3. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
-4. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+1. **Phase D.8: File Menu Integration** - Add New/Open/Save/Save As with Ctrl+N/O/S shortcuts
+2. **Phase D.9: Serialization Tests** - Unit tests for EntitySerializer, SceneAssetFactory
+3. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
+4. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
+5. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 

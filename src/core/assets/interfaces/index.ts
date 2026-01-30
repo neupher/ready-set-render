@@ -46,3 +46,23 @@ export { isShaderAsset, isUniformDeclaration } from './IShaderAsset';
 // Material Assets
 export type { IMaterialAsset } from './IMaterialAsset';
 export { isMaterialAsset } from './IMaterialAsset';
+
+// Scene Assets
+export type {
+  ISceneAsset,
+  ISerializedEntity,
+  ISerializedTransform,
+  ISerializedComponent,
+  ISerializedMeshComponent,
+  ISerializedMaterialComponent,
+  ISerializedLightComponent,
+  ISerializedCameraComponent,
+  ISceneSettings,
+  SerializedEntityType,
+} from './ISceneAsset';
+export {
+  isSceneAsset,
+  isSerializedEntity,
+  createDefaultSceneSettings,
+  SCENE_ASSET_VERSION,
+} from './ISceneAsset';

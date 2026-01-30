@@ -31,6 +31,12 @@ import { createDefaultTransform } from './interfaces';
 import { createDefaultCameraComponent } from './interfaces/ICameraComponent';
 import { RenderCameraAdapter } from './RenderCameraAdapter';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
+import type { ISerializable } from '@core/assets/interfaces/ISerializable';
+import type {
+  ISerializedEntity,
+  ISerializedTransform,
+  ISerializedComponent,
+} from '@core/assets/interfaces/ISceneAsset';
 
 /**
  * Display name component for entities (following Unity's naming pattern).
@@ -58,7 +64,7 @@ interface ITransformComponent extends IComponent {
  * handles transforms and camera component properties centrally by checking
  * hasComponent('camera').
  */
-export class CameraEntity implements IEntity {
+export class CameraEntity implements IEntity, ISerializable<ISerializedEntity> {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -221,5 +227,85 @@ export class CameraEntity implements IEntity {
    */
   asRenderCamera(aspect: number): RenderCameraAdapter {
     return new RenderCameraAdapter(this, aspect);
+  }
+
+  // =========================================
+  // ISerializable Implementation
+  // =========================================
+
+  /**
+   * Serialize this CameraEntity to a JSON-compatible structure.
+   *
+   * @returns The serialized entity data
+   */
+  toJSON(): ISerializedEntity {
+    const transform: ISerializedTransform = {
+      position: [...this.transform.position],
+      rotation: [...this.transform.rotation],
+      scale: [...this.transform.scale],
+    };
+
+    const components: ISerializedComponent[] = [];
+
+    // Serialize camera component
+    components.push({
+      type: 'camera',
+      fieldOfView: this.cameraComponent.fieldOfView,
+      nearClipPlane: this.cameraComponent.nearClipPlane,
+      farClipPlane: this.cameraComponent.farClipPlane,
+      target: [...this._target],
+    });
+
+    return {
+      uuid: this.id,
+      name: this.name,
+      type: 'Camera',
+      parentUuid: this.parent?.id,
+      transform,
+      components,
+    };
+  }
+
+  /**
+   * Deserialize data from JSON into this CameraEntity.
+   * This method mutates the current instance.
+   *
+   * @param data - The serialized entity data to load
+   */
+  fromJSON(data: ISerializedEntity): void {
+    // Restore name
+    this.name = data.name;
+
+    // Restore transform
+    if (data.transform) {
+      this.transform.position = [...data.transform.position];
+      this.transform.rotation = [...data.transform.rotation];
+      this.transform.scale = [...data.transform.scale];
+
+      // Keep transform component in sync
+      const tc = this.components.get('transform') as ITransformComponent;
+      if (tc) {
+        tc.position = this.transform.position;
+        tc.rotation = this.transform.rotation;
+        tc.scale = this.transform.scale;
+      }
+    }
+
+    // Restore camera component
+    const cameraData = data.components.find((c) => c.type === 'camera');
+    if (cameraData) {
+      if (cameraData.fieldOfView !== undefined) {
+        this.cameraComponent.fieldOfView = cameraData.fieldOfView as number;
+      }
+      if (cameraData.nearClipPlane !== undefined) {
+        this.cameraComponent.nearClipPlane = cameraData.nearClipPlane as number;
+      }
+      if (cameraData.farClipPlane !== undefined) {
+        this.cameraComponent.farClipPlane = cameraData.farClipPlane as number;
+      }
+      if (cameraData.target !== undefined) {
+        this._target = [...(cameraData.target as [number, number, number])];
+      }
+    }
   }
 }

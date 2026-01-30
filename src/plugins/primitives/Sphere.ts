@@ -22,6 +22,12 @@ import type {
 } from '@core/interfaces';
 import { createDefaultTransform, cloneEntityBase } from '@core/interfaces';
 import type { IPrimitiveFactory } from './interfaces/IPrimitiveFactory';
+import type { ISerializable } from '@core/assets/interfaces/ISerializable';
+import type {
+  ISerializedEntity,
+  ISerializedTransform,
+  ISerializedComponent,
+} from '@core/assets/interfaces/ISceneAsset';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
 import {
   mat4Multiply,
@@ -61,7 +67,7 @@ const DEFAULT_RADIUS = 0.5;
  * Creates a sphere using latitude/longitude subdivision.
  * Implements IMeshProvider for renderer integration.
  */
-export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable {
+export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable, ISerializable<ISerializedEntity> {
   readonly id: string;
   readonly entityId: number;
   name: string;
@@ -437,6 +443,115 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable {
     cloneEntityBase(this, cloned);
     cloned.setRenderMode(this.renderMode);
     return cloned;
+  }
+
+  // =========================================
+  // ISerializable Implementation
+  // =========================================
+
+  /**
+   * Serialize this Sphere to a JSON-compatible structure.
+   *
+   * @returns The serialized entity data
+   */
+  toJSON(): ISerializedEntity {
+    const transform: ISerializedTransform = {
+      position: [...this.transform.position],
+      rotation: [...this.transform.rotation],
+      scale: [...this.transform.scale],
+    };
+
+    const components: ISerializedComponent[] = [];
+
+    // Serialize mesh component
+    const meshComponent = this.getComponent<IMeshComponent>('mesh');
+    if (meshComponent) {
+      components.push({
+        type: 'mesh',
+        vertexCount: meshComponent.vertexCount,
+        edgeCount: meshComponent.edgeCount,
+        triangleCount: meshComponent.triangleCount,
+        doubleSided: meshComponent.doubleSided,
+      });
+    }
+
+    // Serialize material component
+    const materialComponent = this.getComponent<IMaterialComponent>('material');
+    if (materialComponent) {
+      components.push({
+        type: 'material',
+        shaderName: materialComponent.shaderName,
+        color: materialComponent.color ? [...materialComponent.color] : [0.8, 0.8, 0.8],
+        opacity: materialComponent.opacity,
+        transparent: materialComponent.transparent,
+        materialAssetRef: materialComponent.materialAssetRef,
+      });
+    }
+
+    return {
+      uuid: this.id,
+      name: this.name,
+      type: 'Sphere',
+      parentUuid: this.parent?.id,
+      transform,
+      components,
+      metadata: {
+        renderMode: this.renderMode,
+        segments: this.segments,
+        rings: this.rings,
+        radius: this.radius,
+      },
+    };
+  }
+
+  /**
+   * Deserialize data from JSON into this Sphere.
+   * This method mutates the current instance.
+   *
+   * Note: Sphere parameters (segments, rings, radius) are read-only after construction.
+   * To deserialize a sphere with different parameters, create a new Sphere instance
+   * using the EntitySerializer.deserialize() factory method.
+   *
+   * @param data - The serialized entity data to load
+   */
+  fromJSON(data: ISerializedEntity): void {
+    // Restore name
+    this.name = data.name;
+
+    // Restore transform
+    if (data.transform) {
+      this.transform.position = [...data.transform.position];
+      this.transform.rotation = [...data.transform.rotation];
+      this.transform.scale = [...data.transform.scale];
+    }
+
+    // Restore material component
+    const materialData = data.components.find((c) => c.type === 'material');
+    if (materialData) {
+      const materialComponent = this.getComponent<IMaterialComponent>('material');
+      if (materialComponent) {
+        if (materialData.shaderName !== undefined) {
+          materialComponent.shaderName = materialData.shaderName as string;
+        }
+        if (materialData.color !== undefined) {
+          materialComponent.color = [...(materialData.color as [number, number, number])];
+        }
+        if (materialData.opacity !== undefined) {
+          materialComponent.opacity = materialData.opacity as number;
+        }
+        if (materialData.transparent !== undefined) {
+          materialComponent.transparent = materialData.transparent as boolean;
+        }
+        if (materialData.materialAssetRef !== undefined) {
+          materialComponent.materialAssetRef = materialData.materialAssetRef as IMaterialComponent['materialAssetRef'];
+        }
+      }
+    }
+
+    // Restore render mode from metadata
+    if (data.metadata?.renderMode) {
+      this.renderMode = data.metadata.renderMode as RenderMode;
+    }
   }
 }
 
