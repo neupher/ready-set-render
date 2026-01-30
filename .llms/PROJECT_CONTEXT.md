@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-28T16:35:00Z
-> **Version:** 0.11.2
-> **Status:** Asset System Phase B Complete | Phase 6 In Progress (6.9-6.10 remaining)
+> **Last Updated:** 2026-01-30T20:12:00Z
+> **Version:** 0.11.3
+> **Status:** Asset System Phase C Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.11.1)
+## Current State (v0.11.3)
 
 ### What's Working
 
@@ -51,6 +51,12 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - Built-in shaders: PBR (Cook-Torrance BRDF), Unlit (solid color)
   - Type guards: `isShaderAsset()`, `isUniformDeclaration()`
   - UUID utilities: `generateUUID()`, `isValidUUID()`
+- **Asset System (Phase C)**: Material Assets
+  - `IMaterialAsset`: Material asset interface with shader reference and parameters
+  - `MaterialAssetFactory`: Create/duplicate materials, JSON serialization, parameter sync
+  - `BuiltInMaterials`: Built-in "Default PBR" material (neutral gray, references PBR shader)
+  - `IMaterialComponent.materialAssetRef`: Optional asset reference for entity-material binding
+  - Type guard: `isMaterialAsset()`
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
@@ -96,7 +102,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **592 tests passing** (72 new in v0.11.0)
+- **824 tests passing** (89 new in Phase C)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -124,7 +130,7 @@ Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./A
 |-------|-------------|--------|
 | Phase A | Asset Foundation (Registry, Store, Migrations) | ✅ Complete |
 | Phase B | Shader Assets | ✅ Complete |
-| Phase C | Material Assets | Not Started |
+| Phase C | Material Assets | ✅ Complete |
 | Phase D | Scene Serialization | Not Started |
 | Phase E | Asset Browser UI | Not Started |
 | Phase F | Live Shader Editor | Not Started |
@@ -158,11 +164,10 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Asset System Phase B**: Shader Assets (IShaderAsset, built-in registration, compilation service)
-2. **Asset System Phase C**: Material Assets (IMaterialAsset, material-entity binding)
-3. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
-4. **Phase 6.9: Live Shader Editor** - After Asset System Phases B-E
-5. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+1. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
+2. **Asset System Phase D**: Scene Serialization (save/load scenes)
+3. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
+4. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 

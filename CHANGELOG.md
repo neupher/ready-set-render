@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.3] - 2026-01-30
+
+### Added
+
+- **Asset System Phase C: Material Assets**
+  - `IMaterialAsset` interface for material assets with shader reference and parameters
+  - Materials reference shaders by UUID (not embedded copies)
+  - Parameters stored as `Record<string, unknown>` keyed by uniform name
+  - Support for `isBuiltIn` flag for read-only materials
+  - Type guard: `isMaterialAsset()`
+
+- **MaterialAssetFactory**
+  - `create()` - Create new materials with optional shader default values
+  - `duplicate()` - Copy any material (duplicates are always editable)
+  - `fromJSON()` / `toJSON()` - Serialization support for persistence
+  - `getDefaultParameters()` - Extract defaults from shader uniform declarations
+  - `syncParametersWithShader()` - Sync material parameters when shader changes
+  - Deep copying of parameter values to prevent mutation
+
+- **Built-in Materials**
+  - **Default PBR Material** - Neutral gray material using PBR shader
+    - UUID: `built-in-material-default-pbr`
+    - References built-in PBR shader
+    - Default values: Base Color (gray), Metallic (0), Roughness (0.5), no emission
+    - Marked as `isBuiltIn: true` (read-only, duplicatable)
+
+- **IMaterialComponent Enhancement**
+  - Added optional `materialAssetRef?: IAssetReference` field
+  - Enables asset-based material binding to entities
+  - Inline properties remain as fallback for backward compatibility
+
+### Tests
+
+- 89 new tests (824 total)
+  - `IMaterialAsset.test.ts` - 21 tests (type guards)
+  - `MaterialAssetFactory.test.ts` - 47 tests (create, duplicate, serialization, sync)
+  - `BuiltInMaterials.test.ts` - 21 tests (Default PBR, utilities)
+
+---
+
 ## [0.11.2] - 2026-01-28
 
 ### Changed

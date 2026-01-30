@@ -9,19 +9,37 @@
  * - Metallic (0-1)
  * - Roughness (0-1)
  * - Emission
+ *
+ * Materials can reference an IMaterialAsset via materialAssetRef, or use
+ * inline properties as a fallback. When materialAssetRef is set, the asset's
+ * parameters take precedence over inline properties.
  */
 
 import type { IComponent } from './IComponent';
+import type { IAssetReference } from '../assets/interfaces/IAssetReference';
 
 /**
  * Material component containing rendering properties.
  *
  * Supports both legacy (Lambertian) and PBR (Cook-Torrance) shading models.
  * Set `shaderName: 'pbr'` to enable PBR rendering.
+ *
+ * When `materialAssetRef` is set, the renderer will use the referenced
+ * IMaterialAsset for shader and parameter values. If the reference is
+ * invalid or the asset cannot be found, an error indicator will be shown.
  */
 export interface IMaterialComponent extends IComponent {
   /** Component type identifier */
   readonly type: 'material';
+
+  /**
+   * Optional reference to a material asset.
+   *
+   * When set, the renderer will look up the IMaterialAsset from the
+   * AssetRegistry and use its shader and parameters for rendering.
+   * If undefined or invalid, inline properties below are used as fallback.
+   */
+  materialAssetRef?: IAssetReference;
 
   /** Name of the shader used for rendering ('default' | 'pbr') */
   shaderName: string;

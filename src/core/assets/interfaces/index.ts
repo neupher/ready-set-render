@@ -42,3 +42,7 @@ export type {
   UniformUIType,
 } from './IShaderAsset';
 export { isShaderAsset, isUniformDeclaration } from './IShaderAsset';
+
+// Material Assets
+export type { IMaterialAsset } from './IMaterialAsset';
+export { isMaterialAsset } from './IMaterialAsset';

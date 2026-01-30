@@ -52,6 +52,8 @@ export type {
   IUniformDeclaration,
   UniformType,
   UniformUIType,
+  // Material interfaces
+  IMaterialAsset,
 } from './interfaces';
 
 export {
@@ -62,6 +64,8 @@ export {
   // Shader type guards
   isShaderAsset,
   isUniformDeclaration,
+  // Material type guards
+  isMaterialAsset,
 } from './interfaces';
 
 // Services
@@ -102,3 +106,15 @@ export {
   BUILT_IN_SHADERS,
   isBuiltInShaderUUID,
 } from './BuiltInShaders';
+
+// Material Assets
+export { MaterialAssetFactory, MATERIAL_ASSET_VERSION } from './MaterialAssetFactory';
+export type { IMaterialCreateOptions } from './MaterialAssetFactory';
+
+// Built-in Materials
+export {
+  BUILT_IN_MATERIAL_IDS,
+  BUILT_IN_DEFAULT_PBR_MATERIAL,
+  BUILT_IN_MATERIALS,
+  isBuiltInMaterialUUID,
+} from './BuiltInMaterials';
