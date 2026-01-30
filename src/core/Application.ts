@@ -113,6 +113,9 @@ export class Application {
   private isInitialized = false;
   private animationFrameId: number | null = null;
 
+  /** Listener cleanup function for postMessage */
+  private postMessageListener: ((event: MessageEvent) => void) | null = null;
+
   constructor(config: ApplicationConfig) {
     this.container = config.container;
   }
@@ -281,6 +284,7 @@ export class Application {
       primitiveRegistry: this.primitiveRegistry,
     });
     this.setupSceneCommands();
+    this.setupLauncherListener();
     console.log('Scene controller initialized');
 
     // Initialize keyboard shortcuts
@@ -473,6 +477,60 @@ export class Application {
         console.error('Failed to save scene:', result.error);
       }
     });
+
+    // Export as HTML
+    this.eventBus.on('command:exportAsHTML', async () => {
+      const result = await this.sceneController.exportSceneAsHTML();
+      if (!result.success && result.error) {
+        console.error('Failed to export scene as HTML:', result.error);
+      }
+    });
+  }
+
+  /**
+   * Set up listener for postMessage from launcher HTML files.
+   * When a launcher sends scene data, this loads it into the editor.
+   */
+  private setupLauncherListener(): void {
+    const protocol = SceneController.LAUNCHER_PROTOCOL;
+
+    this.postMessageListener = async (event: MessageEvent) => {
+      // Validate message format
+      if (!event.data || event.data.protocol !== protocol) {
+        return;
+      }
+
+      // Handle scene load request from launcher
+      if (event.data.type === 'loadScene' && event.data.scene) {
+        console.log('Received scene from launcher:', event.data.scene.name);
+
+        const result = await this.sceneController.loadFromSceneData(event.data.scene);
+
+        // Notify launcher of result
+        if (event.source && typeof (event.source as Window).postMessage === 'function') {
+          (event.source as Window).postMessage({
+            protocol,
+            type: result.success ? 'sceneLoaded' : 'sceneLoadError',
+            error: result.error,
+          }, '*');
+        }
+      }
+    };
+
+    window.addEventListener('message', this.postMessageListener);
+
+    // If we were opened by a launcher, signal that we're ready
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('launcher') === '1' && window.opener) {
+      // Small delay to ensure everything is initialized
+      setTimeout(() => {
+        window.opener.postMessage({
+          protocol,
+          type: 'editorReady',
+        }, '*');
+        console.log('Signaled launcher that editor is ready');
+      }, 100);
+    }
   }
 
   private setupResizeHandling(): void {

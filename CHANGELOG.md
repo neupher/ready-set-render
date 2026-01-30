@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.6] - 2026-01-30
+
+### Added
+
+- **Export as HTML** - Shareable scene launcher files
+  - `SceneLauncherExporter` utility class generates self-contained HTML files
+  - Embedded scene JSON data in HTML for maximum portability
+  - `postMessage` API for secure cross-window communication with deployed editor
+  - Styled loading page with spinner, error handling, and fallback options
+  - File menu option: File → Export as HTML
+  - Double-click exported `.html` file → Opens browser → Loads scene in deployed editor
+
+- **Scene Launcher Listener** in Application.ts
+  - Listens for `postMessage` from launcher HTML files
+  - Automatically loads scene when receiving launcher data
+  - Signals `editorReady` when opened with `?launcher=1` URL parameter
+
+### Fixed
+
+- **Scene name now updates in hierarchy panel when opening a scene**
+  - Fixed race condition where `currentScene` was set after entity loading
+  - Entity additions triggered state change events with old scene name
+  - Moved `currentScene` assignment before `loadIntoSceneGraph()` call
+
+- **Initial scene state now emits on SceneController construction**
+  - UI components receive initial `scene:stateChanged` event at startup
+  - Scene name displays correctly from the start
+
+---
+
 ## [0.11.5] - 2026-01-30
 
 ### Added

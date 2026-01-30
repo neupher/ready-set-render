@@ -48,6 +48,13 @@ export type {
   SceneNewEvent,
 } from './SceneController';
 
+// Scene Launcher Exporter
+export {
+  SceneLauncherExporter,
+  SCENE_LAUNCHER_PROTOCOL,
+} from './SceneLauncherExporter';
+export type { LauncherOptions, LauncherMessage } from './SceneLauncherExporter';
+
 // Plugin Manager
 export {
   PluginManager,

@@ -33,6 +33,10 @@ import type { PrimitiveRegistry } from '@plugins/primitives';
 import { SceneAssetFactory } from './assets/SceneAssetFactory';
 import type { ISceneAsset } from './assets/interfaces/ISceneAsset';
 import { showConfirmDialog } from '@ui/components/ConfirmDialog';
+import {
+  SceneLauncherExporter,
+  SCENE_LAUNCHER_PROTOCOL,
+} from './SceneLauncherExporter';
 
 /**
  * Scene file type options for the file picker.
@@ -350,6 +354,91 @@ export class SceneController {
       this._isDirty = false;
       this.emitStateChanged();
     }
+  }
+
+  /**
+   * Export the current scene as a shareable HTML launcher file.
+   * The HTML file contains embedded scene data and opens the editor when double-clicked.
+   *
+   * @param editorUrl - URL of the deployed editor (defaults to production URL)
+   * @returns Result indicating success, error, or cancellation
+   */
+  async exportSceneAsHTML(editorUrl?: string): Promise<SceneOperationResult> {
+    try {
+      // Update scene entities from current scene graph state
+      if (!this.currentScene) {
+        this.currentScene = SceneAssetFactory.createFromSceneGraph(
+          this.sceneGraph,
+          this.sceneName
+        );
+      } else {
+        SceneAssetFactory.updateEntities(this.currentScene, this.sceneGraph);
+      }
+
+      // Default to GitHub Pages deployment URL
+      const url = editorUrl ?? 'https://neupher.github.io/ready-set-render';
+
+      // Generate HTML
+      const html = SceneLauncherExporter.generateHTML({
+        scene: this.currentScene,
+        editorUrl: url,
+      });
+
+      // Download as file
+      const filename = `${this.sanitizeFilename(this.sceneName)}.html`;
+      SceneLauncherExporter.downloadAsFile(html, filename);
+
+      console.log(`Scene exported as HTML: ${filename}`);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error exporting scene.';
+      console.error('Failed to export scene as HTML:', message);
+      return { success: false, error: message };
+    }
+  }
+
+  /**
+   * Load a scene from scene data (used when receiving from launcher via postMessage).
+   *
+   * @param sceneData - The scene asset data to load
+   * @returns Result indicating success or error
+   */
+  async loadFromSceneData(sceneData: ISceneAsset): Promise<SceneOperationResult> {
+    try {
+      // Update current scene BEFORE loading entities
+      this.currentScene = sceneData;
+      this.fileHandle = null; // No file handle for launcher-loaded scenes
+
+      // Clear and load into scene graph
+      const entities = SceneAssetFactory.loadIntoSceneGraph(sceneData, this.sceneGraph, true);
+
+      // Reset dirty state (freshly loaded scene is clean)
+      this._isDirty = false;
+
+      // Emit events
+      this.emitStateChanged();
+      this.eventBus.emit<SceneLoadedEvent>('scene:loaded', {
+        sceneName: this.sceneName,
+        entityCount: entities.length,
+      });
+
+      // Clear selection
+      this.eventBus.emit('selection:changed', { id: null });
+
+      console.log(`Scene loaded from launcher: ${this.sceneName} (${entities.length} entities)`);
+      return { success: true };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error loading scene.';
+      console.error('Failed to load scene from data:', message);
+      return { success: false, error: message };
+    }
+  }
+
+  /**
+   * Get the protocol identifier for launcher messages.
+   */
+  static get LAUNCHER_PROTOCOL(): string {
+    return SCENE_LAUNCHER_PROTOCOL;
   }
 
   /**

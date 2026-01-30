@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-30T21:15:00Z
-> **Version:** 0.11.5
+> **Last Updated:** 2026-01-30T21:42:00Z
+> **Version:** 0.11.6
 > **Status:** Asset System Phase D Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
@@ -42,6 +42,10 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `ConfirmDialog`: Unsaved changes warning dialog
   - Keyboard shortcuts: Ctrl+N (New), Ctrl+O (Open), Ctrl+S (Save), Ctrl+Shift+S (Save As)
   - Dirty state tracking with visual indicator in Hierarchy panel
+  - **Export as HTML**: Shareable scene launcher files (File → Export as HTML)
+    - `SceneLauncherExporter`: Generates self-contained HTML files with embedded scene data
+    - Double-click exported HTML → Opens browser → Loads scene in deployed editor
+    - Uses `postMessage` API for secure cross-window communication
 - **Asset System (Phase A)**: Foundation layer for asset persistence
   - `AssetRegistry`: Central registry for all assets (CRUD, events, search, type indexing)
   - `FileSystemAssetStore`: File System Access API based persistence
