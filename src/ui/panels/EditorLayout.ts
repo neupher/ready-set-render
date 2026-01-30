@@ -219,6 +219,9 @@ export class EditorLayout {
       case 'Save':
         this.eventBus.emit('command:saveScene');
         break;
+      case 'Save As':
+        this.eventBus.emit('command:saveSceneAs');
+        break;
       case 'Export':
         this.eventBus.emit('command:export');
         break;

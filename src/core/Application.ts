@@ -26,6 +26,7 @@ import { CommandHistory } from '@core/commands/CommandHistory';
 import { KeyboardShortcutManager } from '@core/KeyboardShortcutManager';
 import { InputManager } from '@core/InputManager';
 import { SettingsService } from '@core/SettingsService';
+import { SceneController } from '@core/SceneController';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
 import { SettingsWindow } from '@ui/windows/SettingsWindow';
@@ -104,6 +105,9 @@ export class Application {
   // UI
   private layout!: EditorLayout;
   private settingsWindow!: SettingsWindow;
+
+  // Scene Management
+  private sceneController!: SceneController;
 
   // State
   private isInitialized = false;
@@ -270,6 +274,15 @@ export class Application {
     });
     console.log('Command history initialized');
 
+    // Initialize scene controller
+    this.sceneController = new SceneController({
+      eventBus: this.eventBus,
+      sceneGraph: this.sceneGraph,
+      primitiveRegistry: this.primitiveRegistry,
+    });
+    this.setupSceneCommands();
+    console.log('Scene controller initialized');
+
     // Initialize keyboard shortcuts
     // NOTE: Undo/redo shortcuts are registered in index.ts to avoid duplication
     this.shortcutManager = new KeyboardShortcutManager({ eventBus: this.eventBus });
@@ -423,6 +436,43 @@ export class Application {
     this.orbitController?.dispose?.();
     this.isInitialized = false;
     console.log('Application disposed');
+  }
+
+  /**
+   * Set up scene command handlers for File menu operations.
+   */
+  private setupSceneCommands(): void {
+    // New Scene (Ctrl+N)
+    this.eventBus.on('command:newScene', async () => {
+      const result = await this.sceneController.newScene();
+      if (!result.success && result.error) {
+        console.error('Failed to create new scene:', result.error);
+      }
+    });
+
+    // Open Scene (Ctrl+O)
+    this.eventBus.on('command:openScene', async () => {
+      const result = await this.sceneController.openScene();
+      if (!result.success && result.error) {
+        console.error('Failed to open scene:', result.error);
+      }
+    });
+
+    // Save Scene (Ctrl+S)
+    this.eventBus.on('command:saveScene', async () => {
+      const result = await this.sceneController.saveScene();
+      if (!result.success && result.error) {
+        console.error('Failed to save scene:', result.error);
+      }
+    });
+
+    // Save Scene As (Ctrl+Shift+S)
+    this.eventBus.on('command:saveSceneAs', async () => {
+      const result = await this.sceneController.saveSceneAs();
+      if (!result.success && result.error) {
+        console.error('Failed to save scene:', result.error);
+      }
+    });
   }
 
   private setupResizeHandling(): void {

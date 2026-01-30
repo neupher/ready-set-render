@@ -50,6 +50,36 @@ async function main(): Promise<void> {
     // Register undo/redo shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
     registerUndoRedoShortcuts(app.getShortcutManager(), ctx.commandHistory);
 
+    // Register file operation shortcuts
+    app.getShortcutManager().register({
+      key: 'n',
+      ctrl: true,
+      action: () => ctx.eventBus.emit('command:newScene'),
+      description: 'New Scene',
+    });
+
+    app.getShortcutManager().register({
+      key: 'o',
+      ctrl: true,
+      action: () => ctx.eventBus.emit('command:openScene'),
+      description: 'Open Scene',
+    });
+
+    app.getShortcutManager().register({
+      key: 's',
+      ctrl: true,
+      action: () => ctx.eventBus.emit('command:saveScene'),
+      description: 'Save Scene',
+    });
+
+    app.getShortcutManager().register({
+      key: 's',
+      ctrl: true,
+      shift: true,
+      action: () => ctx.eventBus.emit('command:saveSceneAs'),
+      description: 'Save Scene As',
+    });
+
     // Register editor shortcuts (Delete, Shift+D)
     registerEditorShortcuts({
       shortcutManager: app.getShortcutManager(),

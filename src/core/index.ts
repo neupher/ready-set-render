@@ -37,6 +37,17 @@ export { Camera } from './Camera';
 export { SettingsService } from './SettingsService';
 export type { GridSettings, AppSettings, SettingsServiceOptions } from './SettingsService';
 
+// Scene Controller
+export { SceneController } from './SceneController';
+export type {
+  SceneControllerOptions,
+  SceneOperationResult,
+  SceneStateChangedEvent,
+  SceneLoadedEvent,
+  SceneSavedEvent,
+  SceneNewEvent,
+} from './SceneController';
+
 // Plugin Manager
 export {
   PluginManager,

@@ -23,6 +23,8 @@ export interface TreeNode {
   type: 'group' | 'mesh' | 'material' | 'texture' | 'light' | 'camera';
   /** Child nodes */
   children?: TreeNode[];
+  /** Whether this node can be selected (default: true) */
+  selectable?: boolean;
 }
 
 export interface ContextMenuData {
@@ -281,6 +283,9 @@ export class TreeView {
     item.addEventListener('click', () => {
       // If we're editing, don't handle clicks
       if (this.editingId) return;
+
+      // If node is not selectable, don't select it
+      if (node.selectable === false) return;
 
       // Update selection state
       this.selectedId = node.id;

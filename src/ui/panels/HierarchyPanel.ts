@@ -29,6 +29,14 @@ export interface HierarchyPanelOptions {
 }
 
 /**
+ * Scene state for display in the hierarchy.
+ */
+interface SceneDisplayState {
+  name: string;
+  isDirty: boolean;
+}
+
+/**
  * Scene hierarchy panel displaying the scene tree.
  * NOT a plugin - receives dependencies via constructor.
  */
@@ -39,6 +47,12 @@ export class HierarchyPanel {
   private readonly treeView: TreeView;
   private readonly header: HTMLDivElement;
   private readonly content: HTMLDivElement;
+
+  /** Current scene display state */
+  private sceneState: SceneDisplayState = {
+    name: 'untitled',
+    isDirty: false,
+  };
 
   constructor(options: HierarchyPanelOptions) {
     this.eventBus = options.eventBus;
@@ -119,14 +133,25 @@ export class HierarchyPanel {
   private setupEvents(): void {
     this.handleSceneChange = this.handleSceneChange.bind(this);
     this.handleExternalSelectionChange = this.handleExternalSelectionChange.bind(this);
+    this.handleSceneStateChange = this.handleSceneStateChange.bind(this);
 
     this.eventBus.on('scene:objectAdded', this.handleSceneChange);
     this.eventBus.on('scene:objectRemoved', this.handleSceneChange);
     this.eventBus.on('scene:objectRenamed', this.handleSceneChange);
     this.eventBus.on('selection:changed', this.handleExternalSelectionChange);
+    this.eventBus.on('scene:stateChanged', this.handleSceneStateChange);
   }
 
   private handleSceneChange(): void {
+    this.refresh();
+  }
+
+  /**
+   * Handle scene state changes (name, dirty status).
+   */
+  private handleSceneStateChange(data: { sceneName: string; isDirty: boolean }): void {
+    this.sceneState.name = data.sceneName;
+    this.sceneState.isDirty = data.isDirty;
     this.refresh();
   }
 
@@ -212,7 +237,26 @@ export class HierarchyPanel {
 
   private convertSceneToTree(): TreeNode[] {
     const root = this.sceneGraph.getRoot();
-    return [this.convertObjectToNode(root)];
+    return [this.convertRootToNode(root)];
+  }
+
+  /**
+   * Convert the root scene object to a TreeNode with scene name display.
+   */
+  private convertRootToNode(obj: SceneObject): TreeNode {
+    // Build the display name: "● Scene (name.scene)" if dirty, "Scene (name.scene)" otherwise
+    const dirtyIndicator = this.sceneState.isDirty ? '● ' : '';
+    const sceneName = `${this.sceneState.name}.scene`;
+    const displayName = `${dirtyIndicator}Scene (${sceneName})`;
+
+    const node: TreeNode = {
+      id: obj.id,
+      name: displayName,
+      type: 'group',
+      selectable: false, // Root node is not selectable
+      children: obj.children.map(child => this.convertObjectToNode(child))
+    };
+    return node;
   }
 
   private convertObjectToNode(obj: SceneObject): TreeNode {

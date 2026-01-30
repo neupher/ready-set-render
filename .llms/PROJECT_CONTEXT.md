@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-30T20:32:00Z
-> **Version:** 0.11.4
+> **Last Updated:** 2026-01-30T21:15:00Z
+> **Version:** 0.11.5
 > **Status:** Asset System Phase D Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
@@ -32,11 +32,16 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.11.4)
+## Current State (v0.11.5)
 
 ### What's Working
 
 - **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService
+- **Scene Controller**: New/Open/Save/Save As operations with File System Access API
+  - `SceneController`: Central scene file operations manager
+  - `ConfirmDialog`: Unsaved changes warning dialog
+  - Keyboard shortcuts: Ctrl+N (New), Ctrl+O (Open), Ctrl+S (Save), Ctrl+Shift+S (Save As)
+  - Dirty state tracking with visual indicator in Hierarchy panel
 - **Asset System (Phase A)**: Foundation layer for asset persistence
   - `AssetRegistry`: Central registry for all assets (CRUD, events, search, type indexing)
   - `FileSystemAssetStore`: File System Access API based persistence
@@ -171,11 +176,10 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Phase D.8: File Menu Integration** - Add New/Open/Save/Save As with Ctrl+N/O/S shortcuts
-2. **Phase D.9: Serialization Tests** - Unit tests for EntitySerializer, SceneAssetFactory
-3. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
-4. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
-5. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+1. **Phase D.9: Serialization Tests** - Unit tests for EntitySerializer, SceneAssetFactory
+2. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
+3. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
+4. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 

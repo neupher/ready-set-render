@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.11.5] - 2026-01-30
+
+### Added
+
+- **Phase D.8: File Menu Integration**
+  - `SceneController` class for scene file operations (New/Open/Save/Save As)
+  - File System Access API integration for `.scene` file persistence
+  - Automatic dirty state tracking via EventBus events
+  - `ConfirmDialog` component for unsaved changes warnings
+  - `showConfirmDialog()` helper function returning a Promise
+
+- **Keyboard Shortcuts**
+  - `Ctrl+N` - New Scene
+  - `Ctrl+O` - Open Scene
+  - `Ctrl+S` - Save Scene
+  - `Ctrl+Shift+S` - Save Scene As
+
+- **Hierarchy Panel Improvements**
+  - Scene name displayed as "Scene (name.scene)" format
+  - Dirty indicator (● ball) shown before "Scene" when unsaved changes exist
+  - Scene root node is now unselectable (no gizmo shown when clicking)
+
+### Changed
+
+- Default scene name changed from "Untitled Scene" to "untitled" (displays as `untitled.scene`)
+- File menu items (New, Open, Save, Save As) now enabled
+- `TreeNode` interface extended with optional `selectable` property
+
+---
+
 ## [0.11.4] - 2026-01-30
 
 ### Added
