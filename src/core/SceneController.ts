@@ -116,8 +116,16 @@ export class SceneController {
     this.sceneGraph = options.sceneGraph;
     this.primitiveRegistry = options.primitiveRegistry;
 
+    // Create initial scene asset
+    this.currentScene = SceneAssetFactory.create({
+      name: SceneController.DEFAULT_SCENE_NAME,
+    });
+
     // Listen for scene changes to mark as dirty
     this.setupDirtyTracking();
+
+    // Emit initial state so UI can sync
+    this.emitStateChanged();
   }
 
   /**
@@ -227,12 +235,16 @@ export class SceneController {
       // Parse scene asset
       const sceneAsset = SceneAssetFactory.fromJSON(content);
 
+      // Update current scene BEFORE loading entities
+      // This ensures emitStateChanged() uses the correct scene name
+      // when dirty tracking fires during entity addition
+      this.currentScene = sceneAsset;
+      this.fileHandle = handle;
+
       // Clear and load into scene graph
       const entities = SceneAssetFactory.loadIntoSceneGraph(sceneAsset, this.sceneGraph, true);
 
-      // Update state
-      this.currentScene = sceneAsset;
-      this.fileHandle = handle;
+      // Reset dirty state (loading a scene shouldn't be dirty)
       this._isDirty = false;
 
       // Emit events
