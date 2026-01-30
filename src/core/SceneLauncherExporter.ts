@@ -1,17 +1,16 @@
 /**
  * SceneLauncherExporter - Generates shareable HTML launcher files
  *
- * Creates self-contained HTML files that embed scene data and redirect
- * to the deployed WebGL editor. When a user double-clicks the HTML file,
- * it opens their browser, navigates to the editor, and loads the scene.
+ * Creates self-contained HTML files that embed scene data and open
+ * the deployed WebGL editor when the user clicks a button.
  *
  * Communication flow:
  * 1. User double-clicks MyScene.html
- * 2. HTML file opens in browser
- * 3. Script opens the deployed editor in a new tab/window
+ * 2. HTML file opens in browser showing scene info and "Open in Editor" button
+ * 3. User clicks button → opens the deployed editor (user gesture = no popup blocking)
  * 4. Editor signals it's ready via postMessage
  * 5. Launcher sends scene data via postMessage
- * 6. Editor loads the scene automatically
+ * 6. Editor loads the scene, launcher auto-closes
  *
  * @example
  * ```typescript
@@ -108,11 +107,11 @@ export class SceneLauncherExporter {
       max-width: 500px;
     }
     .logo {
-      font-size: 48px;
-      margin-bottom: 20px;
+      font-size: 64px;
+      margin-bottom: 24px;
     }
     h1 {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 600;
       margin-bottom: 8px;
       color: #fff;
@@ -120,99 +119,65 @@ export class SceneLauncherExporter {
     .scene-name {
       font-size: 18px;
       color: #a1a1aa;
-      margin-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .open-btn {
+      display: inline-block;
+      padding: 16px 48px;
+      background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+      color: #1a1a2e;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 12px rgba(79, 195, 247, 0.3);
+    }
+    .open-btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(79, 195, 247, 0.4);
+    }
+    .open-btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .open-btn:disabled {
+      background: #3f3f46;
+      color: #71717a;
+      cursor: not-allowed;
+      box-shadow: none;
     }
     .status {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-    .spinner {
-      width: 24px;
-      height: 24px;
-      border: 3px solid #3f3f46;
-      border-top-color: #4fc3f7;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    .status-text {
+      margin-top: 24px;
+      min-height: 24px;
       font-size: 14px;
       color: #a1a1aa;
     }
-    .fallback {
-      font-size: 13px;
-      color: #71717a;
+    .status.success {
+      color: #4ade80;
     }
-    .fallback a {
-      color: #4fc3f7;
-      text-decoration: none;
+    .status.error {
+      color: #f87171;
     }
-    .fallback a:hover {
-      text-decoration: underline;
-    }
-    .error {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 8px;
-      padding: 16px;
-      margin-top: 24px;
-      display: none;
-    }
-    .error.visible {
-      display: block;
-    }
-    .error-title {
-      color: #ef4444;
-      font-weight: 600;
-      margin-bottom: 8px;
-    }
-    .error-message {
-      font-size: 13px;
-      color: #fca5a5;
-    }
-    .manual-btn {
-      display: inline-block;
-      margin-top: 16px;
-      padding: 10px 20px;
-      background: #4fc3f7;
-      color: #1a1a2e;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .manual-btn:hover {
-      background: #81d4fa;
+    .footer {
+      margin-top: 48px;
+      font-size: 12px;
+      color: #52525b;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="logo">🚀</div>
-    <h1>Opening Scene in Ready Set Render</h1>
-    <p class="scene-name">${this.escapeHTML(scene.name)}.scene</p>
+    <h1>Ready Set Render</h1>
+    <p class="scene-name">${this.escapeHTML(scene.name)}</p>
 
-    <div class="status" id="status">
-      <div class="spinner"></div>
-      <span class="status-text" id="statusText">Launching editor...</span>
-    </div>
+    <button class="open-btn" id="openBtn">Open in Editor</button>
 
-    <p class="fallback">
-      If nothing happens, <a href="${this.escapeHTML(editorUrl)}" target="_blank" id="fallbackLink">click here to open the editor</a>
-    </p>
+    <p class="status" id="status"></p>
 
-    <div class="error" id="error">
-      <p class="error-title">Could not launch automatically</p>
-      <p class="error-message" id="errorMessage">Pop-up blocked or editor not accessible.</p>
-      <a href="${this.escapeHTML(editorUrl)}" target="_blank" class="manual-btn">Open Editor Manually</a>
-    </div>
+    <p class="footer">Scene launcher file • Double-click to open</p>
   </div>
 
   <script>
@@ -227,29 +192,17 @@ export class SceneLauncherExporter {
       // State
       let editorWindow = null;
       let sceneSent = false;
-      let retryCount = 0;
-      const MAX_RETRIES = 10;
-      const RETRY_INTERVAL = 500;
 
       // DOM elements
-      const statusText = document.getElementById('statusText');
-      const errorDiv = document.getElementById('error');
-      const errorMessage = document.getElementById('errorMessage');
+      const openBtn = document.getElementById('openBtn');
+      const statusEl = document.getElementById('status');
 
       /**
        * Update status display
        */
-      function setStatus(text) {
-        statusText.textContent = text;
-      }
-
-      /**
-       * Show error state
-       */
-      function showError(message) {
-        errorMessage.textContent = message;
-        errorDiv.classList.add('visible');
-        document.getElementById('status').style.display = 'none';
+      function setStatus(text, type) {
+        statusEl.textContent = text;
+        statusEl.className = 'status' + (type ? ' ' + type : '');
       }
 
       /**
@@ -264,78 +217,70 @@ export class SceneLauncherExporter {
             type: 'loadScene',
             scene: SCENE_DATA
           }, '*');
-
           setStatus('Sending scene data...');
         } catch (e) {
           console.error('Failed to send scene:', e);
+          setStatus('Failed to send scene data', 'error');
         }
-      }
-
-      /**
-       * Retry sending scene data periodically
-       */
-      function retrySceneSend() {
-        if (sceneSent || retryCount >= MAX_RETRIES) {
-          if (!sceneSent && retryCount >= MAX_RETRIES) {
-            showError('Editor did not respond. The scene data has been sent but may not have loaded.');
-          }
-          return;
-        }
-
-        retryCount++;
-        sendSceneToEditor();
-        setTimeout(retrySceneSend, RETRY_INTERVAL);
       }
 
       /**
        * Listen for messages from the editor
        */
       window.addEventListener('message', function(event) {
-        // Validate message format
         if (!event.data || event.data.protocol !== PROTOCOL) return;
 
         if (event.data.type === 'editorReady') {
+          // Capture editor window from message source (works for all scenarios)
+          editorWindow = event.source;
           setStatus('Editor ready, sending scene...');
           sendSceneToEditor();
         }
 
         if (event.data.type === 'sceneLoaded') {
           sceneSent = true;
-          setStatus('Scene loaded successfully!');
+          setStatus('Scene loaded successfully!', 'success');
 
           // Auto-close this tab after a brief delay
           setTimeout(function() {
             window.close();
-          }, 1000);
+          }, 1500);
+        }
+
+        if (event.data.type === 'sceneLoadError') {
+          setStatus('Failed to load scene: ' + (event.data.error || 'Unknown error'), 'error');
+          openBtn.disabled = false;
         }
       });
 
       /**
-       * Open the editor
+       * Open the editor (triggered by button click)
        */
       function openEditor() {
+        openBtn.disabled = true;
+        setStatus('Opening editor...');
+
         try {
           // Append a flag to indicate we're loading from a launcher
           const urlWithFlag = EDITOR_URL + (EDITOR_URL.includes('?') ? '&' : '?') + 'launcher=1';
-          editorWindow = window.open(urlWithFlag, '_blank');
+          editorWindow = window.open(urlWithFlag, '_blank', 'noopener=no');
 
           if (!editorWindow) {
-            showError('Pop-up was blocked. Please allow pop-ups or click the button below.');
+            setStatus('Could not open editor. Please allow popups and try again.', 'error');
+            openBtn.disabled = false;
             return;
           }
 
           setStatus('Editor opened, waiting for it to load...');
 
-          // Start retry loop
-          setTimeout(retrySceneSend, 1000);
-
         } catch (e) {
-          showError('Failed to open editor: ' + e.message);
+          setStatus('Failed to open editor: ' + e.message, 'error');
+          openBtn.disabled = false;
         }
       }
 
-      // Start the process
-      openEditor();
+      // Attach click handler to button
+      openBtn.addEventListener('click', openEditor);
     })();
   </script>
 </body>

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.0] - 2026-01-30
+
+### Changed
+
+- **Scene Launcher HTML Export redesigned for reliability**
+  - Replaced auto-popup approach with user-click-triggered flow
+  - New "Open in Editor" button eliminates popup blocker issues (100% reliable)
+  - Simplified launcher UI: prominent button, scene name, status text
+  - Removed retry loop logic (~55 lines of code removed)
+  - Captures `event.source` from postMessage for reliable window reference
+  - Auto-close delay increased to 1.5s for better user feedback
+
+### Removed
+
+- Auto-open popup behavior in scene launcher (caused popup blocker issues)
+- Retry loop logic (`retrySceneSend`, `MAX_RETRIES`, `RETRY_INTERVAL`)
+- Fallback link section and error div UI elements
+- Spinner animation (replaced with status text)
+
+---
+
 ## [0.11.6] - 2026-01-30
 
 ### Added

@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-01-30T21:42:00Z
-> **Version:** 0.11.6
+> **Last Updated:** 2026-01-30T22:18:00Z
+> **Version:** 0.12.0
 > **Status:** Asset System Phase D Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
