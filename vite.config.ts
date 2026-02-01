@@ -6,8 +6,8 @@ import glsl from 'vite-plugin-glsl';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export default defineConfig({
-  base: process.env.NODE_ENV === 'production' ? '/ready-set-render/' : '/',
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/ready-set-render/' : '/',
 
   plugins: [
     glsl({
@@ -44,4 +44,4 @@ export default defineConfig({
     port: 3000,
     open: true
   }
-});
+}));

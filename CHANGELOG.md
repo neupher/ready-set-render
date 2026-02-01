@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.1] - 2026-02-01
+
+### Fixed
+
+- **GitHub Pages deployment 404 errors** - Production builds now correctly use `/ready-set-render/` base path
+  - Changed `vite.config.ts` to use Vite's `command` parameter instead of `process.env.NODE_ENV`
+  - `command === 'build'` is reliably set by Vite during `vite build`, unlike environment variables
+
+---
+
 ## [0.12.0] - 2026-01-30
 
 ### Changed
