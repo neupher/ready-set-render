@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test3 - Ready Set Render</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #e4e4e7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+    .logo {
+      font-size: 48px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+    .scene-name {
+      font-size: 18px;
+      color: #a1a1aa;
+      margin-bottom: 24px;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #3f3f46;
+      border-top-color: #4fc3f7;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .status-text {
+      font-size: 14px;
+      color: #a1a1aa;
+    }
+    .fallback {
+      font-size: 13px;
+      color: #71717a;
+    }
+    .fallback a {
+      color: #4fc3f7;
+      text-decoration: none;
+    }
+    .fallback a:hover {
+      text-decoration: underline;
+    }
+    .error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 24px;
+      display: none;
+    }
+    .error.visible {
+      display: block;
+    }
+    .error-title {
+      color: #ef4444;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .error-message {
+      font-size: 13px;
+      color: #fca5a5;
+    }
+    .manual-btn {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 10px 20px;
+      background: #4fc3f7;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .manual-btn:hover {
+      background: #81d4fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🚀</div>
+    <h1>Opening Scene in Ready Set Render</h1>
+    <p class="scene-name">Test3.scene</p>
+
+    <div class="status" id="status">
+      <div class="spinner"></div>
+      <span class="status-text" id="statusText">Launching editor...</span>
+    </div>
+
+    <p class="fallback">
+      If nothing happens, <a href="https://neupher.github.io/ready-set-render" target="_blank" id="fallbackLink">click here to open the editor</a>
+    </p>
+
+    <div class="error" id="error">
+      <p class="error-title">Could not launch automatically</p>
+      <p class="error-message" id="errorMessage">Pop-up blocked or editor not accessible.</p>
+      <a href="https://neupher.github.io/ready-set-render" target="_blank" class="manual-btn">Open Editor Manually</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // ===== EMBEDDED SCENE DATA =====
+      const SCENE_DATA = JSON.parse('{"uuid":"17347f03-cbed-4075-87aa-f3b39ab4bd6c","name":"Test3","type":"scene","version":1,"created":"2026-01-30T21:43:39.409Z","modified":"2026-01-30T21:51:05.654Z","isBuiltIn":false,"entities":[{"uuid":"535c6667-28b5-4473-8229-0e38f286d23a","name":"Cube.001","type":"Cube","parentUuid":"root","transform":{"position":[0,0,0.5231320297056404],"rotation":[0,0,0],"scale":[1,1,1]},"components":[{"type":"mesh","vertexCount":24,"edgeCount":12,"triangleCount":12,"doubleSided":false},{"type":"material","shaderName":"ForwardShader","color":[1,0,0],"opacity":1,"transparent":false}],"metadata":{"renderMode":"solid"}},{"uuid":"53d1db18-806c-4bb6-b84e-fa97193f32cc","name":"Main Camera","type":"Camera","parentUuid":"root","transform":{"position":[3.9649359633151686,3.46035948187064,3.6574774355794784],"rotation":[0,0,0],"scale":[1,1,1]},"components":[{"type":"camera","fieldOfView":60,"nearClipPlane":0.1,"farClipPlane":100,"target":[0.6480911505401317,-0.7660453766939225,0.4699530349296537]}]},{"uuid":"c98968a8-3ef9-4cd3-a412-a1f083c4e007","name":"Directional Light","type":"DirectionalLight","parentUuid":"root","transform":{"position":[0,-6,0],"rotation":[50,-30,180],"scale":[1,1,1]},"components":[{"type":"light","lightType":"directional","color":[1,0.98,0.95],"intensity":1,"enabled":true}]},{"uuid":"557044ae-70e8-4f7d-b3ab-22654d33bd73","name":"Cube.002","type":"Cube","parentUuid":"root","transform":{"position":[1.848670600260083,-2.262567581044133,0.5231320297056404],"rotation":[0,0,0],"scale":[1,1,1]},"components":[{"type":"mesh","vertexCount":24,"edgeCount":12,"triangleCount":12,"doubleSided":false},{"type":"material","shaderName":"ForwardShader","color":[0.8,0.8,0.8],"opacity":1,"transparent":false}],"metadata":{"renderMode":"solid"}}],"settings":{"ambientColor":[0.1,0.1,0.1],"ambientIntensity":1,"backgroundColor":[0.15,0.15,0.15],"showGrid":true}}');
+
+      // ===== EDITOR CONFIGURATION =====
+      const EDITOR_URL = 'https://neupher.github.io/ready-set-render';
+      const PROTOCOL = 'ready-set-render-scene';
+
+      // State
+      let editorWindow = null;
+      let sceneSent = false;
+      let retryCount = 0;
+      const MAX_RETRIES = 10;
+      const RETRY_INTERVAL = 500;
+
+      // DOM elements
+      const statusText = document.getElementById('statusText');
+      const errorDiv = document.getElementById('error');
+      const errorMessage = document.getElementById('errorMessage');
+
+      /**
+       * Update status display
+       */
+      function setStatus(text) {
+        statusText.textContent = text;
+      }
+
+      /**
+       * Show error state
+       */
+      function showError(message) {
+        errorMessage.textContent = message;
+        errorDiv.classList.add('visible');
+        document.getElementById('status').style.display = 'none';
+      }
+
+      /**
+       * Send scene data to the editor
+       */
+      function sendSceneToEditor() {
+        if (sceneSent || !editorWindow) return;
+
+        try {
+          editorWindow.postMessage({
+            protocol: PROTOCOL,
+            type: 'loadScene',
+            scene: SCENE_DATA
+          }, '*');
+
+          setStatus('Sending scene data...');
+        } catch (e) {
+          console.error('Failed to send scene:', e);
+        }
+      }
+
+      /**
+       * Retry sending scene data periodically
+       */
+      function retrySceneSend() {
+        if (sceneSent || retryCount >= MAX_RETRIES) {
+          if (!sceneSent && retryCount >= MAX_RETRIES) {
+            showError('Editor did not respond. The scene data has been sent but may not have loaded.');
+          }
+          return;
+        }
+
+        retryCount++;
+        sendSceneToEditor();
+        setTimeout(retrySceneSend, RETRY_INTERVAL);
+      }
+
+      /**
+       * Listen for messages from the editor
+       */
+      window.addEventListener('message', function(event) {
+        // Validate message format
+        if (!event.data || event.data.protocol !== PROTOCOL) return;
+
+        if (event.data.type === 'editorReady') {
+          setStatus('Editor ready, sending scene...');
+          sendSceneToEditor();
+        }
+
+        if (event.data.type === 'sceneLoaded') {
+          sceneSent = true;
+          setStatus('Scene loaded successfully!');
+
+          // Auto-close this tab after a brief delay
+          setTimeout(function() {
+            window.close();
+          }, 1000);
+        }
+      });
+
+      /**
+       * Open the editor
+       */
+      function openEditor() {
+        try {
+          // Append a flag to indicate we're loading from a launcher
+          const urlWithFlag = EDITOR_URL + (EDITOR_URL.includes('?') ? '&' : '?') + 'launcher=1';
+          editorWindow = window.open(urlWithFlag, '_blank');
+
+          if (!editorWindow) {
+            showError('Pop-up was blocked. Please allow pop-ups or click the button below.');
+            return;
+          }
+
+          setStatus('Editor opened, waiting for it to load...');
+
+          // Start retry loop
+          setTimeout(retrySceneSend, 1000);
+
+        } catch (e) {
+          showError('Failed to open editor: ' + e.message);
+        }
+      }
+
+      // Start the process
+      openEditor();
+    })();
+  </script>
+</body>
+</html>
