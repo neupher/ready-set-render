@@ -45,7 +45,8 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 3000,
     open: false,
-    host: true
+    host: true,
+    allowedHosts: ['dev.tapaniheikkinen.com']
   },
 
   // Preview server (for testing production builds locally)
