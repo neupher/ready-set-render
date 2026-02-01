@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.2] - 2026-02-01
+
+### Added
+
+- **Remote dev server support** - Dev server now works with code-server proxy
+  - Added `npm run dev:remote` script for running on remote servers
+  - Configured HMR (Hot Module Replacement) for WSS protocol on port 443
+  - Added `host: true` to bind server to all network interfaces
+  - Added preview server configuration for consistency
+
+### Fixed
+
+- **Removed invalid `compress` option** from vite-plugin-glsl configuration
+
+---
+
 ## [0.12.1] - 2026-02-01
 
 ### Fixed

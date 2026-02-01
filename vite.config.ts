@@ -12,8 +12,7 @@ export default defineConfig(({ command }) => ({
   plugins: [
     glsl({
       include: ['**/*.glsl', '**/*.vert', '**/*.frag'],
-      warnDuplicatedImports: true,
-      compress: false
+      warnDuplicatedImports: true
     })
   ],
 
@@ -42,6 +41,19 @@ export default defineConfig(({ command }) => ({
 
   server: {
     port: 3000,
-    open: true
+    open: false, // Don't auto-open on remote server
+    host: true,
+    // HMR configuration for code-server proxy
+    hmr: {
+      // Use the same port as the proxy (code-server handles WebSocket upgrade)
+      clientPort: 443,
+      protocol: 'wss'
+    }
+  },
+
+  // Preview server (for testing production builds locally)
+  preview: {
+    port: 3000,
+    host: true
   }
 }));
