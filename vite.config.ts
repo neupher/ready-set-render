@@ -6,8 +6,16 @@ import glsl from 'vite-plugin-glsl';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/ready-set-render/' : '/',
+export default defineConfig(({ command, mode }) => ({
+  // Base path:
+  // - Production build: /ready-set-render/ (GitHub Pages)
+  // - Dev with proxy (mode=proxy): /proxy/3000/ (code-server)
+  // - Dev local: /
+  base: command === 'build'
+    ? '/ready-set-render/'
+    : mode === 'proxy'
+      ? '/proxy/3000/'
+      : '/',
 
   plugins: [
     glsl({
@@ -43,11 +51,10 @@ export default defineConfig(({ command }) => ({
     port: 3000,
     open: false, // Don't auto-open on remote server
     host: true,
-    // HMR configuration for code-server proxy
+    // HMR configuration for code-server proxy (HTTP on port 8080)
     hmr: {
-      // Use the same port as the proxy (code-server handles WebSocket upgrade)
-      clientPort: 443,
-      protocol: 'wss'
+      clientPort: 8080,
+      protocol: 'ws'
     }
   },
 
