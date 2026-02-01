@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.3] - 2026-02-01
+
+### Fixed
+
+- **UUID generation in non-HTTPS contexts** - App now loads correctly on HTTP connections
+  - Replaced direct `crypto.randomUUID()` calls with `generateUUID()` utility
+  - The utility provides a Math.random fallback when Web Crypto API is unavailable
+  - Fixed 6 files: CameraEntity, SceneGraph, SceneAssetFactory, DirectionalLight, Cube, Sphere
+
+### Changed
+
+- **Simplified Vite server config** - Removed unnecessary HMR settings
+  - Code-server proxy is transparent, no special HMR configuration needed
+
+---
+
 ## [0.12.2] - 2026-02-01
 
 ### Added

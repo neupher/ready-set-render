@@ -33,14 +33,7 @@ import {
   SCENE_ASSET_VERSION,
 } from '@core/assets/interfaces/ISceneAsset';
 import { EntitySerializer } from '@core/serialization/EntitySerializer';
-
-/**
- * Generate a UUID v4.
- * Uses crypto.randomUUID() for secure random generation.
- */
-function generateUUID(): string {
-  return crypto.randomUUID();
-}
+import { generateUUID } from '@utils/uuid';
 
 /**
  * Options for creating a new scene.

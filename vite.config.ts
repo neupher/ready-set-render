@@ -44,13 +44,8 @@ export default defineConfig(({ command }) => ({
 
   server: {
     port: 3000,
-    open: false, // Don't auto-open on remote server
-    host: true,
-    // HMR configuration for code-server proxy (HTTP on port 8080)
-    hmr: {
-      clientPort: 8080,
-      protocol: 'ws'
-    }
+    open: false,
+    host: true
   },
 
   // Preview server (for testing production builds locally)

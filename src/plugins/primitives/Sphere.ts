@@ -29,6 +29,7 @@ import type {
   ISerializedComponent,
 } from '@core/assets/interfaces/ISceneAsset';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
+import { generateUUID } from '@utils/uuid';
 import {
   mat4Multiply,
   mat4Translation,
@@ -97,7 +98,7 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable, 
    * @param options - Sphere generation options
    */
   constructor(id?: string, name?: string, options?: SphereOptions) {
-    this.id = id ?? crypto.randomUUID();
+    this.id = id ?? generateUUID();
     this.entityId = EntityIdGenerator.next();
     this.name = name ?? 'Sphere';
     this.transform = createDefaultTransform();

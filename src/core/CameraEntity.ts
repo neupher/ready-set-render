@@ -31,6 +31,7 @@ import { createDefaultTransform } from './interfaces';
 import { createDefaultCameraComponent } from './interfaces/ICameraComponent';
 import { RenderCameraAdapter } from './RenderCameraAdapter';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
+import { generateUUID } from '@utils/uuid';
 import type { ISerializable } from '@core/assets/interfaces/ISerializable';
 import type {
   ISerializedEntity,
@@ -95,7 +96,7 @@ export class CameraEntity implements IEntity, ISerializable<ISerializedEntity> {
     nearClipPlane?: number;
     farClipPlane?: number;
   }) {
-    this.id = options?.id ?? crypto.randomUUID();
+    this.id = options?.id ?? generateUUID();
     this.entityId = EntityIdGenerator.next();
     this.name = options?.name ?? 'Main Camera';
 

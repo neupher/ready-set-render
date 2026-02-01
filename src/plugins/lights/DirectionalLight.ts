@@ -32,6 +32,7 @@ import type {
   ISerializedComponent,
 } from '@core/assets/interfaces/ISceneAsset';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
+import { generateUUID } from '@utils/uuid';
 import { degToRad } from '@utils/math';
 
 /**
@@ -72,7 +73,7 @@ export class DirectionalLight implements IEntity, ICloneable, ILightDirectionPro
   private readonly components: Map<string, IComponent> = new Map();
 
   constructor(config: DirectionalLightConfig = {}) {
-    this.id = crypto.randomUUID();
+    this.id = generateUUID();
     this.entityId = EntityIdGenerator.next();
     this.name = config.name ?? 'Directional Light';
     this.transform = createDefaultTransform();

@@ -21,6 +21,7 @@
 import { EventBus } from './EventBus';
 import type { ISceneObject, IRenderable, Transform, IScene } from './interfaces';
 import { createDefaultTransform } from './interfaces';
+import { generateUUID } from '@utils/uuid';
 
 /**
  * Type guard to check if an object is renderable.
@@ -33,7 +34,7 @@ function isRenderable(object: ISceneObject): object is IRenderable {
  * Generate a unique ID for scene objects.
  */
 function generateId(): string {
-  return crypto.randomUUID();
+  return generateUUID();
 }
 
 /**

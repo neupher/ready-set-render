@@ -32,6 +32,7 @@ import type {
   ISerializedComponent,
 } from '@core/assets/interfaces/ISceneAsset';
 import { EntityIdGenerator } from '@utils/EntityIdGenerator';
+import { generateUUID } from '@utils/uuid';
 import {
   mat4Multiply,
   mat4Translation,
@@ -78,7 +79,7 @@ export class Cube implements IRenderable, IEntity, IMeshProvider, ICloneable, IS
    * @param name - Display name (defaults to 'Cube')
    */
   constructor(id?: string, name?: string) {
-    this.id = id ?? crypto.randomUUID();
+    this.id = id ?? generateUUID();
     this.entityId = EntityIdGenerator.next();
     this.name = name ?? 'Cube';
     this.transform = createDefaultTransform();
