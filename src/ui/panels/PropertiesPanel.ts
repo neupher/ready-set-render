@@ -2,7 +2,7 @@
  * PropertiesPanel
  *
  * Displays properties of the selected object with tabbed interface.
- * Includes Details tab and Shader Editor tab.
+ * Includes Details tab, Text Editor tab, and Asset Browser tab.
  * Supports Entity Component System for dynamic property display.
  * NOT a plugin - standard UI panel.
  *
@@ -10,7 +10,10 @@
  * ```ts
  * const panel = new PropertiesPanel({
  *   eventBus,
- *   sceneGraph
+ *   sceneGraph,
+ *   assetRegistry,
+ *   materialFactory,
+ *   shaderFactory
  * });
  * container.appendChild(panel.element);
  * ```
@@ -22,12 +25,22 @@ import type { ISceneObject, IMeshComponent, IMaterialComponent, ICameraComponent
 import { isEntity } from '@core/interfaces';
 import { CollapsibleSection } from '../components/CollapsibleSection';
 import { DraggableNumberInput } from '../components/DraggableNumberInput';
+import type { AssetRegistry } from '@core/assets/AssetRegistry';
+import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
+import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
+import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
 
 export interface PropertiesPanelOptions {
   /** Event bus for communication */
   eventBus: EventBus;
   /** Scene graph to read from */
   sceneGraph: SceneGraph;
+  /** Asset registry for Asset Browser tab (optional) */
+  assetRegistry?: AssetRegistry;
+  /** Material factory for Asset Browser tab (optional) */
+  materialFactory?: MaterialAssetFactory;
+  /** Shader factory for Asset Browser tab (optional) */
+  shaderFactory?: ShaderAssetFactory;
 }
 
 /**
@@ -45,6 +58,9 @@ export class PropertiesPanel {
   private readonly shaderTab: HTMLButtonElement;
   private readonly detailsContent: HTMLDivElement;
   private readonly shaderContent: HTMLDivElement;
+  private assetsContent: HTMLDivElement | null = null;
+  private assetsTab: HTMLButtonElement | null = null;
+  private assetBrowserTab: AssetBrowserTab | null = null;
 
   private selectedObject: ISceneObject | null = null;
 
@@ -116,10 +132,38 @@ export class PropertiesPanel {
       </div>
     `;
 
+    // Add Asset Browser tab if dependencies are provided
+    if (options.assetRegistry && options.materialFactory && options.shaderFactory) {
+      // Assets tab trigger
+      const assetsTabBtn = document.createElement('button');
+      assetsTabBtn.className = 'tab-trigger';
+      assetsTabBtn.textContent = 'Assets';
+      assetsTabBtn.addEventListener('click', () => this.switchTab('assets'));
+      this.tabsList.appendChild(assetsTabBtn);
+      this.assetsTab = assetsTabBtn;
+
+      // Assets content
+      const assetsDiv = document.createElement('div');
+      assetsDiv.className = 'tab-content';
+      this.assetsContent = assetsDiv;
+
+      // Create Asset Browser Tab component
+      this.assetBrowserTab = new AssetBrowserTab({
+        eventBus: this.eventBus,
+        assetRegistry: options.assetRegistry,
+        materialFactory: options.materialFactory,
+        shaderFactory: options.shaderFactory,
+      });
+      assetsDiv.appendChild(this.assetBrowserTab.element);
+    }
+
     // Assemble tabs
     this.tabsContainer.appendChild(this.tabsList);
     this.tabsContainer.appendChild(this.detailsContent);
     this.tabsContainer.appendChild(this.shaderContent);
+    if (this.assetsContent) {
+      this.tabsContainer.appendChild(this.assetsContent);
+    }
 
     // Assemble panel
     this.container.appendChild(this.header);
@@ -215,18 +259,19 @@ export class PropertiesPanel {
     }
   }
 
-  private switchTab(tab: 'details' | 'shader'): void {
+  private switchTab(tab: 'details' | 'shader' | 'assets'): void {
+    // Update tab button states
+    this.detailsTab.classList.toggle('active', tab === 'details');
+    this.shaderTab.classList.toggle('active', tab === 'shader');
+    if (this.assetsTab) {
+      this.assetsTab.classList.toggle('active', tab === 'assets');
+    }
 
-    if (tab === 'details') {
-      this.detailsTab.classList.add('active');
-      this.shaderTab.classList.remove('active');
-      this.detailsContent.classList.add('active');
-      this.shaderContent.classList.remove('active');
-    } else {
-      this.detailsTab.classList.remove('active');
-      this.shaderTab.classList.add('active');
-      this.detailsContent.classList.remove('active');
-      this.shaderContent.classList.add('active');
+    // Update content visibility
+    this.detailsContent.classList.toggle('active', tab === 'details');
+    this.shaderContent.classList.toggle('active', tab === 'shader');
+    if (this.assetsContent) {
+      this.assetsContent.classList.toggle('active', tab === 'assets');
     }
   }
 

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.5] - 2026-02-02
+
+### Added
+
+- **Asset System Phase E: Asset Browser UI** - New tab in Properties panel for managing assets
+  - `AssetBrowserTab` component with tree view grouped by asset type (Materials, Shaders)
+  - Toolbar with "+ Material" and "+ Shader" buttons for quick asset creation
+  - Context menus with type-appropriate actions:
+    - Built-in assets: Duplicate only
+    - Custom materials: Rename, Duplicate, Delete
+    - Custom shaders: Edit, Rename, Duplicate, Delete
+  - Built-in assets display first with visual indicators ("built-in" labels, 🔒 lock icons)
+  - Inline rename support via double-click
+  - Unique name generation for new/duplicated assets
+  - EventBus integration for `asset:registered`, `asset:unregistered`, `asset:modified` events
+  - Events emitted: `asset:selected`, `shader:editRequested`
+  - 18 unit tests for AssetBrowserTab component
+  - Total test count increased from 928 to 946 tests
+
+### Changed
+
+- **PropertiesPanel** now accepts optional `assetRegistry`, `materialFactory`, `shaderFactory` dependencies to enable the Assets tab
+
+---
+
 ## [0.12.4] - 2026-02-02
 
 ### Added
