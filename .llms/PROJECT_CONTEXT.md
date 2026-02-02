@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-02T16:58:00Z
-> **Version:** 0.12.5
+> **Last Updated:** 2026-02-02T17:35:00Z
+> **Version:** 0.12.6
 > **Status:** Asset System Phase E Complete | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.12.4)
+## Current State (v0.12.6)
 
 ### What's Working
 
@@ -73,6 +73,14 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `SceneAssetFactory`: Scene CRUD operations, SceneGraph integration
   - All entity types support `ISerializable`: Cube, Sphere, DirectionalLight, CameraEntity
   - Type guards: `isSceneAsset()`, `isSerializedEntity()`
+- **Asset System (Phase E)**: Asset Browser UI
+  - `AssetBrowserTab`: Tree view for browsing materials and shaders
+  - Context menus for create/duplicate/rename/delete operations
+  - Toolbar with "+ Material" and "+ Shader" buttons
+  - **Assets Panel**: Standalone collapsible panel to the right of Properties
+    - Collapses to 28px sidebar with vertical title
+    - Smooth CSS transitions for collapse/expand
+    - Asset system initialized in Application with built-in assets
 - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution

@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.6] - 2026-02-02
+
+### Added
+
+- **Standalone Assets Panel** - New collapsible panel for managing assets
+  - `AssetsPanel` component in `src/ui/panels/AssetsPanel.ts`
+  - Panel appears to the right of Properties panel
+  - Collapsible to a 28px-wide sidebar with vertical "ASSETS" title
+  - Smooth CSS transitions for collapse/expand animation
+  - Collapse button in panel header, expand on click when collapsed
+
+- **Collapsible ResizablePanel** - Enhanced panel component with collapse support
+  - New options: `collapsible`, `collapsed`, `title`, `onCollapseChange`
+  - `collapse()`, `expand()`, `toggle()` methods
+  - Collapsed state shows vertical title and expand arrow icon
+  - Maintains expanded width when toggling between states
+
+- **Asset System Integration** - Asset system now initialized in Application
+  - `AssetRegistry`, `ShaderAssetFactory`, `MaterialAssetFactory` initialized on startup
+  - Built-in shaders (PBR, Unlit) and materials registered automatically
+  - Assets passed to EditorLayout ensuring Assets panel always renders
+
+- **Project Folder Plan** - Implementation plan for project-based asset workflow
+  - New `.llms/PROJECT_FOLDER_PLAN.md` with 5 implementation phases
+  - Defines folder structure, user flow, and technical considerations
+
+### Changed
+
+- **EditorLayout** now accepts `assetRegistry`, `materialFactory`, `shaderFactory` options
+- **Application** initializes asset system and passes to EditorLayout
+
+---
+
 ## [0.12.5] - 2026-02-02
 
 ### Added

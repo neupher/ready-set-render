@@ -22,6 +22,9 @@
 import { EventBus } from '@core/EventBus';
 import { SceneGraph } from '@core/SceneGraph';
 import type { SettingsService } from '@core/SettingsService';
+import type { AssetRegistry } from '@core/assets/AssetRegistry';
+import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
+import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import { PrimitiveRegistry } from '@plugins/primitives';
 import { TopMenuBar, DEFAULT_MENUS } from '../components/TopMenuBar';
 import { ResizablePanel } from '../components/ResizablePanel';
@@ -29,6 +32,7 @@ import { AboutDialog } from '../components/AboutDialog';
 import { HierarchyPanel } from './HierarchyPanel';
 import { ViewportPanel } from './ViewportPanel';
 import { PropertiesPanel, DEFAULT_SHADER_CODE } from './PropertiesPanel';
+import { AssetsPanel } from './AssetsPanel';
 
 export interface EditorLayoutOptions {
   /** Container element for the editor */
@@ -43,6 +47,12 @@ export interface EditorLayoutOptions {
   primitiveRegistry: PrimitiveRegistry;
   /** Settings service for application settings (optional for backward compatibility) */
   settingsService?: SettingsService;
+  /** Asset registry for asset management (optional) */
+  assetRegistry?: AssetRegistry;
+  /** Material factory for creating materials (optional) */
+  materialFactory?: MaterialAssetFactory;
+  /** Shader factory for creating shaders (optional) */
+  shaderFactory?: ShaderAssetFactory;
 }
 
 /**
@@ -56,14 +66,19 @@ export class EditorLayout {
   private readonly sceneGraph: SceneGraph;
   private readonly primitiveRegistry: PrimitiveRegistry;
   private readonly settingsService: SettingsService | null;
+  private readonly assetRegistry: AssetRegistry | null;
+  private readonly materialFactory: MaterialAssetFactory | null;
+  private readonly shaderFactory: ShaderAssetFactory | null;
 
   private root: HTMLDivElement | null = null;
   private menuBar: TopMenuBar | null = null;
   private leftPanel: ResizablePanel | null = null;
   private rightPanel: ResizablePanel | null = null;
+  private assetsResizablePanel: ResizablePanel | null = null;
   private hierarchyPanel: HierarchyPanel | null = null;
   private viewportPanel: ViewportPanel | null = null;
   private propertiesPanel: PropertiesPanel | null = null;
+  private assetsPanel: AssetsPanel | null = null;
   private aboutDialog: AboutDialog | null = null;
 
   private static readonly REPO_URL = 'https://github.com/neupher/ready-set-render';
@@ -75,6 +90,9 @@ export class EditorLayout {
     this.sceneGraph = options.sceneGraph;
     this.primitiveRegistry = options.primitiveRegistry;
     this.settingsService = options.settingsService ?? null;
+    this.assetRegistry = options.assetRegistry ?? null;
+    this.materialFactory = options.materialFactory ?? null;
+    this.shaderFactory = options.shaderFactory ?? null;
   }
 
   /**
@@ -141,6 +159,31 @@ export class EditorLayout {
 
     this.rightPanel.setContent(this.propertiesPanel.element);
     main.appendChild(this.rightPanel.element);
+
+    // Create assets panel (rightmost, collapsible)
+    // Only create if asset dependencies are provided
+    if (this.assetRegistry && this.materialFactory && this.shaderFactory) {
+      this.assetsResizablePanel = new ResizablePanel({
+        side: 'right',
+        defaultWidth: 280,
+        minWidth: 200,
+        maxWidth: 400,
+        collapsible: true,
+        collapsed: false,
+        title: 'Assets',
+        onResize: (width) => this.eventBus.emit('layout:assetsPanelResize', { width }),
+      });
+
+      this.assetsPanel = new AssetsPanel({
+        eventBus: this.eventBus,
+        assetRegistry: this.assetRegistry,
+        materialFactory: this.materialFactory,
+        shaderFactory: this.shaderFactory,
+      });
+
+      this.assetsResizablePanel.setContent(this.assetsPanel.element);
+      main.appendChild(this.assetsResizablePanel.element);
+    }
 
     // Assemble
     this.root.appendChild(main);

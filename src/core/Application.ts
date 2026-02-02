@@ -32,6 +32,13 @@ import { EditorLayout } from '@ui/panels/EditorLayout';
 import { SettingsWindow } from '@ui/windows/SettingsWindow';
 
 import { CubeFactory, SphereFactory, PrimitiveRegistry } from '@plugins/primitives';
+import {
+  AssetRegistry,
+  ShaderAssetFactory,
+  MaterialAssetFactory,
+  BUILT_IN_SHADERS,
+  BUILT_IN_MATERIALS,
+} from '@core/assets';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { LightGizmoRenderer } from '@plugins/renderers/gizmos/LightGizmoRenderer';
@@ -155,6 +162,20 @@ export class Application {
     this.settingsService = new SettingsService({ eventBus: this.eventBus });
     console.log('Settings service initialized');
 
+    // Initialize asset system
+    const assetRegistry = new AssetRegistry(this.eventBus);
+    const shaderFactory = new ShaderAssetFactory();
+    const materialFactory = new MaterialAssetFactory();
+
+    // Register built-in shaders and materials
+    for (const shader of BUILT_IN_SHADERS) {
+      assetRegistry.register(shader);
+    }
+    for (const material of BUILT_IN_MATERIALS) {
+      assetRegistry.register(material);
+    }
+    console.log('Asset system initialized with built-in shaders and materials');
+
     // Create default Cube primitive for testing
     const defaultCube = this.primitiveRegistry.create('Cube');
     if (defaultCube) {
@@ -181,6 +202,9 @@ export class Application {
       sceneGraph: this.sceneGraph,
       primitiveRegistry: this.primitiveRegistry,
       settingsService: this.settingsService,
+      assetRegistry,
+      materialFactory,
+      shaderFactory,
     });
     this.layout.initialize();
     console.log('UI layout initialized');

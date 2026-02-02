@@ -13,5 +13,8 @@ export type { ViewportPanelOptions } from './ViewportPanel';
 export { PropertiesPanel, DEFAULT_SHADER_CODE } from './PropertiesPanel';
 export type { PropertiesPanelOptions } from './PropertiesPanel';
 
+export { AssetsPanel } from './AssetsPanel';
+export type { AssetsPanelOptions } from './AssetsPanel';
+
 export { EditorLayout } from './EditorLayout';
 export type { EditorLayoutOptions } from './EditorLayout';

@@ -1016,6 +1016,37 @@ body {
   font-style: italic;
 }
 
+/* ======================================
+   Collapsible Panel Styles
+   ====================================== */
+
+.resizable-panel.collapsed {
+  background: var(--bg-primary);
+  border-color: var(--border-primary);
+}
+
+.resizable-panel.collapsed:hover {
+  background: var(--bg-secondary);
+}
+
+.resizable-panel-collapsed-bar {
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.resizable-panel-collapsed-bar:hover {
+  background: var(--bg-hover);
+}
+
+.resizable-panel-collapsed-bar:hover .resizable-panel-expand-icon {
+  color: var(--text-primary);
+}
+
+.resizable-panel-collapse-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--border-focus);
+}
+
 /* Settings Window Resize Handles */
 .settings-resize-handle {
   position: absolute;
