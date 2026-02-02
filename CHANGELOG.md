@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.12.4] - 2026-02-02
+
+### Added
+
+- **Phase D.9: EntitySerializer & SceneAssetFactory unit tests** - Comprehensive test coverage for scene serialization
+  - `EntitySerializer.test.ts` (40 tests): Serialization/deserialization for Cube, Sphere, DirectionalLight, CameraEntity
+  - `SceneAssetFactory.test.ts` (64 tests): Scene creation, SceneGraph integration, duplication, JSON round-trips
+  - Tests cover hierarchy reconstruction, parent-child relationships, error handling
+  - Total test count increased from 824 to 928 tests
+
+---
+
 ## [0.12.3] - 2026-02-01
 
 ### Fixed

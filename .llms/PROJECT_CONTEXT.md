@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-01T22:07:00Z
-> **Version:** 0.12.3
-> **Status:** Asset System Phase D Complete | Phase 6 In Progress (6.9-6.10 remaining)
+> **Last Updated:** 2026-02-02T15:30:00Z
+> **Version:** 0.12.4
+> **Status:** Asset System Phase D Complete + D.9 Tests | Phase 6 In Progress (6.9-6.10 remaining)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.11.5)
+## Current State (v0.12.4)
 
 ### What's Working
 
@@ -118,7 +118,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **824 tests passing** (89 new in Phase C)
+- **928 tests passing** (104 new in Phase D.9)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -180,10 +180,9 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Phase D.9: Serialization Tests** - Unit tests for EntitySerializer, SceneAssetFactory
-2. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
-3. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
-4. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+1. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
+2. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
+3. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 
