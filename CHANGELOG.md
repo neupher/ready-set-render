@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - localStorage persistence for "last opened project"
   - `IProjectService` interface with full type definitions
   - Project events: `project:opened`, `project:closed`
+  - Comprehensive unit tests for ProjectService
 
 - **Two-Section Asset Browser** - Reorganized asset panel with clear separation
   - **Built-in** section: Immutable framework assets (shaders, materials)
@@ -37,6 +38,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Users must open a project before creating new assets
 - **FileSystemAssetStore** - Added `getRootHandle()` method for external access
 - **EditorLayout** - Now accepts and passes `projectService` to AssetsPanel
+
+### Fixed
+
+- Removed unused type imports from test files (`IProjectMetadata`, `IMaterialAsset`, `IShaderAsset`)
 
 ---
 

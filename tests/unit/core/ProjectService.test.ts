@@ -12,7 +12,6 @@ import { FileSystemAssetStore } from '@core/assets/FileSystemAssetStore';
 import { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import { BUILT_IN_SHADERS } from '@core/assets/BuiltInShaders';
 import { BUILT_IN_MATERIALS } from '@core/assets/BuiltInMaterials';
-import type { IProjectMetadata } from '@core/interfaces/IProjectService';
 
 /**
  * Create a mock FileSystemAssetStore for testing.

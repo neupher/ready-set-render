@@ -1,6 +1,6 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-03T15:18:00Z
+> **Last Updated:** 2026-02-03T17:34:00Z
 > **Version:** 0.13.0
 > **Status:** Asset System Phase E Complete | Project Folder Feature (Phases 1-4) Complete
 
@@ -137,7 +137,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **928 tests passing** (104 new in Phase D.9)
+- **928 tests passing** (includes comprehensive ProjectService unit tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -199,8 +199,8 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ## Next Steps (Recommended Order)
 
-1. **Asset System Phase E**: Asset Browser UI (new tab in Properties panel)
-2. **Phase 6.9: Live Shader Editor** - After Asset System Phase E
+1. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
+2. **Phase 6.9: Live Shader Editor** - Monaco-based shader editing with live preview
 3. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---

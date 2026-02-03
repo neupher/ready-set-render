@@ -1,6 +1,6 @@
 # Project Folder Feature Plan
 
-> **Last Updated:** 2026-02-03T15:18:00Z
+> **Last Updated:** 2026-02-03T17:34:00Z
 > **Version:** 0.13.0
 > **Status:** Phases 1-4 Complete
 
@@ -180,11 +180,11 @@ Already defined in Asset System:
 
 ## Success Criteria
 
-- [ ] User can open a folder as a project
-- [ ] Assets panel shows project contents
-- [ ] New assets are saved to project folder
-- [ ] Project persists across browser sessions
-- [ ] Clear error messages for unsupported browsers
+- [x] User can open a folder as a project
+- [x] Assets panel shows project contents (two-section: Built-in / Project)
+- [ ] New assets are saved to project folder (Phase 5: Auto-Save)
+- [ ] Project persists across browser sessions (localStorage for path only, full restore pending)
+- [x] Clear error messages for unsupported browsers
 
 ---
 

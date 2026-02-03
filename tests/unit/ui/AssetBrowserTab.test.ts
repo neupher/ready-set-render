@@ -12,8 +12,6 @@ import { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import { BUILT_IN_SHADERS } from '@core/assets/BuiltInShaders';
 import { BUILT_IN_MATERIALS } from '@core/assets/BuiltInMaterials';
-import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
-import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
 
 console.log('Test suite starting...');
 
