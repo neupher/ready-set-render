@@ -2,6 +2,10 @@
  * AssetsPanel
  *
  * Standalone panel for browsing and managing assets (materials, shaders).
+ * Displays two sections:
+ * - Built-in: Immutable framework assets
+ * - Project: User's project assets (when a project is open)
+ *
  * Can be collapsed to the side to maximize workspace area.
  * NOT a plugin - standard UI panel.
  *
@@ -11,7 +15,8 @@
  *   eventBus,
  *   assetRegistry,
  *   materialFactory,
- *   shaderFactory
+ *   shaderFactory,
+ *   projectService
  * });
  * container.appendChild(assetsPanel.element);
  * ```
@@ -21,6 +26,7 @@ import type { EventBus } from '@core/EventBus';
 import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
+import type { ProjectService } from '@core/ProjectService';
 import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
 
 /**
@@ -35,6 +41,8 @@ export interface AssetsPanelOptions {
   materialFactory: MaterialAssetFactory;
   /** Factory for creating shaders */
   shaderFactory: ShaderAssetFactory;
+  /** Project service for project-based workflow (optional) */
+  projectService?: ProjectService;
 }
 
 /**
@@ -79,6 +87,7 @@ export class AssetsPanel {
       assetRegistry: options.assetRegistry,
       materialFactory: options.materialFactory,
       shaderFactory: options.shaderFactory,
+      projectService: options.projectService,
     });
     this.content.appendChild(this.assetBrowserTab.element);
 

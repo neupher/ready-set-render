@@ -303,6 +303,8 @@ export const DEFAULT_MENUS: Menu[] = [
       { label: 'Export as HTML', separator: true },
       { label: 'Save', shortcut: 'Ctrl+S' },
       { label: 'Save As', shortcut: 'Ctrl+Shift+S', separator: true },
+      { label: 'Open Project' },
+      { label: 'Close Project', separator: true },
       { label: 'Settings', shortcut: 'Ctrl+,' }
     ]
   },

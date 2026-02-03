@@ -90,6 +90,13 @@ export class FileSystemAssetStore implements IAssetStore {
   constructor(private readonly eventBus: EventBus) {}
 
   /**
+   * Get the root directory handle (for external access like ProjectService).
+   */
+  getRootHandle(): FileSystemDirectoryHandle | null {
+    return this.rootHandle;
+  }
+
+  /**
    * Whether a folder is currently open.
    */
   get isOpen(): boolean {

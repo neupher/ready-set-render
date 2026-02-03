@@ -2,8 +2,9 @@
  * AssetBrowserTab
  *
  * A tab component for browsing and managing assets (materials, shaders).
- * Displays assets grouped by type in a tree view with actions like
- * create, duplicate, rename, and delete.
+ * Displays assets in two sections:
+ * - Built-in: Immutable framework assets (shaders, materials)
+ * - Project: User's project assets (when a project is open)
  *
  * @example
  * ```ts
@@ -11,7 +12,8 @@
  *   eventBus,
  *   assetRegistry,
  *   materialFactory,
- *   shaderFactory
+ *   shaderFactory,
+ *   projectService  // optional
  * });
  * container.appendChild(tab.element);
  * ```
@@ -24,6 +26,8 @@ import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
 import type { IAsset } from '@core/assets/interfaces/IAsset';
+import type { ProjectService } from '@core/ProjectService';
+import type { ProjectOpenedEvent, ProjectClosedEvent } from '@core/interfaces/IProjectService';
 import { BUILT_IN_SHADER_IDS } from '@core/assets/BuiltInShaders';
 import { TreeView, TreeNode, ContextMenuData } from '../components/TreeView';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
@@ -40,6 +44,8 @@ export interface AssetBrowserTabOptions {
   materialFactory: MaterialAssetFactory;
   /** Factory for creating shaders */
   shaderFactory: ShaderAssetFactory;
+  /** Project service for project-based workflow (optional) */
+  projectService?: ProjectService;
 }
 
 /**
@@ -57,11 +63,18 @@ export interface ShaderEditRequestedEvent {
 }
 
 /**
- * Special node IDs for category groups.
+ * Special node IDs for section and category groups.
  */
+const SECTION_IDS = {
+  BUILT_IN: '__section_builtin__',
+  PROJECT: '__section_project__',
+} as const;
+
 const CATEGORY_IDS = {
-  MATERIALS: '__category_materials__',
-  SHADERS: '__category_shaders__',
+  BUILTIN_MATERIALS: '__category_builtin_materials__',
+  BUILTIN_SHADERS: '__category_builtin_shaders__',
+  PROJECT_MATERIALS: '__category_project_materials__',
+  PROJECT_SHADERS: '__category_project_shaders__',
 } as const;
 
 /**
@@ -74,16 +87,25 @@ export class AssetBrowserTab {
   private readonly assetRegistry: AssetRegistry;
   private readonly materialFactory: MaterialAssetFactory;
   private readonly shaderFactory: ShaderAssetFactory;
+  private readonly projectService?: ProjectService;
   private readonly treeView: TreeView;
-  private readonly toolbar: HTMLDivElement;
+  private readonly noProjectMessage: HTMLDivElement;
   private contextMenu: ContextMenu | null = null;
-  private expandedCategories = new Set<string>([CATEGORY_IDS.MATERIALS, CATEGORY_IDS.SHADERS]);
+  private expandedCategories = new Set<string>([
+    SECTION_IDS.BUILT_IN,
+    SECTION_IDS.PROJECT,
+    CATEGORY_IDS.BUILTIN_MATERIALS,
+    CATEGORY_IDS.BUILTIN_SHADERS,
+    CATEGORY_IDS.PROJECT_MATERIALS,
+    CATEGORY_IDS.PROJECT_SHADERS,
+  ]);
 
   constructor(options: AssetBrowserTabOptions) {
     this.eventBus = options.eventBus;
     this.assetRegistry = options.assetRegistry;
     this.materialFactory = options.materialFactory;
     this.shaderFactory = options.shaderFactory;
+    this.projectService = options.projectService;
 
     // Create container
     this.container = document.createElement('div');
@@ -95,9 +117,9 @@ export class AssetBrowserTab {
       overflow: hidden;
     `;
 
-    // Create toolbar
-    this.toolbar = this.createToolbar();
-    this.container.appendChild(this.toolbar);
+    // Create "no project open" message
+    this.noProjectMessage = this.createNoProjectMessage();
+    this.container.appendChild(this.noProjectMessage);
 
     // Create tree view
     this.treeView = new TreeView({
@@ -144,111 +166,168 @@ export class AssetBrowserTab {
   }
 
   /**
-   * Create the toolbar with action buttons.
+   * Create the "No Project Open" message.
    */
-  private createToolbar(): HTMLDivElement {
-    const toolbar = document.createElement('div');
-    toolbar.className = 'asset-browser-toolbar';
-    toolbar.style.cssText = `
-      display: flex;
-      gap: var(--spacing-xs);
-      padding: var(--spacing-sm);
-      border-bottom: 1px solid var(--border-primary);
-      flex-shrink: 0;
+  private createNoProjectMessage(): HTMLDivElement {
+    const container = document.createElement('div');
+    container.className = 'no-project-message';
+    container.style.cssText = `
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-lg);
+      text-align: center;
+      color: var(--text-secondary);
+      gap: var(--spacing-md);
     `;
 
-    // New Material button
-    const newMaterialBtn = this.createToolbarButton('+ Material', 'Create new material', () => {
-      this.createNewMaterial();
-    });
-    toolbar.appendChild(newMaterialBtn);
+    const text = document.createElement('p');
+    text.textContent = 'No project open';
+    text.style.cssText = `
+      margin: 0;
+      font-size: var(--font-size-sm);
+    `;
+    container.appendChild(text);
 
-    // New Shader button
-    const newShaderBtn = this.createToolbarButton('+ Shader', 'Create new shader', () => {
-      this.createNewShader();
-    });
-    toolbar.appendChild(newShaderBtn);
-
-    return toolbar;
-  }
-
-  /**
-   * Create a toolbar button.
-   */
-  private createToolbarButton(
-    text: string,
-    title: string,
-    onClick: () => void
-  ): HTMLButtonElement {
-    const button = document.createElement('button');
-    button.className = 'asset-browser-btn';
-    button.textContent = text;
-    button.title = title;
-    button.style.cssText = `
-      padding: var(--spacing-xs) var(--spacing-sm);
-      background: var(--bg-secondary);
+    const openBtn = document.createElement('button');
+    openBtn.textContent = 'Open Project Folder';
+    openBtn.title = 'Select a folder to use as your project';
+    openBtn.style.cssText = `
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--accent-primary);
       color: var(--text-primary);
-      border: 1px solid var(--border-primary);
+      border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: var(--font-size-sm);
       transition: background-color 0.15s ease;
     `;
-    button.addEventListener('mouseenter', () => {
-      button.style.background = 'var(--bg-hover)';
+    openBtn.addEventListener('mouseenter', () => {
+      openBtn.style.background = 'var(--accent-hover)';
     });
-    button.addEventListener('mouseleave', () => {
-      button.style.background = 'var(--bg-secondary)';
+    openBtn.addEventListener('mouseleave', () => {
+      openBtn.style.background = 'var(--accent-primary)';
     });
-    button.addEventListener('click', onClick);
-    return button;
+    openBtn.addEventListener('click', () => {
+      this.eventBus.emit('command:openProject');
+    });
+    container.appendChild(openBtn);
+
+    return container;
   }
 
   /**
    * Build tree data from the asset registry.
+   * Separates assets into Built-in and Project sections.
    */
   private buildTreeData(): TreeNode[] {
     const materials = this.assetRegistry.getByType<IMaterialAsset>('material');
     const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
 
-    // Sort by name, with built-ins first
-    const sortAssets = <T extends IAsset & { isBuiltIn: boolean }>(assets: T[]): T[] => {
-      return [...assets].sort((a, b) => {
-        if (a.isBuiltIn !== b.isBuiltIn) {
-          return a.isBuiltIn ? -1 : 1;
-        }
-        return a.name.localeCompare(b.name);
-      });
+    // Separate built-in from user assets
+    const builtInMaterials = materials.filter((m) => m.isBuiltIn);
+    const builtInShaders = shaders.filter((s) => s.isBuiltIn);
+    const userMaterials = materials.filter((m) => !m.isBuiltIn);
+    const userShaders = shaders.filter((s) => !s.isBuiltIn);
+
+    // Sort alphabetically
+    const sortByName = <T extends IAsset>(assets: T[]): T[] => {
+      return [...assets].sort((a, b) => a.name.localeCompare(b.name));
     };
 
-    const materialNodes: TreeNode[] = sortAssets(materials).map((m) => ({
+    // Build Built-in section nodes
+    const builtInMaterialNodes: TreeNode[] = sortByName(builtInMaterials).map((m) => ({
       id: m.uuid,
-      name: m.isBuiltIn ? `${m.name} (built-in)` : m.name,
+      name: m.name,
       type: 'material' as const,
     }));
 
-    const shaderNodes: TreeNode[] = sortAssets(shaders).map((s) => ({
+    const builtInShaderNodes: TreeNode[] = sortByName(builtInShaders).map((s) => ({
       id: s.uuid,
-      name: s.isBuiltIn ? `${s.name} (built-in) 🔒` : s.name,
-      type: 'texture' as const, // Using 'texture' icon for shaders (grid icon)
+      name: `${s.name} 🔒`,
+      type: 'texture' as const,
     }));
 
-    return [
+    // Build Project section nodes
+    const projectMaterialNodes: TreeNode[] = sortByName(userMaterials).map((m) => ({
+      id: m.uuid,
+      name: m.name,
+      type: 'material' as const,
+    }));
+
+    const projectShaderNodes: TreeNode[] = sortByName(userShaders).map((s) => ({
+      id: s.uuid,
+      name: s.name,
+      type: 'texture' as const,
+    }));
+
+    const isProjectOpen = this.projectService?.isProjectOpen ?? false;
+    const projectName = this.projectService?.projectName ?? 'Project';
+
+    // Update no-project message visibility
+    this.updateNoProjectMessageVisibility(!isProjectOpen);
+
+    // Build the tree structure
+    const tree: TreeNode[] = [
+      // Built-in Section (always visible)
       {
-        id: CATEGORY_IDS.MATERIALS,
-        name: 'Materials',
+        id: SECTION_IDS.BUILT_IN,
+        name: 'Built-in',
         type: 'group' as const,
-        children: materialNodes,
         selectable: false,
+        children: [
+          {
+            id: CATEGORY_IDS.BUILTIN_MATERIALS,
+            name: 'Materials',
+            type: 'group' as const,
+            selectable: false,
+            children: builtInMaterialNodes,
+          },
+          {
+            id: CATEGORY_IDS.BUILTIN_SHADERS,
+            name: 'Shaders',
+            type: 'group' as const,
+            selectable: false,
+            children: builtInShaderNodes,
+          },
+        ],
       },
+      // Project Section (shows content when project open, placeholder otherwise)
       {
-        id: CATEGORY_IDS.SHADERS,
-        name: 'Shaders',
+        id: SECTION_IDS.PROJECT,
+        name: isProjectOpen ? projectName : 'Project',
         type: 'group' as const,
-        children: shaderNodes,
         selectable: false,
+        children: isProjectOpen
+          ? [
+              {
+                id: CATEGORY_IDS.PROJECT_MATERIALS,
+                name: 'Materials',
+                type: 'group' as const,
+                selectable: false,
+                children: projectMaterialNodes,
+              },
+              {
+                id: CATEGORY_IDS.PROJECT_SHADERS,
+                name: 'Shaders',
+                type: 'group' as const,
+                selectable: false,
+                children: projectShaderNodes,
+              },
+            ]
+          : [],
       },
     ];
+
+    return tree;
+  }
+
+  /**
+   * Update the visibility of the no-project message.
+   */
+  private updateNoProjectMessageVisibility(show: boolean): void {
+    this.noProjectMessage.style.display = show ? 'flex' : 'none';
   }
 
   /**
@@ -268,6 +347,15 @@ export class AssetBrowserTab {
       this.refresh();
     });
 
+    // Listen for project changes
+    this.eventBus.on<ProjectOpenedEvent>('project:opened', () => {
+      this.refresh();
+    });
+
+    this.eventBus.on<ProjectClosedEvent>('project:closed', () => {
+      this.refresh();
+    });
+
     // Close context menu on click outside
     document.addEventListener('click', () => {
       this.closeContextMenu();
@@ -278,8 +366,8 @@ export class AssetBrowserTab {
    * Handle asset selection.
    */
   private handleAssetSelect(id: string, _node: TreeNode): void {
-    // Ignore category nodes
-    if (id === CATEGORY_IDS.MATERIALS || id === CATEGORY_IDS.SHADERS) {
+    // Ignore section and category nodes
+    if (this.isSectionOrCategoryId(id)) {
       return;
     }
 
@@ -290,15 +378,61 @@ export class AssetBrowserTab {
   }
 
   /**
+   * Check if an ID is a section or category ID (not an actual asset).
+   */
+  private isSectionOrCategoryId(id: string): boolean {
+    return (
+      id === SECTION_IDS.BUILT_IN ||
+      id === SECTION_IDS.PROJECT ||
+      id === CATEGORY_IDS.BUILTIN_MATERIALS ||
+      id === CATEGORY_IDS.BUILTIN_SHADERS ||
+      id === CATEGORY_IDS.PROJECT_MATERIALS ||
+      id === CATEGORY_IDS.PROJECT_SHADERS
+    );
+  }
+
+  /**
    * Handle context menu request.
    */
   private handleContextMenu(data: ContextMenuData): void {
     this.closeContextMenu();
 
     const { node, x, y } = data;
+    const isProjectOpen = this.projectService?.isProjectOpen ?? false;
 
-    // Ignore category nodes
-    if (node.id === CATEGORY_IDS.MATERIALS || node.id === CATEGORY_IDS.SHADERS) {
+    // Handle context menu on Project section category nodes (for creating assets)
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_MATERIALS) {
+      this.contextMenu = new ContextMenu();
+      this.contextMenu.show({
+        items: [
+          {
+            label: 'Create Material',
+            action: () => this.createNewMaterial(),
+          },
+        ],
+        x,
+        y,
+      });
+      return;
+    }
+
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_SHADERS) {
+      this.contextMenu = new ContextMenu();
+      this.contextMenu.show({
+        items: [
+          {
+            label: 'Create Shader',
+            action: () => this.createNewShader(),
+          },
+        ],
+        x,
+        y,
+      });
+      return;
+    }
+
+    // Ignore other section and category nodes
+    if (this.isSectionOrCategoryId(node.id)) {
       return;
     }
 

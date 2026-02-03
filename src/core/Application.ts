@@ -36,9 +36,11 @@ import {
   AssetRegistry,
   ShaderAssetFactory,
   MaterialAssetFactory,
+  FileSystemAssetStore,
   BUILT_IN_SHADERS,
   BUILT_IN_MATERIALS,
 } from '@core/assets';
+import { ProjectService } from '@core/ProjectService';
 import { LineRenderer } from '@plugins/renderers/line/LineRenderer';
 import { ForwardRenderer } from '@plugins/renderers/forward/ForwardRenderer';
 import { LightGizmoRenderer } from '@plugins/renderers/gizmos/LightGizmoRenderer';
@@ -166,6 +168,14 @@ export class Application {
     const assetRegistry = new AssetRegistry(this.eventBus);
     const shaderFactory = new ShaderAssetFactory();
     const materialFactory = new MaterialAssetFactory();
+    const assetStore = new FileSystemAssetStore(this.eventBus);
+
+    // Initialize project service
+    const projectService = new ProjectService({
+      eventBus: this.eventBus,
+      assetRegistry,
+      assetStore,
+    });
 
     // Register built-in shaders and materials
     for (const shader of BUILT_IN_SHADERS) {
@@ -175,6 +185,9 @@ export class Application {
       assetRegistry.register(material);
     }
     console.log('Asset system initialized with built-in shaders and materials');
+
+    // Setup project commands
+    this.setupProjectCommands(projectService);
 
     // Create default Cube primitive for testing
     const defaultCube = this.primitiveRegistry.create('Cube');
@@ -205,6 +218,7 @@ export class Application {
       assetRegistry,
       materialFactory,
       shaderFactory,
+      projectService,
     });
     this.layout.initialize();
     console.log('UI layout initialized');
@@ -562,6 +576,31 @@ export class Application {
       this.renderCamera.setAspect(data.aspectRatio);
       this.lineRenderer.resize(data.width, data.height);
       this.forwardRenderer.resize(data.width, data.height);
+    });
+  }
+
+  /**
+   * Set up project command handlers for project management.
+   */
+  private setupProjectCommands(projectService: ProjectService): void {
+    // Open Project (File menu or Asset Browser button)
+    this.eventBus.on('command:openProject', async () => {
+      const result = await projectService.openProject();
+      if (result.success) {
+        console.log(`Opened project: ${result.projectName} (${result.assetsDiscovered} assets discovered)`);
+      } else if (result.error) {
+        console.error('Failed to open project:', result.error);
+      }
+    });
+
+    // Close Project
+    this.eventBus.on('command:closeProject', async () => {
+      const result = await projectService.closeProject();
+      if (result.success) {
+        console.log('Project closed');
+      } else if (result.error) {
+        console.error('Failed to close project:', result.error);
+      }
     });
   }
 }

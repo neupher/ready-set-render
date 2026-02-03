@@ -25,6 +25,7 @@ import type { SettingsService } from '@core/SettingsService';
 import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
+import type { ProjectService } from '@core/ProjectService';
 import { PrimitiveRegistry } from '@plugins/primitives';
 import { TopMenuBar, DEFAULT_MENUS } from '../components/TopMenuBar';
 import { ResizablePanel } from '../components/ResizablePanel';
@@ -53,6 +54,8 @@ export interface EditorLayoutOptions {
   materialFactory?: MaterialAssetFactory;
   /** Shader factory for creating shaders (optional) */
   shaderFactory?: ShaderAssetFactory;
+  /** Project service for project-based workflow (optional) */
+  projectService?: ProjectService;
 }
 
 /**
@@ -69,6 +72,7 @@ export class EditorLayout {
   private readonly assetRegistry: AssetRegistry | null;
   private readonly materialFactory: MaterialAssetFactory | null;
   private readonly shaderFactory: ShaderAssetFactory | null;
+  private readonly projectService: ProjectService | null;
 
   private root: HTMLDivElement | null = null;
   private menuBar: TopMenuBar | null = null;
@@ -93,6 +97,7 @@ export class EditorLayout {
     this.assetRegistry = options.assetRegistry ?? null;
     this.materialFactory = options.materialFactory ?? null;
     this.shaderFactory = options.shaderFactory ?? null;
+    this.projectService = options.projectService ?? null;
   }
 
   /**
@@ -179,6 +184,7 @@ export class EditorLayout {
         assetRegistry: this.assetRegistry,
         materialFactory: this.materialFactory,
         shaderFactory: this.shaderFactory,
+        projectService: this.projectService ?? undefined,
       });
 
       this.assetsResizablePanel.setContent(this.assetsPanel.element);
@@ -273,6 +279,12 @@ export class EditorLayout {
         break;
       case 'Import':
         this.eventBus.emit('command:import');
+        break;
+      case 'Open Project':
+        this.eventBus.emit('command:openProject');
+        break;
+      case 'Close Project':
+        this.eventBus.emit('command:closeProject');
         break;
       case 'Render':
         this.eventBus.emit('command:render');

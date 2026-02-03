@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.13.0] - 2026-02-03
+
+### Added
+
+- **Project Folder Feature (Phases 1-4)** - Project-based workflow for asset management
+  - `ProjectService` - Core service for managing project folders
+    - Open/close project folders via File System Access API
+    - Automatic asset discovery and registration
+    - Project metadata stored in `.ready-set-render/project.json`
+    - localStorage persistence for "last opened project"
+  - `IProjectService` interface with full type definitions
+  - Project events: `project:opened`, `project:closed`
+
+- **Two-Section Asset Browser** - Reorganized asset panel with clear separation
+  - **Built-in** section: Immutable framework assets (shaders, materials)
+  - **Project** section: User's project assets (when project is open)
+  - "No project open" message with "Open Project Folder" button
+  - Right-click on Project categories to create new assets
+
+- **File Menu Project Commands**
+  - "Open Project" - Opens folder picker to select project directory
+  - "Close Project" - Closes current project and clears user assets
+
+### Changed
+
+- **Asset Browser** - Removed toolbar with Create buttons
+  - Assets now created via right-click context menu on Project section
+  - Users must open a project before creating new assets
+- **FileSystemAssetStore** - Added `getRootHandle()` method for external access
+- **EditorLayout** - Now accepts and passes `projectService` to AssetsPanel
+
+---
+
 ## [0.12.6] - 2026-02-02
 
 ### Added

@@ -1,8 +1,8 @@
 # Project Folder Feature Plan
 
-> **Last Updated:** 2026-02-02T17:35:00Z
-> **Version:** 0.1.0
-> **Status:** Planning
+> **Last Updated:** 2026-02-03T15:18:00Z
+> **Version:** 0.13.0
+> **Status:** Phases 1-4 Complete
 
 ---
 
@@ -26,13 +26,13 @@ Allow users to specify a local folder as their "project folder" - the root direc
 1. **First Launch (No Project)**
    - Assets panel shows "No Project Open"
    - Prompt to "Open Project Folder" or "Create New Project"
-   
+
 2. **Open/Create Project**
    - File → Open Project Folder (or button in Assets panel)
    - Uses File System Access API `showDirectoryPicker()`
    - Scans folder for existing `.material.json`, `.shader.json`, `.scene.json` files
    - Registers found assets in AssetRegistry
-   
+
 3. **Working with Project**
    - New assets are saved to project folder automatically
    - Asset changes are persisted on save
@@ -53,12 +53,12 @@ interface ProjectService {
   isProjectOpen: boolean;
   projectPath: string | null;
   projectHandle: FileSystemDirectoryHandle | null;
-  
+
   // Operations
   openProject(): Promise<ProjectOpenResult>;
   closeProject(): Promise<void>;
   createProject(name: string): Promise<ProjectOpenResult>;
-  
+
   // Asset operations
   scanForAssets(): Promise<IAsset[]>;
   saveAsset(asset: IAsset): Promise<void>;
@@ -100,7 +100,7 @@ Update Assets panel for project workflow:
 1. **No Project State**
    - Show "Open Project" button
    - Disable asset creation buttons
-   
+
 2. **Project Open State**
    - Show project name in header
    - Enable asset operations
@@ -167,11 +167,11 @@ Already defined in Asset System:
    - ProjectService operations (mock FileSystemDirectoryHandle)
    - Asset scanning logic
    - File path generation
-   
+
 2. **Integration Tests**
    - Open/close project flow
    - Asset create → save → reload cycle
-   
+
 3. **Manual Testing**
    - Cross-session persistence
    - Error handling (permission denied, folder deleted)

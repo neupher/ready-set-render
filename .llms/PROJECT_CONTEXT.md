@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-02T17:35:00Z
-> **Version:** 0.12.6
-> **Status:** Asset System Phase E Complete | Phase 6 In Progress (6.9-6.10 remaining)
+> **Last Updated:** 2026-02-03T15:18:00Z
+> **Version:** 0.13.0
+> **Status:** Asset System Phase E Complete | Project Folder Feature (Phases 1-4) Complete
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.12.6)
+## Current State (v0.13.0)
 
 ### What's Working
 
@@ -46,6 +46,15 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
     - `SceneLauncherExporter`: Generates self-contained HTML files with embedded scene data
     - Double-click exported HTML → Opens browser → Loads scene in deployed editor
     - Uses `postMessage` API for secure cross-window communication
+- **Project Folder Feature (Phases 1-4)**: Project-based workflow for asset management
+  - `ProjectService`: Core service for managing project folders
+    - Open/close project folders via File System Access API
+    - Automatic asset discovery and registration on open
+    - Project metadata stored in `.ready-set-render/project.json`
+    - localStorage persistence for "last opened project"
+  - `IProjectService`: Full interface with `IProjectMetadata`, result types, events
+  - Project events: `project:opened`, `project:closed`
+  - File menu commands: "Open Project", "Close Project"
 - **Asset System (Phase A)**: Foundation layer for asset persistence
   - `AssetRegistry`: Central registry for all assets (CRUD, events, search, type indexing)
   - `FileSystemAssetStore`: File System Access API based persistence
@@ -74,9 +83,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - All entity types support `ISerializable`: Cube, Sphere, DirectionalLight, CameraEntity
   - Type guards: `isSceneAsset()`, `isSerializedEntity()`
 - **Asset System (Phase E)**: Asset Browser UI
-  - `AssetBrowserTab`: Tree view for browsing materials and shaders
-  - Context menus for create/duplicate/rename/delete operations
-  - Toolbar with "+ Material" and "+ Shader" buttons
+  - `AssetBrowserTab`: Two-section tree view (Built-in / Project)
+    - **Built-in section**: Immutable framework assets (shaders 🔒, materials)
+    - **Project section**: User's project assets (when project is open)
+  - Right-click context menus for create/duplicate/rename/delete operations
+  - "No project open" message with "Open Project Folder" button
   - **Assets Panel**: Standalone collapsible panel to the right of Properties
     - Collapses to 28px sidebar with vertical title
     - Smooth CSS transitions for collapse/expand

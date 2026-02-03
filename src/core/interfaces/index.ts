@@ -47,3 +47,13 @@ export { isMeshProvider } from './IMeshData';
 // Cloneable
 export type { ICloneable } from './ICloneable';
 export { isCloneable, cloneEntityBase } from './ICloneable';
+
+// Project Service
+export type {
+  IProjectService,
+  IProjectMetadata,
+  IProjectOpenResult,
+  IProjectCloseResult,
+  ProjectOpenedEvent,
+  ProjectClosedEvent,
+} from './IProjectService';
