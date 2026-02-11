@@ -69,6 +69,50 @@ This document defines automated workflows triggered by specific phrases. When Cl
 
 ---
 
+### Save Session
+
+**Triggers:**
+- `save session`
+- `save progress`
+
+**Purpose:**
+Lightweight alternative to "finalise session" that records the current status without creating a commit. Ideal for preserving context when handing off to a new agent session (e.g. to avoid token compression) so work can be resumed immediately.
+
+**Steps:**
+
+1. **Review changes**
+   - Run `git status` to identify modified files
+   - Run `git diff` to review actual changes
+   - Summarize what was accomplished
+
+2. **Update CHANGELOG.md**
+   - Add an **[Unreleased]** section (or append to it if one exists)
+   - Date: Current date (YYYY-MM-DD)
+   - Categories: Added | Changed | Fixed | Removed
+   - List all significant changes made this session
+
+3. **Update .llms/ files with timestamps**
+   - Update `PROJECT_CONTEXT.md` (ALWAYS)
+     - Sync "Current State" section
+     - Update "Last Updated" timestamp
+     - Update version number if applicable
+   - Update `IMPLEMENTATION_PLAN.md` (IF APPLICABLE)
+     - Mark phases as complete when finished
+     - Update bundle size tracking when measured
+     - Update success criteria when met
+     - Add timestamp only when content changes
+   - Update any other affected `.llms/*.md` files
+     - Add timestamp to "Last Updated" field
+     - Format: `YYYY-MM-DDTHH:MM:SSZ` (ISO 8601)
+
+4. **Confirm**
+   - Report completion status to user
+   - List all files updated
+   - Show changelog entry
+   - Remind user that changes are **unstaged/uncommitted** and ready to be picked up by the next session
+
+---
+
 ### Start Session
 
 **Triggers:**
