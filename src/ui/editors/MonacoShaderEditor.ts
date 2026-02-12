@@ -2,16 +2,19 @@
  * MonacoShaderEditor - Monaco-based GLSL shader editor component
  *
  * A self-contained UI component that wraps Monaco Editor for editing GLSL
- * vertex and fragment shaders. Provides:
+ * shaders. Provides:
  * - Lazy-loaded Monaco Editor (only downloaded when first opened)
  * - GLSL syntax highlighting via custom Monarch tokenizer
- * - Vertex/Fragment tab switching
  * - Compilation error markers with inline decorations
  * - Status bar showing compilation state
  * - Dark theme matching the editor UI
  *
  * The component communicates with ShaderEditorService via callbacks
  * and does not depend on EventBus directly.
+ *
+ * Internally maintains separate text models for vertex and fragment sources
+ * (required by WebGL compilation), but the user sees a single editor view
+ * showing the fragment shader — the primary editing surface.
  *
  * @example
  * ```typescript
@@ -59,17 +62,13 @@ export class MonacoShaderEditor {
   private readonly container: HTMLDivElement;
   private readonly editorContainer: HTMLDivElement;
   private readonly tabsBar: HTMLDivElement;
-  private readonly vertexTabBtn: HTMLButtonElement;
-  private readonly fragmentTabBtn: HTMLButtonElement;
   private readonly statusBar: HTMLDivElement;
   private readonly statusIcon: HTMLSpanElement;
   private readonly statusText: HTMLSpanElement;
   private readonly actionBar: HTMLDivElement;
+  private readonly newShaderBtn: HTMLButtonElement;
   private readonly saveBtn: HTMLButtonElement;
   private readonly revertBtn: HTMLButtonElement;
-
-  /** Currently active shader stage tab */
-  private activeStage: ShaderStage = 'fragment';
 
   /** Monaco editor instance (null until lazy-loaded) */
   private editor: MonacoEditor | null = null;
@@ -96,6 +95,9 @@ export class MonacoShaderEditor {
   /** Callback for revert action */
   onRevert: (() => void) | null = null;
 
+  /** Callback for creating a new shader */
+  onNewShader: (() => void) | null = null;
+
   /** Whether the shader is read-only (built-in) */
   private _readOnly = false;
 
@@ -110,7 +112,7 @@ export class MonacoShaderEditor {
       background: var(--bg-primary);
     `;
 
-    // Tabs bar (Vertex | Fragment)
+    // Toolbar bar (action buttons only — no stage tabs)
     this.tabsBar = document.createElement('div');
     this.tabsBar.className = 'shader-editor-tabs';
     this.tabsBar.style.cssText = `
@@ -121,14 +123,7 @@ export class MonacoShaderEditor {
       flex-shrink: 0;
     `;
 
-    this.vertexTabBtn = this.createTabButton('Vertex', 'vertex');
-    this.fragmentTabBtn = this.createTabButton('Fragment', 'fragment');
-    this.fragmentTabBtn.classList.add('active');
-
-    this.tabsBar.appendChild(this.vertexTabBtn);
-    this.tabsBar.appendChild(this.fragmentTabBtn);
-
-    // Action bar (Save | Revert)
+    // Action bar (New | Save | Revert)
     this.actionBar = document.createElement('div');
     this.actionBar.style.cssText = `
       display: flex;
@@ -137,6 +132,21 @@ export class MonacoShaderEditor {
       align-items: center;
       padding-right: var(--spacing-xs);
     `;
+
+    this.newShaderBtn = document.createElement('button');
+    this.newShaderBtn.textContent = '+ New';
+    this.newShaderBtn.title = 'Create a new unlit shader';
+    this.newShaderBtn.className = 'shader-action-btn';
+    this.newShaderBtn.style.cssText = `
+      padding: 2px 8px;
+      font-size: var(--font-size-xs);
+      background: var(--accent-primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    `;
+    this.newShaderBtn.addEventListener('click', () => this.onNewShader?.());
 
     this.saveBtn = document.createElement('button');
     this.saveBtn.textContent = 'Save';
@@ -169,6 +179,7 @@ export class MonacoShaderEditor {
     `;
     this.revertBtn.addEventListener('click', () => this.onRevert?.());
 
+    this.actionBar.appendChild(this.newShaderBtn);
     this.actionBar.appendChild(this.saveBtn);
     this.actionBar.appendChild(this.revertBtn);
     this.tabsBar.appendChild(this.actionBar);
@@ -311,9 +322,9 @@ export class MonacoShaderEditor {
       // Clear loading placeholder
       this.editorContainer.innerHTML = '';
 
-      // Create the editor
+      // Create the editor — always showing the fragment model (primary editing surface)
       this.editor = monaco.editor.create(this.editorContainer, {
-        model: this.activeStage === 'vertex' ? this.vertexModel : this.fragmentModel,
+        model: this.fragmentModel,
         theme: 'shader-dark',
         language: 'glsl',
         minimap: { enabled: false },
@@ -375,7 +386,6 @@ export class MonacoShaderEditor {
    */
   setSource(stage: ShaderStage, source: string): void {
     if (stage === 'vertex' && this.vertexModel) {
-      // Temporarily remove listener to avoid feedback loop
       this.vertexModel.setValue(source);
     } else if (stage === 'fragment' && this.fragmentModel) {
       this.fragmentModel.setValue(source);
@@ -393,27 +403,6 @@ export class MonacoShaderEditor {
       return this.vertexModel?.getValue() ?? '';
     }
     return this.fragmentModel?.getValue() ?? '';
-  }
-
-  /**
-   * Switch to a specific shader stage tab.
-   *
-   * @param stage - The stage to switch to
-   */
-  switchTab(stage: ShaderStage): void {
-    this.activeStage = stage;
-
-    // Update tab button states
-    this.vertexTabBtn.classList.toggle('active', stage === 'vertex');
-    this.fragmentTabBtn.classList.toggle('active', stage === 'fragment');
-
-    // Switch editor model
-    if (this.editor) {
-      const model = stage === 'vertex' ? this.vertexModel : this.fragmentModel;
-      if (model) {
-        this.editor.setModel(model);
-      }
-    }
   }
 
   /**
@@ -472,13 +461,6 @@ export class MonacoShaderEditor {
       ...linkErrors,
     ].map(e => this.errorToMarker(e, monaco));
     monaco.editor.setModelMarkers(this.fragmentModel, 'glsl', fragmentMarkers);
-
-    // If there are errors in a specific stage, switch to that tab
-    if (vertexErrors.length > 0 && this.activeStage !== 'vertex') {
-      this.switchTab('vertex');
-    } else if (fragmentErrors.length > 0 && this.activeStage !== 'fragment') {
-      this.switchTab('fragment');
-    }
   }
 
   /**
@@ -536,53 +518,5 @@ export class MonacoShaderEditor {
       endLineNumber: line,
       endColumn: 1000,
     };
-  }
-
-  /**
-   * Create a tab button for vertex/fragment switching.
-   */
-  private createTabButton(label: string, stage: ShaderStage): HTMLButtonElement {
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.className = 'shader-stage-tab';
-    btn.style.cssText = `
-      padding: 4px 12px;
-      font-size: var(--font-size-xs);
-      font-family: var(--font-family);
-      background: transparent;
-      color: var(--text-secondary);
-      border: none;
-      border-bottom: 2px solid transparent;
-      cursor: pointer;
-      transition: color var(--transition-fast), border-color var(--transition-fast);
-    `;
-
-    btn.addEventListener('mouseenter', () => {
-      if (!btn.classList.contains('active')) {
-        btn.style.color = 'var(--text-primary)';
-      }
-    });
-
-    btn.addEventListener('mouseleave', () => {
-      if (!btn.classList.contains('active')) {
-        btn.style.color = 'var(--text-secondary)';
-      }
-    });
-
-    btn.addEventListener('click', () => this.switchTab(stage));
-
-    // Active state CSS via class
-    const observer = new MutationObserver(() => {
-      if (btn.classList.contains('active')) {
-        btn.style.color = 'var(--text-primary)';
-        btn.style.borderBottomColor = 'var(--accent-blue)';
-      } else {
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.borderBottomColor = 'transparent';
-      }
-    });
-    observer.observe(btn, { attributes: true, attributeFilter: ['class'] });
-
-    return btn;
   }
 }

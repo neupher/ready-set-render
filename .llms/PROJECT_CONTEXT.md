@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-12T11:02:00Z
-> **Version:** 0.14.0
-> **Status:** Asset System Phase F Complete | Phase 6.9 Live Shader Editor Complete
+> **Last Updated:** 2026-02-12T17:38:00Z
+> **Version:** 0.14.1
+> **Status:** Shader Editor UX Polish Complete (Tasks 1-4 done)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.14.0)
+## Current State (v0.14.1)
 
 ### What's Working
 
@@ -97,12 +97,21 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
       - Program cache (UUID → WebGLProgram + uniform locations)
       - Error recovery (keeps last working program on compilation failure)
       - Events: `shader:editing`, `shader:compilationResult`, `shader:programUpdated`, `shader:closed`
-    - `MonacoShaderEditor`: Lazy-loaded Monaco-based code editor for GLSL
-      - Vertex/Fragment tab switching with separate text models
-      - Save/Revert action buttons, status bar (idle/compiling/success/error)
-      - Error markers from compilation results
-      - Dark theme matching editor UI ('shader-dark')
-      - Read-only mode for built-in shaders
+  - `MonacoShaderEditor`: Lazy-loaded Monaco-based code editor for GLSL
+        - Single-view editor (fragment model primary editing surface)
+        - Toolbar: `+ New` / `Save` / `Revert` action buttons
+        - Status bar (idle/compiling/success/error)
+        - Error markers from compilation results
+        - Dark theme matching editor UI ('shader-dark')
+        - Read-only mode for built-in shaders
+      - `showUnsavedChangesDialog()`: 3-choice modal (Save/Discard/Cancel) for dirty shader prompts
+      - Auto-open shader on Asset Browser click with unsaved changes guard
+      - `+ New` button creates default unlit shader and opens it for editing
+  - **Shader Dropdown**: Material section shader property dropdown
+    - `<select>` populated from all shaders in AssetRegistry (built-in 🔒 + custom)
+    - `resolveCurrentShaderUuid()`: resolves materialAssetRef → IMaterialAsset → shaderRef
+    - `handleShaderDropdownChange()`: UUID→shaderName mapping, asset sync, undo/redo
+    - Full undo/redo via `material.shaderName` property path
     - GLSL Language Support: Monarch tokenizer for GLSL ES 3.00
       - Keywords, storage qualifiers, types, built-in functions/variables
       - Syntax highlighting, bracket matching, comments, folding
@@ -111,6 +120,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
       - Resolves materialAssetRef → IMaterialAsset → shaderRef → cached WebGLProgram
       - Dynamic uniform setting for all GLSL types (float/int/bool/vec2/vec3/vec4/mat3/mat4)
     - "Edit Shader 📝" button in Material section opens shader in Monaco editor
+      - Clicking a shader in the Asset Browser auto-opens it in the text editor
   - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
@@ -156,7 +166,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1006 tests passing** (includes ShaderEditorService comprehensive tests)
+- **1020 tests passing** (includes ShaderEditorService + ShaderDropdown comprehensive tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -220,6 +230,7 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 1. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
 2. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+3. **3D Model Import (.obj, .gltf)** - Asset import pipeline
 
 ---
 

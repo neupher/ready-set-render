@@ -31,7 +31,9 @@ import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
 import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
+import type { AssetSelectedEvent } from '../tabs/AssetBrowserTab';
 import { MonacoShaderEditor } from '../editors/MonacoShaderEditor';
+import { showUnsavedChangesDialog } from '../components/ConfirmDialog';
 import type { ShaderEditorService, ShaderCompilationEvent } from '@core/ShaderEditorService';
 
 export interface PropertiesPanelOptions {
@@ -81,6 +83,12 @@ export class PropertiesPanel {
 
   /** Asset registry reference for shader/material lookups */
   private assetRegistry: AssetRegistry | null = null;
+
+  /** Shader factory for creating new shader assets */
+  private shaderFactory: ShaderAssetFactory | null = null;
+
+  /** Material factory for syncing parameters on shader change */
+  private materialFactory: MaterialAssetFactory | null = null;
 
   /** Cleanup function for compilation event listener */
   private compilationUnsubscribe: (() => void) | null = null;
@@ -134,6 +142,8 @@ export class PropertiesPanel {
     // Store service references
     this.shaderEditorService = options.shaderEditorService ?? null;
     this.assetRegistry = options.assetRegistry ?? null;
+    this.shaderFactory = options.shaderFactory ?? null;
+    this.materialFactory = options.materialFactory ?? null;
 
     // Create Monaco shader editor (replaces textarea)
     this.monacoEditor = new MonacoShaderEditor();
@@ -158,6 +168,10 @@ export class PropertiesPanel {
           this.monacoEditor?.clearErrors();
           this.monacoEditor?.setCompilationStatus('success');
         }
+      };
+
+      this.monacoEditor.onNewShader = () => {
+        this.createAndOpenNewShader();
       };
 
       // Listen for compilation results
@@ -271,6 +285,13 @@ export class PropertiesPanel {
     this.eventBus.on('entity:propertyUpdated', this.handleExternalPropertyUpdate);
     this.eventBus.off('object:propertyChanged', this.handlePropertyChange);
     this.eventBus.on('scene:objectRenamed', this.handleObjectRenamed);
+
+    // Auto-open shader when selected in Asset Browser
+    this.eventBus.on<AssetSelectedEvent>('asset:selected', (data) => {
+      if (data.asset.type === 'shader') {
+        this.openShaderWithDirtyCheck(data.asset as IShaderAsset);
+      }
+    });
   }
 
   private handleSelectionChange(data: { id: string }): void {
@@ -468,38 +489,66 @@ export class PropertiesPanel {
         materialContent.style.flexDirection = 'column';
         materialContent.style.gap = 'var(--spacing-sm)';
 
-        // Shader Name + Edit Shader button row
-        const shaderRow = document.createElement('div');
-        shaderRow.style.display = 'flex';
-        shaderRow.style.alignItems = 'center';
-        shaderRow.style.gap = 'var(--spacing-sm)';
+        // Shader dropdown + Edit button row
+          const shaderGroup = document.createElement('div');
 
-        const shaderField = this.createReadonlyField('Shader', materialComponent.shaderName);
-        shaderField.style.flex = '1';
-        shaderRow.appendChild(shaderField);
+          const shaderLabel = document.createElement('label');
+          shaderLabel.className = 'label';
+          shaderLabel.textContent = 'Shader';
+          shaderGroup.appendChild(shaderLabel);
 
-        // "Edit Shader" button - opens shader in Monaco editor tab
-        const editShaderBtn = document.createElement('button');
-        editShaderBtn.textContent = '📝 Edit';
-        editShaderBtn.title = 'Edit shader source code';
-        editShaderBtn.style.cssText = `
-          padding: 2px 8px;
-          font-size: var(--font-size-xs);
-          background: var(--bg-elevated);
-          color: var(--text-secondary);
-          border: 1px solid var(--border-secondary);
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          white-space: nowrap;
-          flex-shrink: 0;
-          align-self: flex-end;
-        `;
-        editShaderBtn.addEventListener('click', () => {
-          this.openShaderForEditing(materialComponent);
-        });
-        shaderRow.appendChild(editShaderBtn);
+          const shaderRow = document.createElement('div');
+          shaderRow.style.display = 'flex';
+          shaderRow.style.alignItems = 'center';
+          shaderRow.style.gap = 'var(--spacing-sm)';
 
-        materialContent.appendChild(shaderRow);
+          // Shader dropdown populated from AssetRegistry
+          const shaderSelect = document.createElement('select');
+          shaderSelect.className = 'input';
+          shaderSelect.style.flex = '1';
+
+          // Resolve current shader UUID
+          const currentShaderUuid = this.resolveCurrentShaderUuid(materialComponent);
+
+          // Populate with all available shaders from the registry
+          const availableShaders = this.assetRegistry?.getByType<IShaderAsset>('shader') ?? [];
+          for (const shader of availableShaders) {
+            const option = document.createElement('option');
+            option.value = shader.uuid;
+            option.textContent = shader.name + (shader.isBuiltIn ? ' 🔒' : '');
+            if (shader.uuid === currentShaderUuid) {
+              option.selected = true;
+            }
+            shaderSelect.appendChild(option);
+          }
+
+          shaderSelect.addEventListener('change', () => {
+            this.handleShaderDropdownChange(shaderSelect.value, materialComponent);
+          });
+          shaderRow.appendChild(shaderSelect);
+
+          // "Edit Shader" button - opens shader in Monaco editor tab
+          const editShaderBtn = document.createElement('button');
+          editShaderBtn.textContent = '📝 Edit';
+          editShaderBtn.title = 'Edit shader source code';
+          editShaderBtn.style.cssText = `
+            padding: 2px 8px;
+            font-size: var(--font-size-xs);
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            white-space: nowrap;
+            flex-shrink: 0;
+          `;
+          editShaderBtn.addEventListener('click', () => {
+            this.openShaderForEditing(materialComponent);
+          });
+          shaderRow.appendChild(editShaderBtn);
+
+          shaderGroup.appendChild(shaderRow);
+          materialContent.appendChild(shaderGroup);
 
         // Color
         if (materialComponent.color) {
@@ -975,6 +1024,99 @@ export class PropertiesPanel {
   }
 
   /**
+   * Resolve the current shader UUID from a material component.
+   *
+   * Resolution order:
+   * 1. materialAssetRef → IMaterialAsset → shaderRef.uuid
+   * 2. Fallback: match shaderName ('pbr' → 'PBR', else → 'Unlit') from registry
+   */
+  private resolveCurrentShaderUuid(material: IMaterialComponent): string | undefined {
+    if (!this.assetRegistry) return undefined;
+
+    // Try to resolve via materialAssetRef → IMaterialAsset → shaderRef
+    if (material.materialAssetRef) {
+      const materialAsset = this.assetRegistry.get<IMaterialAsset>(material.materialAssetRef.uuid);
+      if (materialAsset) {
+        return materialAsset.shaderRef.uuid;
+      }
+    }
+
+    // Fallback: match shaderName to a built-in shader
+    const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
+    if (material.shaderName === 'pbr') {
+      return shaders.find(s => s.name === 'PBR')?.uuid;
+    }
+    return shaders.find(s => s.name === 'Unlit')?.uuid ?? shaders[0]?.uuid;
+  }
+
+  /**
+   * Handle shader dropdown change.
+   *
+   * When the user selects a new shader from the dropdown:
+   * 1. Maps the shader UUID to an internal shaderName for the material component
+   * 2. If the entity has a materialAssetRef, updates the IMaterialAsset.shaderRef
+   *    and syncs parameters with the new shader's defaults
+   * 3. Emits a property change for undo/redo support
+   *
+   * @param selectedShaderUuid - UUID of the selected shader asset
+   * @param material - The material component on the selected entity
+   */
+  private handleShaderDropdownChange(
+    selectedShaderUuid: string,
+    material: IMaterialComponent
+  ): void {
+    if (!this.assetRegistry) return;
+
+    const shaderAsset = this.assetRegistry.get<IShaderAsset>(selectedShaderUuid);
+    if (!shaderAsset) return;
+
+    // Map shader UUID to internal shaderName for the ForwardRenderer
+    const newShaderName = this.shaderUuidToShaderName(selectedShaderUuid);
+
+    // If the entity has a materialAssetRef, update the IMaterialAsset.shaderRef and sync params
+    if (material.materialAssetRef) {
+      const materialAsset = this.assetRegistry.get<IMaterialAsset>(material.materialAssetRef.uuid);
+      if (materialAsset) {
+        materialAsset.shaderRef = { uuid: selectedShaderUuid, type: 'shader' };
+
+        // Sync parameters with the new shader's defaults (keeps existing values, adds missing ones)
+        if (this.materialFactory) {
+          materialAsset.parameters = this.materialFactory.syncParametersWithShader(
+            materialAsset,
+            shaderAsset
+          );
+        }
+
+        this.assetRegistry.notifyModified(materialAsset.uuid, 'shaderRef');
+      }
+    }
+
+    // Emit shaderName change through the command system for undo/redo
+    this.emitPropertyChange('material.shaderName', newShaderName);
+  }
+
+  /**
+   * Map a shader UUID to the internal shaderName used by the ForwardRenderer.
+   *
+   * Built-in shader IDs are mapped to their well-known names:
+   * - 'built-in-shader-pbr' → 'pbr'
+   * - 'built-in-shader-unlit' → 'default'
+   *
+   * Custom shaders use the UUID as the shaderName so the renderer
+   * can resolve them via the ShaderEditorService program cache.
+   */
+  private shaderUuidToShaderName(uuid: string): string {
+    if (uuid === 'built-in-shader-pbr') {
+      return 'pbr';
+    }
+    if (uuid === 'built-in-shader-unlit') {
+      return 'default';
+    }
+    // Custom shaders: use the UUID as shaderName for renderer resolution
+    return uuid;
+  }
+
+  /**
    * Open a shader for editing in the Monaco-based shader editor tab.
    *
    * Resolves the shader from the entity's material component:
@@ -1032,6 +1174,116 @@ export class PropertiesPanel {
 
     // Switch to shader editor tab
     this.switchTab('shader');
+  }
+
+  /**
+   * Create a new shader asset and open it in the editor.
+   * Uses the ShaderAssetFactory to create a default unlit shader,
+   * registers it in the AssetRegistry, and opens it for editing.
+   */
+  private createAndOpenNewShader(): void {
+    if (!this.shaderFactory || !this.assetRegistry || !this.shaderEditorService) {
+      console.warn('PropertiesPanel: Cannot create shader — missing factory, registry, or editor service');
+      return;
+    }
+
+    const existingShaders = this.assetRegistry.getByType<IShaderAsset>('shader');
+    const name = this.generateUniqueShaderName('New Shader', existingShaders);
+
+    const shader = this.shaderFactory.create({ name });
+    this.assetRegistry.register(shader);
+
+    this.shaderEditorService.openShader(shader.uuid);
+
+    if (this.monacoEditor) {
+      this.monacoEditor.readOnly = false;
+      this.monacoEditor.setSource('vertex', shader.vertexSource);
+      this.monacoEditor.setSource('fragment', shader.fragmentSource);
+      this.monacoEditor.clearErrors();
+      this.monacoEditor.setCompilationStatus(
+        this.shaderEditorService.status,
+        this.shaderEditorService.errors.length,
+      );
+    }
+
+    this.switchTab('shader');
+  }
+
+  /**
+   * Open a shader asset in the editor, prompting for unsaved changes first.
+   * Called when a shader is selected in the Asset Browser.
+   *
+   * @param shader - The shader asset to open
+   */
+  private async openShaderWithDirtyCheck(shader: IShaderAsset): Promise<void> {
+    if (!this.shaderEditorService) return;
+
+    // If we're already editing this shader, just switch to the tab
+    if (this.shaderEditorService.activeShader === shader.uuid) {
+      this.switchTab('shader');
+      return;
+    }
+
+    // Check for unsaved changes in the currently open shader
+    if (this.shaderEditorService.isDirty) {
+      const currentShader = this.shaderEditorService.activeShader
+        ? this.assetRegistry?.get<IShaderAsset>(this.shaderEditorService.activeShader)
+        : null;
+      const currentName = currentShader?.name ?? 'current shader';
+
+      const result = await showUnsavedChangesDialog(
+        `"${currentName}" has unsaved changes. What would you like to do?`,
+      );
+
+      if (result === 'cancel') return;
+      if (result === 'save') {
+        this.shaderEditorService.saveShader();
+      }
+      // 'discard' — just proceed without saving
+    }
+
+    this.openShaderAssetInEditor(shader);
+  }
+
+  /**
+   * Open a shader asset directly in the Monaco editor.
+   * Loads its sources, sets read-only mode for built-ins, and switches to the shader tab.
+   *
+   * @param shader - The shader asset to open
+   */
+  private openShaderAssetInEditor(shader: IShaderAsset): void {
+    if (!this.shaderEditorService) return;
+
+    this.shaderEditorService.openShader(shader.uuid);
+
+    if (this.monacoEditor) {
+      this.monacoEditor.readOnly = shader.isBuiltIn;
+      this.monacoEditor.setSource('vertex', shader.vertexSource);
+      this.monacoEditor.setSource('fragment', shader.fragmentSource);
+      this.monacoEditor.clearErrors();
+      this.monacoEditor.setCompilationStatus(
+        this.shaderEditorService.status,
+        this.shaderEditorService.errors.length,
+      );
+    }
+
+    this.switchTab('shader');
+  }
+
+  /**
+   * Generate a unique shader name by appending a number if needed.
+   */
+  private generateUniqueShaderName(baseName: string, existing: IShaderAsset[]): string {
+    const names = new Set(existing.map((s) => s.name));
+    if (!names.has(baseName)) return baseName;
+
+    let counter = 1;
+    let name = `${baseName} ${counter}`;
+    while (names.has(name)) {
+      counter++;
+      name = `${baseName} ${counter}`;
+    }
+    return name;
   }
 
   /**

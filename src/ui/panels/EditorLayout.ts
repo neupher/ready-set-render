@@ -166,6 +166,7 @@ export class EditorLayout {
       sceneGraph: this.sceneGraph,
       assetRegistry: this.assetRegistry ?? undefined,
       shaderEditorService: this.shaderEditorService ?? undefined,
+      shaderFactory: this.shaderFactory ?? undefined,
     });
     this.propertiesPanel.setShaderCode(DEFAULT_SHADER_CODE);
 

@@ -339,6 +339,8 @@ export class PropertyChangeCommand implements ICommand {
       transparent?: boolean;
       roughness?: number;
       metallic?: number;
+      shaderName?: string;
+      materialAssetRef?: { uuid: string; type: string };
     };
 
     switch (property) {
@@ -369,6 +371,12 @@ export class PropertyChangeCommand implements ICommand {
       case 'metallic':
         if (typeof value === 'number') {
           material.metallic = value;
+          return true;
+        }
+        break;
+      case 'shaderName':
+        if (typeof value === 'string') {
+          material.shaderName = value;
           return true;
         }
         break;

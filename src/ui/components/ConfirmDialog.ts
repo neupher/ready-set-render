@@ -281,3 +281,125 @@ export function showConfirmDialog(options: Omit<ConfirmDialogOptions, 'onConfirm
     dialog.show();
   });
 }
+
+/**
+ * Result of an unsaved changes dialog prompt.
+ */
+export type UnsavedChangesResult = 'save' | 'discard' | 'cancel';
+
+/**
+ * Show a 3-choice unsaved changes dialog: Save, Discard, or Cancel.
+ *
+ * @param message - Description of what has unsaved changes
+ * @returns Promise resolving to the user's choice
+ */
+export function showUnsavedChangesDialog(message: string): Promise<UnsavedChangesResult> {
+  return new Promise((resolve) => {
+    let resolved = false;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.style.cssText = `
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1001;
+    `;
+
+    const dialog = document.createElement('div');
+    dialog.className = 'confirm-dialog';
+    dialog.style.cssText = `
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-primary);
+      border-radius: 8px;
+      padding: var(--spacing-lg);
+      max-width: 420px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    `;
+
+    const cleanup = () => {
+      document.removeEventListener('keydown', onKey);
+      overlay.remove();
+    };
+
+    const finish = (result: UnsavedChangesResult) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(result);
+    };
+
+    dialog.innerHTML = `
+      <h3 style="
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 600;
+        margin: 0 0 var(--spacing-md) 0;
+      ">Unsaved Changes</h3>
+      <p style="
+        color: var(--text-secondary);
+        font-size: var(--font-size-base);
+        line-height: 1.5;
+        margin: 0 0 var(--spacing-lg) 0;
+      ">${message}</p>
+      <div style="
+        display: flex;
+        justify-content: flex-end;
+        gap: var(--spacing-sm);
+      ">
+        <button class="ucd-cancel" style="
+          padding: var(--spacing-sm) var(--spacing-lg);
+          background: var(--bg-tertiary);
+          color: var(--text-secondary);
+          border: 1px solid var(--border-primary);
+          border-radius: 4px;
+          font-size: var(--font-size-sm);
+          cursor: pointer;
+        ">Cancel</button>
+        <button class="ucd-discard" style="
+          padding: var(--spacing-sm) var(--spacing-lg);
+          background: #e74c3c;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: var(--font-size-sm);
+          font-weight: 500;
+          cursor: pointer;
+        ">Discard</button>
+        <button class="ucd-save" style="
+          padding: var(--spacing-sm) var(--spacing-lg);
+          background: var(--accent-primary);
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: var(--font-size-sm);
+          font-weight: 500;
+          cursor: pointer;
+        ">Save</button>
+      </div>
+    `;
+
+    dialog.querySelector('.ucd-cancel')!.addEventListener('click', () => finish('cancel'));
+    dialog.querySelector('.ucd-discard')!.addEventListener('click', () => finish('discard'));
+    dialog.querySelector('.ucd-save')!.addEventListener('click', () => finish('save'));
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) finish('cancel');
+    });
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') finish('cancel');
+    };
+    document.addEventListener('keydown', onKey);
+
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // Focus cancel (safest default)
+    (dialog.querySelector('.ucd-cancel') as HTMLButtonElement)?.focus();
+  });
+}

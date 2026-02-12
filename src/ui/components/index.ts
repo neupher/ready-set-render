@@ -25,5 +25,5 @@ export type { AboutDialogOptions } from './AboutDialog';
 export { ContextMenu } from './ContextMenu';
 export type { ContextMenuItem, ContextMenuOptions } from './ContextMenu';
 
-export { ConfirmDialog, showConfirmDialog } from './ConfirmDialog';
-export type { ConfirmDialogOptions } from './ConfirmDialog';
+export { ConfirmDialog, showConfirmDialog, showUnsavedChangesDialog } from './ConfirmDialog';
+export type { ConfirmDialogOptions, UnsavedChangesResult } from './ConfirmDialog';

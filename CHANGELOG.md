@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.14.1] - 2026-02-12
+
+### Added
+
+- **Shader Editor UX Polish (Tasks 1-4 complete)**
+  - **Task 4: Material Shader property dropdown** — `<select>` dropdown in Material section of PropertiesPanel populated from all shaders in the AssetRegistry
+    - Built-in shaders shown with 🔒 lock icon, custom shaders without
+    - Current shader pre-selected via `resolveCurrentShaderUuid()` resolution chain (materialAssetRef → IMaterialAsset → shaderRef, with shaderName fallback)
+    - `handleShaderDropdownChange()` — maps UUID → internal shaderName, updates IMaterialAsset.shaderRef, syncs material parameters via `MaterialAssetFactory.syncParametersWithShader()`, emits property change through command system
+    - `shaderUuidToShaderName()` — maps built-in shader UUIDs to well-known names (`pbr`, `default`), passes custom UUIDs through
+    - Full undo/redo support for shader changes via `material.shaderName` property path
+    - "📝 Edit" button retained alongside the dropdown
+  - **Task 1-3: UX Polish from previous session**
+    - `+ New` button in MonacoShaderEditor toolbar — creates a default unlit shader, registers it in the AssetRegistry, and opens it for editing immediately
+    - `showUnsavedChangesDialog()` — 3-choice modal dialog (Save / Discard / Cancel) for dirty shader prompts
+    - Auto-open shader on Asset Browser click — selecting a shader in the Asset Browser automatically opens it in the text editor
+    - Unsaved changes guard — if the active shader has unsaved edits, the user is prompted before switching to a different shader
+    - `openShaderAssetInEditor()` — extracted reusable method for loading any shader into the Monaco editor
+    - `createAndOpenNewShader()` — creates a uniquely-named shader via `ShaderAssetFactory` and opens it
+  - 14 new unit tests for shader dropdown (PropertyChangeCommand, PropertyChangeHandler, AssetRegistry listing, command coalescing)
+
+### Changed
+
+- **PropertiesPanel** — Material section "Shader" field changed from readonly text to `<select>` dropdown with all available shaders
+  - Added `materialFactory` class property for parameter sync on shader change
+- **PropertyChangeHandler** — added `material.shaderName` get/set support for undo/redo
+- **PropertyChangeCommand** — added `material.shaderName` apply support for execute/undo
+- **MonacoShaderEditor** — removed Vertex/Fragment tab buttons and `switchTab()` method; editor now shows a single view (fragment model) instead of a dual-tab interface
+  - Removed `vertexTabBtn`, `fragmentTabBtn`, `activeStage` fields
+  - Removed `createTabButton()` helper and `switchTab()` public method
+  - Removed auto-tab-switching in `setErrors()` — markers still set on both models correctly
+  - Toolbar now contains only: `[+ New] [Save] [Revert]`
+
+### Fixed
+
+- **EditorLayout** — now passes `shaderFactory` to `PropertiesPanel` constructor (was missing, needed for new shader creation)
+
+---
+
 ## [0.14.0] - 2026-02-12
 
 ### Added

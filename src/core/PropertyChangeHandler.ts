@@ -255,6 +255,8 @@ export class PropertyChangeHandler {
       transparent?: boolean;
       roughness?: number;
       metallic?: number;
+      shaderName?: string;
+      materialAssetRef?: { uuid: string; type: string };
     };
 
     switch (property) {
@@ -268,6 +270,8 @@ export class PropertyChangeHandler {
         return material.roughness;
       case 'metallic':
         return material.metallic;
+      case 'shaderName':
+        return material.shaderName;
       default:
         return undefined;
     }
@@ -532,6 +536,7 @@ export class PropertyChangeHandler {
       transparent?: boolean;
       roughness?: number;
       metallic?: number;
+      shaderName?: string;
     };
 
     switch (property) {
@@ -566,6 +571,12 @@ export class PropertyChangeHandler {
       case 'metallic':
         if (typeof value === 'number') {
           material.metallic = value;
+          return true;
+        }
+        break;
+      case 'shaderName':
+        if (typeof value === 'string') {
+          material.shaderName = value;
           return true;
         }
         break;
