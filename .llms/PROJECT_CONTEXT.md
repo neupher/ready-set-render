@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-03T17:34:00Z
-> **Version:** 0.13.0
-> **Status:** Asset System Phase E Complete | Project Folder Feature (Phases 1-4) Complete
+> **Last Updated:** 2026-02-12T11:02:00Z
+> **Version:** 0.14.0
+> **Status:** Asset System Phase F Complete | Phase 6.9 Live Shader Editor Complete
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.13.0)
+## Current State (v0.14.0)
 
 ### What's Working
 
@@ -92,7 +92,26 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
     - Collapses to 28px sidebar with vertical title
     - Smooth CSS transitions for collapse/expand
     - Asset system initialized in Application with built-in assets
-- **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
+- **Asset System (Phase F)**: Live Shader Editor
+    - `ShaderEditorService`: Live editing lifecycle manager with debounced compilation (300ms)
+      - Program cache (UUID → WebGLProgram + uniform locations)
+      - Error recovery (keeps last working program on compilation failure)
+      - Events: `shader:editing`, `shader:compilationResult`, `shader:programUpdated`, `shader:closed`
+    - `MonacoShaderEditor`: Lazy-loaded Monaco-based code editor for GLSL
+      - Vertex/Fragment tab switching with separate text models
+      - Save/Revert action buttons, status bar (idle/compiling/success/error)
+      - Error markers from compilation results
+      - Dark theme matching editor UI ('shader-dark')
+      - Read-only mode for built-in shaders
+    - GLSL Language Support: Monarch tokenizer for GLSL ES 3.00
+      - Keywords, storage qualifiers, types, built-in functions/variables
+      - Syntax highlighting, bracket matching, comments, folding
+    - Monaco Worker Setup: Vite-compatible web worker configuration
+    - ForwardRenderer custom shader support:
+      - Resolves materialAssetRef → IMaterialAsset → shaderRef → cached WebGLProgram
+      - Dynamic uniform setting for all GLSL types (float/int/bool/vec2/vec3/vec4/mat3/mat4)
+    - "Edit Shader 📝" button in Material section opens shader in Monaco editor
+  - **Rendering**: ForwardRenderer with multi-light support (up to 8 directional lights)
 - **PBR Shader**: Cook-Torrance BRDF following Blender's Principled BSDF conventions
   - GGX/Trowbridge-Reitz normal distribution
   - Smith-GGX geometry function
@@ -137,7 +156,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **928 tests passing** (includes comprehensive ProjectService unit tests)
+- **1006 tests passing** (includes ShaderEditorService comprehensive tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -168,7 +187,7 @@ Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./A
 | Phase C | Material Assets | ✅ Complete |
 | Phase D | Scene Serialization | ✅ Complete |
 | Phase E | Asset Browser UI | ✅ Complete |
-| Phase F | Live Shader Editor | Not Started |
+| Phase F | Live Shader Editor | ✅ Complete |
 
 ### Phase 6: Functional WebGL Editor
 
@@ -178,7 +197,7 @@ Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
 |-------|-------------|--------|
 | 6.7 | PBR Uber Shader (Cook-Torrance BRDF) | ✅ Complete |
 | 6.8 | Transform Gizmos (W/E/R) | ✅ Complete |
-| 6.9 | Live Shader Editor | Blocked by Asset System |
+| 6.9 | Live Shader Editor | ✅ Complete |
 | 6.10 | Render Mode Dropdown | Not Started |
 | 6.11 | ~~Undo/Redo~~ | ✅ Moved earlier, complete |
 | 6.12 | Viewport Grid | ✅ Complete |
@@ -200,8 +219,7 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 ## Next Steps (Recommended Order)
 
 1. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
-2. **Phase 6.9: Live Shader Editor** - Monaco-based shader editing with live preview
-3. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
+2. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
 
 ---
 

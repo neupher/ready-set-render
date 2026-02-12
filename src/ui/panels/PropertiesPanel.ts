@@ -28,7 +28,11 @@ import { DraggableNumberInput } from '../components/DraggableNumberInput';
 import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
+import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
+import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
+import { MonacoShaderEditor } from '../editors/MonacoShaderEditor';
+import type { ShaderEditorService, ShaderCompilationEvent } from '@core/ShaderEditorService';
 
 export interface PropertiesPanelOptions {
   /** Event bus for communication */
@@ -41,6 +45,8 @@ export interface PropertiesPanelOptions {
   materialFactory?: MaterialAssetFactory;
   /** Shader factory for Asset Browser tab (optional) */
   shaderFactory?: ShaderAssetFactory;
+  /** Shader editor service for live shader editing (optional) */
+  shaderEditorService?: ShaderEditorService;
 }
 
 /**
@@ -66,6 +72,18 @@ export class PropertiesPanel {
 
   /** Track collapsed state of sections by title (persists across re-renders) */
   private sectionStates: Map<string, boolean> = new Map();
+
+  /** Monaco-based shader editor component */
+  private monacoEditor: MonacoShaderEditor | null = null;
+
+  /** Shader editor service for live compilation */
+  private shaderEditorService: ShaderEditorService | null = null;
+
+  /** Asset registry reference for shader/material lookups */
+  private assetRegistry: AssetRegistry | null = null;
+
+  /** Cleanup function for compilation event listener */
+  private compilationUnsubscribe: (() => void) | null = null;
 
   constructor(options: PropertiesPanelOptions) {
     this.eventBus = options.eventBus;
@@ -111,26 +129,52 @@ export class PropertiesPanel {
 
     this.shaderContent = document.createElement('div');
     this.shaderContent.className = 'tab-content';
-    this.shaderContent.innerHTML = `
-      <div style="padding: var(--spacing-sm); height: 100%;">
-        <textarea
-          class="shader-editor"
-          style="
-            width: 100%;
-            height: calc(100% - 16px);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            border: 1px solid var(--border-primary);
-            padding: var(--spacing-sm);
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: var(--font-size-sm);
-            resize: none;
-            outline: none;
-          "
-          placeholder="// GLSL Shader Code"
-        ></textarea>
-      </div>
-    `;
+    this.shaderContent.style.cssText = 'height: 100%;';
+
+    // Store service references
+    this.shaderEditorService = options.shaderEditorService ?? null;
+    this.assetRegistry = options.assetRegistry ?? null;
+
+    // Create Monaco shader editor (replaces textarea)
+    this.monacoEditor = new MonacoShaderEditor();
+    this.shaderContent.appendChild(this.monacoEditor.element);
+
+    // Wire Monaco editor to ShaderEditorService
+    if (this.shaderEditorService) {
+      const service = this.shaderEditorService;
+
+      this.monacoEditor.onSourceChange = (stage, source) => {
+        service.updateSource(stage, source);
+      };
+
+      this.monacoEditor.onSave = () => {
+        service.saveShader();
+      };
+
+      this.monacoEditor.onRevert = () => {
+        if (service.revertShader()) {
+          this.monacoEditor?.setSource('vertex', service.vertexSource);
+          this.monacoEditor?.setSource('fragment', service.fragmentSource);
+          this.monacoEditor?.clearErrors();
+          this.monacoEditor?.setCompilationStatus('success');
+        }
+      };
+
+      // Listen for compilation results
+      this.compilationUnsubscribe = this.eventBus.on<ShaderCompilationEvent>(
+        'shader:compilationResult',
+        (data) => {
+          if (!this.monacoEditor) return;
+          if (data.result.success) {
+            this.monacoEditor.clearErrors();
+            this.monacoEditor.setCompilationStatus('success');
+          } else {
+            this.monacoEditor.setErrors(data.result.errors ?? []);
+            this.monacoEditor.setCompilationStatus('error', data.result.errors?.length ?? 0);
+          }
+        },
+      );
+    }
 
     // Add Asset Browser tab if dependencies are provided
     if (options.assetRegistry && options.materialFactory && options.shaderFactory) {
@@ -208,6 +252,11 @@ export class PropertiesPanel {
     this.eventBus.off('selection:changed', this.handleSelectionChange);
     this.eventBus.off('entity:propertyUpdated', this.handleExternalPropertyUpdate);
     this.eventBus.off('scene:objectRenamed', this.handleObjectRenamed);
+
+    if (this.compilationUnsubscribe) {
+      this.compilationUnsubscribe();
+      this.compilationUnsubscribe = null;
+    }
   }
 
   private setupEvents(): void {
@@ -272,6 +321,16 @@ export class PropertiesPanel {
     this.shaderContent.classList.toggle('active', tab === 'shader');
     if (this.assetsContent) {
       this.assetsContent.classList.toggle('active', tab === 'assets');
+    }
+
+    // Lazy-initialize Monaco when shader tab is first activated
+    if (tab === 'shader' && this.monacoEditor && !this.monacoEditor.isReady) {
+      this.monacoEditor.initialize();
+    }
+
+    // Re-layout Monaco when tab becomes visible
+    if (tab === 'shader' && this.monacoEditor?.isReady) {
+      setTimeout(() => this.monacoEditor?.layout(), 0);
     }
   }
 
@@ -409,8 +468,38 @@ export class PropertiesPanel {
         materialContent.style.flexDirection = 'column';
         materialContent.style.gap = 'var(--spacing-sm)';
 
-        // Shader Name
-        materialContent.appendChild(this.createReadonlyField('Shader', materialComponent.shaderName));
+        // Shader Name + Edit Shader button row
+        const shaderRow = document.createElement('div');
+        shaderRow.style.display = 'flex';
+        shaderRow.style.alignItems = 'center';
+        shaderRow.style.gap = 'var(--spacing-sm)';
+
+        const shaderField = this.createReadonlyField('Shader', materialComponent.shaderName);
+        shaderField.style.flex = '1';
+        shaderRow.appendChild(shaderField);
+
+        // "Edit Shader" button - opens shader in Monaco editor tab
+        const editShaderBtn = document.createElement('button');
+        editShaderBtn.textContent = '📝 Edit';
+        editShaderBtn.title = 'Edit shader source code';
+        editShaderBtn.style.cssText = `
+          padding: 2px 8px;
+          font-size: var(--font-size-xs);
+          background: var(--bg-elevated);
+          color: var(--text-secondary);
+          border: 1px solid var(--border-secondary);
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          align-self: flex-end;
+        `;
+        editShaderBtn.addEventListener('click', () => {
+          this.openShaderForEditing(materialComponent);
+        });
+        shaderRow.appendChild(editShaderBtn);
+
+        materialContent.appendChild(shaderRow);
 
         // Color
         if (materialComponent.color) {
@@ -883,6 +972,66 @@ export class PropertiesPanel {
       property,
       value
     });
+  }
+
+  /**
+   * Open a shader for editing in the Monaco-based shader editor tab.
+   *
+   * Resolves the shader from the entity's material component:
+   * 1. If material has materialAssetRef → look up IMaterialAsset → get shaderRef → look up IShaderAsset
+   * 2. Otherwise, resolve from built-in shader name ('pbr' or 'default')
+   *
+   * Opens the shader in ShaderEditorService and switches to the shader editor tab.
+   */
+  private openShaderForEditing(material: IMaterialComponent): void {
+    if (!this.shaderEditorService || !this.assetRegistry) {
+      console.warn('PropertiesPanel: ShaderEditorService or AssetRegistry not available');
+      return;
+    }
+
+    let shaderAsset: IShaderAsset | undefined;
+
+    // Try to resolve via materialAssetRef → IMaterialAsset → shaderRef
+    if (material.materialAssetRef) {
+      const materialAsset = this.assetRegistry.get<IMaterialAsset>(material.materialAssetRef.uuid);
+      if (materialAsset) {
+        shaderAsset = this.assetRegistry.get<IShaderAsset>(materialAsset.shaderRef.uuid) ?? undefined;
+      }
+    }
+
+    // Fallback: resolve from shaderName to built-in shader
+    if (!shaderAsset) {
+      const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
+      if (material.shaderName === 'pbr') {
+        shaderAsset = shaders.find(s => s.name === 'PBR');
+      } else {
+        shaderAsset = shaders.find(s => s.name === 'Unlit') ?? shaders[0];
+      }
+    }
+
+    if (!shaderAsset) {
+      console.warn('PropertiesPanel: Could not resolve shader for material');
+      return;
+    }
+
+    // Open shader in service
+    const opened = this.shaderEditorService.openShader(shaderAsset.uuid);
+    if (!opened) return;
+
+    // Load source into Monaco editor
+    if (this.monacoEditor) {
+      this.monacoEditor.readOnly = shaderAsset.isBuiltIn;
+      this.monacoEditor.setSource('vertex', this.shaderEditorService.vertexSource);
+      this.monacoEditor.setSource('fragment', this.shaderEditorService.fragmentSource);
+      this.monacoEditor.clearErrors();
+      this.monacoEditor.setCompilationStatus(
+        this.shaderEditorService.status,
+        this.shaderEditorService.errors.length,
+      );
+    }
+
+    // Switch to shader editor tab
+    this.switchTab('shader');
   }
 
   /**

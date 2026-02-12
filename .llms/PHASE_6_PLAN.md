@@ -1,8 +1,8 @@
 # Phase 6: Functional WebGL Editor - Remaining Work
 
-> **Last Updated:** 2026-01-27T15:40:00Z
-> **Version:** 0.10.0
-> **Status:** 6.9-6.10 remaining (6.1-6.8, 6.11-6.14 complete)
+> **Last Updated:** 2026-02-12T11:02:00Z
+> **Version:** 0.14.0
+> **Status:** 6.10 remaining (6.1-6.9, 6.11-6.14 complete)
 
 ---
 
@@ -97,33 +97,40 @@ This document covers the **remaining work** for Phase 6. For completed phases (6
 
 ---
 
-### Phase 6.9: Live Shader Editor (ShaderToy-style)
+### Phase 6.9: Live Shader Editor (ShaderToy-style) ✅ Complete
 
-**Goal**: Real-time shader editing with graceful error handling.
+**Implemented in v0.14.0**
 
-**Features**:
-- Click object → shader appears in Properties > Shader Editor
-- **Debounced compilation (500ms)** - prevents compile spam
-- Syntax highlighting, line numbers
-- Inline error display
-- **Error recovery** - keep last working shader
+**Features Delivered**:
+- `ShaderEditorService`: Live editing lifecycle with debounced compilation (300ms)
+  - Program cache (UUID → WebGLProgram + uniform locations)
+  - Error recovery (keeps last working program)
+  - Events: `shader:editing`, `shader:compilationResult`, `shader:programUpdated`, `shader:closed`
+- `MonacoShaderEditor`: Lazy-loaded Monaco code editor for GLSL
+  - Vertex/Fragment tab switching with separate text models
+  - Save/Revert action buttons, status bar (idle/compiling/success/error)
+  - Error markers from compilation results
+  - `shader-dark` Monaco theme matching editor UI
+  - Read-only mode for built-in shaders
+- GLSL Language Support: Monarch tokenizer for GLSL ES 3.00
+- Monaco Worker Setup: Vite-compatible web worker configuration
+- ForwardRenderer custom shader support:
+  - Resolves materialAssetRef → IMaterialAsset → shaderRef → cached WebGLProgram
+  - Dynamic uniform setting for all GLSL types
+- "Edit Shader 📝" button in Material section of PropertiesPanel
 
-**Safeguards**:
-- validateSyntax() quick check before compile
-- minCompileInterval rate limiting
-- Broken shader doesn't crash app
+**Files Created**:
+- `src/core/ShaderEditorService.ts`
+- `src/ui/editors/MonacoShaderEditor.ts`
+- `src/ui/editors/glslLanguage.ts`
+- `src/ui/editors/monacoWorkerSetup.ts`
+- `tests/unit/core/ShaderEditorService.test.ts` (49 tests)
 
-**Tasks**:
-1. Create `ShaderManager` service
-2. Create `ShaderEditor` component with debouncing
-3. Update PropertiesPanel Shader tab
-4. Add customVertexShader/customFragmentShader to material
-
-**Files**:
-- `src/core/ShaderManager.ts` (new)
-- `src/ui/components/ShaderEditor.ts` (new)
-- `src/ui/panels/PropertiesPanel.ts` - shader tab
-- `src/core/interfaces/IMaterialComponent.ts` - custom shader fields
+**Files Modified**:
+- `src/ui/panels/PropertiesPanel.ts` - Monaco integration, Edit Shader button
+- `src/plugins/renderers/forward/ForwardRenderer.ts` - Custom shader rendering
+- `src/ui/panels/EditorLayout.ts` - ShaderEditorService passthrough
+- `src/core/Application.ts` - Service wiring
 
 ---
 
@@ -280,7 +287,7 @@ Phase 6 is complete when:
 6. ✅ Directional light is in scene, editable, affects shading
 7. ⬜ Default material is PBR (responds to light realistically)
 8. ✅ Transform gizmos appear on selection (W/E/R to switch modes)
-9. ⬜ Editing shader in Properties tab updates object in real-time
+9. ✅ Editing shader in Properties tab updates object in real-time
 10. ⬜ Render mode dropdown switches between Shaded/Wireframe/Both
 11. ✅ Ctrl+Z/Ctrl+Y undo/redo works for all scene operations
 12. ✅ Viewport grid displays with toggle button

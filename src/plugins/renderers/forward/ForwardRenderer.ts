@@ -22,6 +22,10 @@ import type {
 } from '@core/interfaces';
 import { isMeshProvider } from '@core/interfaces';
 import type { LightManager, LightData } from '@core/LightManager';
+import type { ShaderEditorService } from '@core/ShaderEditorService';
+import type { AssetRegistry } from '@core/assets/AssetRegistry';
+import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
+import type { IShaderAsset, IUniformDeclaration } from '@core/assets/interfaces/IShaderAsset';
 import {
   mat4Multiply,
   mat4Translation,
@@ -162,11 +166,14 @@ export class ForwardRenderer implements IRenderPipeline {
   private pbrProgram: PBRShaderProgram | null = null;
   private currentCamera: ICamera | null = null;
   private lightManager: LightManager | null = null;
+  private shaderEditorService: ShaderEditorService | null = null;
+  private assetRegistry: AssetRegistry | null = null;
   private meshGPUCache: MeshGPUCache | null = null;
   private initialized = false;
 
   // Track which shader is currently bound
-  private currentShader: 'default' | 'pbr' = 'default';
+  private currentShader: 'default' | 'pbr' | 'custom' = 'default';
+  private currentCustomShaderUUID: string | null = null;
 
   // Uniform locations for default shader
   private uModelMatrix: WebGLUniformLocation | null = null;
@@ -258,6 +265,21 @@ export class ForwardRenderer implements IRenderPipeline {
    */
   setLightManager(lightManager: LightManager): void {
     this.lightManager = lightManager;
+  }
+
+  /**
+   * Set the shader editor service for custom shader support.
+   * Enables rendering entities with custom compiled shaders.
+   */
+  setShaderEditorService(service: ShaderEditorService): void {
+    this.shaderEditorService = service;
+  }
+
+  /**
+   * Set the asset registry for material/shader lookups.
+   */
+  setAssetRegistry(registry: AssetRegistry): void {
+    this.assetRegistry = registry;
   }
 
   /**
@@ -432,13 +454,19 @@ export class ForwardRenderer implements IRenderPipeline {
       material = entityWithComponent.getComponent<IMaterialComponent>('material');
     }
 
+    // Resolve custom shader from material asset reference
+    const customShaderInfo = this.resolveCustomShader(material);
+
     // Determine which shader to use based on material
-    const usePBR = material?.shaderName === 'pbr' && this.pbrProgram?.isReady();
+    const usePBR = !customShaderInfo && material?.shaderName === 'pbr' && this.pbrProgram?.isReady();
+    const useCustom = customShaderInfo !== null;
 
     // Switch shader if needed
-    if (usePBR && this.currentShader !== 'pbr') {
+    if (useCustom && customShaderInfo) {
+      this.switchToCustomShader(gl, customShaderInfo.shaderUUID, customShaderInfo.program);
+    } else if (usePBR && this.currentShader !== 'pbr') {
       this.switchToPBRShader(gl);
-    } else if (!usePBR && this.currentShader !== 'default') {
+    } else if (!usePBR && !useCustom && this.currentShader !== 'default') {
       this.switchToDefaultShader(gl);
     }
 
@@ -449,14 +477,30 @@ export class ForwardRenderer implements IRenderPipeline {
     const normalMat = normalMatrix(modelMatrix);
 
     // Get GPU resources using appropriate program
-    const activeProgram = usePBR ? this.pbrProgram!.getProgram()! : this.program;
+    let activeProgram: WebGLProgram;
+    if (useCustom && customShaderInfo) {
+      activeProgram = customShaderInfo.program;
+    } else if (usePBR) {
+      activeProgram = this.pbrProgram!.getProgram()!;
+    } else {
+      activeProgram = this.program;
+    }
     const gpuResources = this.meshGPUCache.getOrCreateSolid(
       renderable.id,
       meshData,
       activeProgram
     );
 
-    if (usePBR && this.pbrProgram) {
+    if (useCustom && customShaderInfo) {
+      // Set custom shader uniforms
+      this.setCustomShaderUniforms(
+        gl,
+        customShaderInfo.shaderUUID,
+        modelMatrix,
+        normalMat,
+        material,
+      );
+    } else if (usePBR && this.pbrProgram) {
       // Set PBR uniforms
       this.pbrProgram.setTransformUniforms(
         modelMatrix,
@@ -488,6 +532,7 @@ export class ForwardRenderer implements IRenderPipeline {
 
     this.pbrProgram.use();
     this.currentShader = 'pbr';
+    this.currentCustomShaderUUID = null;
 
     // Set up per-frame uniforms for PBR shader
     this.setLightUniformsForShader(gl, 'pbr');
@@ -501,6 +546,7 @@ export class ForwardRenderer implements IRenderPipeline {
 
     gl.useProgram(this.program);
     this.currentShader = 'default';
+    this.currentCustomShaderUUID = null;
 
     // Restore per-frame uniforms for default shader
     gl.uniformMatrix4fv(this.uViewProjectionMatrix, false, this.cachedViewProjection);
@@ -511,6 +557,166 @@ export class ForwardRenderer implements IRenderPipeline {
       this.cachedCameraPosition[2]
     );
     this.setLightUniformsForShader(gl, 'default');
+  }
+
+  /**
+   * Switch to a custom shader program from ShaderEditorService cache.
+   */
+  private switchToCustomShader(
+    gl: WebGL2RenderingContext,
+    shaderUUID: string,
+    program: WebGLProgram,
+  ): void {
+    if (!this.cachedViewProjection) return;
+
+    // Only re-bind if different custom shader than current
+    if (this.currentShader === 'custom' && this.currentCustomShaderUUID === shaderUUID) {
+      return;
+    }
+
+    gl.useProgram(program);
+    this.currentShader = 'custom';
+    this.currentCustomShaderUUID = shaderUUID;
+
+    // Set per-frame uniforms via cached uniform locations from service
+    const locations = this.shaderEditorService?.getUniformLocations(shaderUUID);
+    if (locations) {
+      const vpLoc = locations.get('uViewProjectionMatrix');
+      if (vpLoc) gl.uniformMatrix4fv(vpLoc, false, this.cachedViewProjection);
+
+      const camLoc = locations.get('uCameraPosition');
+      if (camLoc) gl.uniform3f(camLoc, ...this.cachedCameraPosition);
+
+      // Set light arrays
+      const lightDirLoc = locations.get('uLightDirections');
+      if (lightDirLoc) gl.uniform3fv(lightDirLoc, this.cachedLightDirections);
+
+      const lightColLoc = locations.get('uLightColors');
+      if (lightColLoc) gl.uniform3fv(lightColLoc, this.cachedLightColors);
+
+      const lightCountLoc = locations.get('uLightCount');
+      if (lightCountLoc) gl.uniform1i(lightCountLoc, this.cachedLightCount);
+
+      const ambientLoc = locations.get('uAmbientColor');
+      if (ambientLoc) gl.uniform3fv(ambientLoc, this.cachedAmbientColor);
+    }
+  }
+
+  /**
+   * Resolve a custom shader program for a material, if available.
+   *
+   * Checks if the material references a shader asset via materialAssetRef
+   * and if ShaderEditorService has a compiled program for it.
+   *
+   * @returns Object with shader UUID and program, or null if not custom
+   */
+  private resolveCustomShader(
+    material: IMaterialComponent | null,
+  ): { shaderUUID: string; program: WebGLProgram } | null {
+    if (!material?.materialAssetRef || !this.shaderEditorService || !this.assetRegistry) {
+      return null;
+    }
+
+    // Look up the material asset to get the shader reference
+    const materialAsset = this.assetRegistry.get<IMaterialAsset>(material.materialAssetRef.uuid);
+    if (!materialAsset) return null;
+
+    const shaderUUID = materialAsset.shaderRef.uuid;
+    const program = this.shaderEditorService.getCompiledProgram(shaderUUID);
+    if (!program) return null;
+
+    return { shaderUUID, program };
+  }
+
+  /**
+   * Set uniforms for a custom shader program based on material parameters
+   * and shader uniform declarations.
+   */
+  private setCustomShaderUniforms(
+    gl: WebGL2RenderingContext,
+    shaderUUID: string,
+    modelMatrix: Float32Array,
+    normalMat: Float32Array,
+    material: IMaterialComponent | null,
+  ): void {
+    const locations = this.shaderEditorService?.getUniformLocations(shaderUUID);
+    if (!locations) return;
+
+    // Set transform uniforms
+    const modelLoc = locations.get('uModelMatrix');
+    if (modelLoc) gl.uniformMatrix4fv(modelLoc, false, modelMatrix);
+
+    const normalLoc = locations.get('uNormalMatrix');
+    if (normalLoc) gl.uniformMatrix3fv(normalLoc, false, normalMat);
+
+    // Get material asset parameters if available
+    let parameters: Record<string, unknown> = {};
+    if (material?.materialAssetRef && this.assetRegistry) {
+      const materialAsset = this.assetRegistry.get<IMaterialAsset>(material.materialAssetRef.uuid);
+      if (materialAsset) {
+        parameters = materialAsset.parameters;
+      }
+    }
+
+    // Get shader asset for uniform declarations
+    const shader = this.assetRegistry?.get<IShaderAsset>(shaderUUID);
+    if (!shader) return;
+
+    // Set each declared uniform from material parameters
+    for (const uniform of shader.uniforms) {
+      const loc = locations.get(uniform.name);
+      if (!loc) continue;
+
+      const value = parameters[uniform.name] ?? uniform.defaultValue;
+      this.setUniformValue(gl, loc, uniform, value);
+    }
+  }
+
+  /**
+   * Set a single uniform value based on its type declaration.
+   */
+  private setUniformValue(
+    gl: WebGL2RenderingContext,
+    location: WebGLUniformLocation,
+    uniform: IUniformDeclaration,
+    value: unknown,
+  ): void {
+    switch (uniform.type) {
+      case 'float':
+        gl.uniform1f(location, value as number);
+        break;
+      case 'int':
+        gl.uniform1i(location, value as number);
+        break;
+      case 'bool':
+        gl.uniform1i(location, (value as boolean) ? 1 : 0);
+        break;
+      case 'vec2': {
+        const v2 = value as [number, number];
+        gl.uniform2f(location, v2[0], v2[1]);
+        break;
+      }
+      case 'vec3': {
+        const v3 = value as [number, number, number];
+        gl.uniform3f(location, v3[0], v3[1], v3[2]);
+        break;
+      }
+      case 'vec4': {
+        const v4 = value as [number, number, number, number];
+        gl.uniform4f(location, v4[0], v4[1], v4[2], v4[3]);
+        break;
+      }
+      case 'mat3': {
+        const m3 = value as Float32Array | number[];
+        gl.uniformMatrix3fv(location, false, m3);
+        break;
+      }
+      case 'mat4': {
+        const m4 = value as Float32Array | number[];
+        gl.uniformMatrix4fv(location, false, m4);
+        break;
+      }
+    }
   }
 
   /**

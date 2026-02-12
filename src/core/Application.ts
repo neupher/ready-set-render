@@ -27,6 +27,7 @@ import { KeyboardShortcutManager } from '@core/KeyboardShortcutManager';
 import { InputManager } from '@core/InputManager';
 import { SettingsService } from '@core/SettingsService';
 import { SceneController } from '@core/SceneController';
+import { ShaderEditorService } from '@core/ShaderEditorService';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
 import { SettingsWindow } from '@ui/windows/SettingsWindow';
@@ -186,6 +187,15 @@ export class Application {
     }
     console.log('Asset system initialized with built-in shaders and materials');
 
+    // Initialize shader editor service (live shader editing lifecycle)
+    const shaderEditorService = new ShaderEditorService({
+      gl: this.gl,
+      eventBus: this.eventBus,
+      assetRegistry,
+    });
+    shaderEditorService.compileAllRegistered();
+    console.log('Shader editor service initialized with pre-compiled shaders');
+
     // Setup project commands
     this.setupProjectCommands(projectService);
 
@@ -219,6 +229,7 @@ export class Application {
       materialFactory,
       shaderFactory,
       projectService,
+      shaderEditorService,
     });
     this.layout.initialize();
     console.log('UI layout initialized');
@@ -254,6 +265,8 @@ export class Application {
     // Initialize forward renderer (for solid shaded mode)
     this.forwardRenderer = new ForwardRenderer();
     this.forwardRenderer.setLightManager(this.lightManager);
+    this.forwardRenderer.setShaderEditorService(shaderEditorService);
+    this.forwardRenderer.setAssetRegistry(assetRegistry);
     await this.forwardRenderer.initialize({
       gl: this.gl,
       eventBus: this.eventBus,

@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.14.0] - 2026-02-12
+
+### Added
+
+- **Live Shader Editor (Phase 6.9 / Asset Phase F)** - Monaco-based GLSL shader editing with real-time compilation
+  - `ShaderEditorService` - Core editing lifecycle manager
+    - Debounced compilation (300ms) prevents compile spam during typing
+    - Program cache (UUID → WebGLProgram + uniform locations) for renderer access
+    - Error recovery: keeps last working program on compilation failure
+    - Events: `shader:editing`, `shader:compilationResult`, `shader:programUpdated`, `shader:closed`
+    - Save/revert workflow for non-built-in shaders
+  - `MonacoShaderEditor` - Lazy-loaded Monaco code editor for GLSL
+    - Vertex/Fragment tab switching with separate text models
+    - Save/Revert action buttons in tab bar
+    - Status bar (idle/compiling/success/error) with color indicators
+    - Error markers from compilation results (line-level)
+    - `shader-dark` Monaco theme matching editor UI
+    - Read-only mode for built-in shaders
+  - GLSL Language Support - Monarch tokenizer for GLSL ES 3.00
+    - Keywords, storage qualifiers, types, built-in functions/variables
+    - Syntax highlighting, bracket matching, comments, folding
+  - Monaco Worker Setup - Vite-compatible web worker configuration
+  - "Edit Shader 📝" button in Material section of PropertiesPanel
+  - 49 comprehensive unit tests for ShaderEditorService
+
+### Changed
+
+- **ForwardRenderer** - Extended with custom shader rendering support
+  - Resolves materialAssetRef → IMaterialAsset → shaderRef → cached WebGLProgram chain
+  - Dynamic uniform setting for all GLSL types (float/int/bool/vec2/vec3/vec4/mat3/mat4)
+  - Extended shader type to `'default' | 'pbr' | 'custom'`
+- **PropertiesPanel** - Integrated Monaco editor in Text Editor tab
+  - Wired onSourceChange/onSave/onRevert callbacks to ShaderEditorService
+  - Added compilation event listener for error markers and status updates
+  - Added cleanup of compilation subscription in dispose()
+- **EditorLayout** - Accepts and passes `shaderEditorService` to PropertiesPanel
+- **Application** - Creates and wires ShaderEditorService with all subsystems
+  - Pre-compiles all built-in shaders into program cache on initialization
+
+### Documentation
+
+- Updated `PROJECT_CONTEXT.md` to v0.14.0 with Phase F details (1006 tests)
+- Updated `ASSET_SYSTEM_PLAN.md` - Phase F marked ✅ Complete (all phases done)
+- Updated `PHASE_6_PLAN.md` - Phase 6.9 marked ✅ Complete with implementation details
+- Updated `LIBRARIES.md` - Version bump
+
+---
+
 ## [0.13.0] - 2026-02-03
 
 ### Added

@@ -26,6 +26,7 @@ import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import type { ProjectService } from '@core/ProjectService';
+import type { ShaderEditorService } from '@core/ShaderEditorService';
 import { PrimitiveRegistry } from '@plugins/primitives';
 import { TopMenuBar, DEFAULT_MENUS } from '../components/TopMenuBar';
 import { ResizablePanel } from '../components/ResizablePanel';
@@ -56,6 +57,8 @@ export interface EditorLayoutOptions {
   shaderFactory?: ShaderAssetFactory;
   /** Project service for project-based workflow (optional) */
   projectService?: ProjectService;
+  /** Shader editor service for live shader editing (optional) */
+  shaderEditorService?: ShaderEditorService;
 }
 
 /**
@@ -73,6 +76,7 @@ export class EditorLayout {
   private readonly materialFactory: MaterialAssetFactory | null;
   private readonly shaderFactory: ShaderAssetFactory | null;
   private readonly projectService: ProjectService | null;
+  private readonly shaderEditorService: ShaderEditorService | null;
 
   private root: HTMLDivElement | null = null;
   private menuBar: TopMenuBar | null = null;
@@ -98,6 +102,7 @@ export class EditorLayout {
     this.materialFactory = options.materialFactory ?? null;
     this.shaderFactory = options.shaderFactory ?? null;
     this.projectService = options.projectService ?? null;
+    this.shaderEditorService = options.shaderEditorService ?? null;
   }
 
   /**
@@ -158,7 +163,9 @@ export class EditorLayout {
 
     this.propertiesPanel = new PropertiesPanel({
       eventBus: this.eventBus,
-      sceneGraph: this.sceneGraph
+      sceneGraph: this.sceneGraph,
+      assetRegistry: this.assetRegistry ?? undefined,
+      shaderEditorService: this.shaderEditorService ?? undefined,
     });
     this.propertiesPanel.setShaderCode(DEFAULT_SHADER_CODE);
 

@@ -1,7 +1,7 @@
 # Library Tracking: WebGL Editor
 
-> **Last Updated:** 2026-01-25T00:42:00Z
-> **Version:** 0.1.3
+> **Last Updated:** 2026-02-12T11:02:00Z
+> **Version:** 0.1.4
 
 ---
 
