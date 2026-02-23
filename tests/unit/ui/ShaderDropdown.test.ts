@@ -88,7 +88,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
         entityId: 'cube-1',
         property: 'material.shaderName',
         oldValue: 'pbr',
-        newValue: 'default',
+        newValue: 'lambert',
         sceneGraph,
         eventBus,
       });
@@ -98,7 +98,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       const material = entity.getComponent<IComponent>('material') as IComponent & {
         shaderName: string;
       };
-      expect(material.shaderName).toBe('default');
+      expect(material.shaderName).toBe('lambert');
     });
 
     it('should restore shaderName on undo', () => {
@@ -109,7 +109,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
         entityId: 'cube-1',
         property: 'material.shaderName',
         oldValue: 'pbr',
-        newValue: 'default',
+        newValue: 'lambert',
         sceneGraph,
         eventBus,
       });
@@ -184,13 +184,13 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       eventBus.emit('object:propertyChanged', {
         id: 'cube-1',
         property: 'material.shaderName',
-        value: 'default',
+        value: 'lambert',
       });
 
       const material = entity.getComponent<IComponent>('material') as IComponent & {
         shaderName: string;
       };
-      expect(material.shaderName).toBe('default');
+      expect(material.shaderName).toBe('lambert');
     });
 
     it('should support undo via CommandHistory after shaderName change', () => {
@@ -203,17 +203,17 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
         commandHistory,
       });
 
-      // Change shader from PBR to default
+      // Change shader from PBR to lambert
       eventBus.emit('object:propertyChanged', {
         id: 'cube-1',
         property: 'material.shaderName',
-        value: 'default',
+        value: 'lambert',
       });
 
       const material = entity.getComponent<IComponent>('material') as IComponent & {
         shaderName: string;
       };
-      expect(material.shaderName).toBe('default');
+      expect(material.shaderName).toBe('lambert');
 
       // Undo should restore PBR
       commandHistory.undo();
@@ -233,7 +233,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       eventBus.emit('object:propertyChanged', {
         id: 'cube-1',
         property: 'material.shaderName',
-        value: 'default',
+        value: 'lambert',
       });
 
       commandHistory.undo();
@@ -242,11 +242,11 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       const material = entity.getComponent<IComponent>('material') as IComponent & {
         shaderName: string;
       };
-      expect(material.shaderName).toBe('default');
+      expect(material.shaderName).toBe('lambert');
     });
 
     it('should capture old shaderName value correctly', () => {
-      const entity = createMockEntityWithMaterial('cube-1', 'Cube', 'default');
+      const entity = createMockEntityWithMaterial('cube-1', 'Cube', 'lambert');
       sceneGraph.add(entity);
 
       new PropertyChangeHandler({
@@ -255,7 +255,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
         commandHistory,
       });
 
-      // Change from default to PBR
+      // Change from lambert to PBR
       eventBus.emit('object:propertyChanged', {
         id: 'cube-1',
         property: 'material.shaderName',
@@ -267,9 +267,9 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       };
       expect(material.shaderName).toBe('pbr');
 
-      // Undo should restore 'default'
+      // Undo should restore 'lambert'
       commandHistory.undo();
-      expect(material.shaderName).toBe('default');
+      expect(material.shaderName).toBe('lambert');
     });
   });
 
@@ -332,7 +332,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
         entityId: 'cube-1',
         property: 'material.shaderName',
         oldValue: 'pbr',
-        newValue: 'default',
+        newValue: 'lambert',
         sceneGraph,
         eventBus,
         timestamp: now,
@@ -341,7 +341,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       const cmd2 = new PropertyChangeCommand({
         entityId: 'cube-1',
         property: 'material.shaderName',
-        oldValue: 'default',
+        oldValue: 'lambert',
         newValue: 'custom-shader-1',
         sceneGraph,
         eventBus,
@@ -365,7 +365,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
         entityId: 'cube-1',
         property: 'material.shaderName',
         oldValue: 'pbr',
-        newValue: 'default',
+        newValue: 'lambert',
         sceneGraph,
         eventBus,
         timestamp: now,
@@ -374,7 +374,7 @@ describe('Shader Dropdown (Material shaderName Property)', () => {
       const cmd2 = new PropertyChangeCommand({
         entityId: 'cube-1',
         property: 'material.shaderName',
-        oldValue: 'default',
+        oldValue: 'lambert',
         newValue: 'custom-shader-1',
         sceneGraph,
         eventBus,

@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-12T17:38:00Z
-> **Version:** 0.14.1
-> **Status:** Shader Editor UX Polish Complete (Tasks 1-4 done)
+> **Last Updated:** 2026-02-23T14:23:00Z
+> **Version:** 0.14.2
+> **Status:** Lambert Shader as Default + Shader Module Refactor
 
 ---
 
@@ -32,11 +32,16 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.14.1)
+## Current State (v0.14.2)
 
 ### What's Working
 
 - **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService
+- **Built-in Shaders**: Lambert (default), PBR (Cook-Torrance BRDF), Unlit
+  - Shader sources loaded from external `.glsl` files for maintainability
+  - `src/plugins/renderers/shaders/lambert/` — Lambert shader module (default for primitives)
+  - `src/plugins/renderers/shaders/unlit/` — Unlit shader module
+  - `src/plugins/renderers/shaders/pbr/` — PBR shader module
 - **Scene Controller**: New/Open/Save/Save As operations with File System Access API
   - `SceneController`: Central scene file operations manager
   - `ConfirmDialog`: Unsaved changes warning dialog
@@ -166,7 +171,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1020 tests passing** (includes ShaderEditorService + ShaderDropdown comprehensive tests)
+- **1033 tests passing** (includes Lambert shader + ShaderEditorService + ShaderDropdown tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights

@@ -1028,7 +1028,7 @@ export class PropertiesPanel {
    *
    * Resolution order:
    * 1. materialAssetRef → IMaterialAsset → shaderRef.uuid
-   * 2. Fallback: match shaderName ('pbr' → 'PBR', else → 'Unlit') from registry
+   * 2. Fallback: match shaderName ('pbr', 'unlit', 'lambert') to built-in shader
    */
   private resolveCurrentShaderUuid(material: IMaterialComponent): string | undefined {
     if (!this.assetRegistry) return undefined;
@@ -1043,10 +1043,18 @@ export class PropertiesPanel {
 
     // Fallback: match shaderName to a built-in shader
     const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
-    if (material.shaderName === 'pbr') {
-      return shaders.find(s => s.name === 'PBR')?.uuid;
+    const shaderName = material.shaderName?.toLowerCase();
+
+    switch (shaderName) {
+      case 'pbr':
+        return shaders.find(s => s.name === 'PBR')?.uuid;
+      case 'unlit':
+        return shaders.find(s => s.name === 'Unlit')?.uuid;
+      case 'lambert':
+      default:
+        // Default to Lambert shader
+        return shaders.find(s => s.name === 'Lambert')?.uuid ?? shaders[0]?.uuid;
     }
-    return shaders.find(s => s.name === 'Unlit')?.uuid ?? shaders[0]?.uuid;
   }
 
   /**
@@ -1099,18 +1107,22 @@ export class PropertiesPanel {
    * Map a shader UUID to the internal shaderName used by the ForwardRenderer.
    *
    * Built-in shader IDs are mapped to their well-known names:
+   * - 'built-in-shader-lambert' → 'lambert'
    * - 'built-in-shader-pbr' → 'pbr'
-   * - 'built-in-shader-unlit' → 'default'
+   * - 'built-in-shader-unlit' → 'unlit'
    *
    * Custom shaders use the UUID as the shaderName so the renderer
    * can resolve them via the ShaderEditorService program cache.
    */
   private shaderUuidToShaderName(uuid: string): string {
+    if (uuid === 'built-in-shader-lambert') {
+      return 'lambert';
+    }
     if (uuid === 'built-in-shader-pbr') {
       return 'pbr';
     }
     if (uuid === 'built-in-shader-unlit') {
-      return 'default';
+      return 'unlit';
     }
     // Custom shaders: use the UUID as shaderName for renderer resolution
     return uuid;

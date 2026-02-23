@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.14.2] - 2026-02-23
+
+### Added
+
+- **Lambert Shader** — New built-in shader as the default rendering shader
+  - Lambertian diffuse lighting with multi-light support (up to 8 directional lights)
+  - Hemisphere ambient lighting following Z-up convention (`normal.z * 0.5 + 0.5`)
+  - Rim lighting for better edge definition
+  - Gamma correction (approximate `pow(color, 1/2.2)`)
+  - `BUILT_IN_SHADER_IDS.LAMBERT` — constant UUID for Lambert shader
+  - `BUILT_IN_LAMBERT_SHADER` — IShaderAsset definition
+- **Shader Module Refactor** — Extracted shader sources to external `.glsl` files
+  - `src/plugins/renderers/shaders/lambert/` — Lambert shader module
+    - `lambert.vert.glsl` — Vertex shader with world position, normal, and texcoord outputs
+    - `lambert.frag.glsl` — Fragment shader with full lighting implementation
+    - `index.ts` — Module exports
+  - `src/plugins/renderers/shaders/unlit/` — Unlit shader module (refactored)
+    - `unlit.vert.glsl` — Simple transform vertex shader
+    - `unlit.frag.glsl` — Solid color fragment shader
+    - `index.ts` — Module exports
+- 13 additional tests (total: 1033 passing)
+
+### Changed
+
+- **BuiltInShaders.ts** — Major refactor
+  - Removed ~200 lines of inline GLSL source code
+  - Shader sources now imported from external `.glsl` files
+  - Built-in shader order: Lambert → PBR → Unlit
+- **ForwardRenderer** — Lambert as default shader
+  - `resolveShaderUUID()` returns Lambert for unknown/default shaders
+  - `getProgram()` returns Lambert program as default
+  - Fallback shader changed from PBR to Lambert
+  - Updated JSDoc to reflect Lambert as default
+- **Cube primitive** — Default `shaderName` changed from `'ForwardShader'` to `'lambert'`
+- **Sphere primitive** — Default `shaderName` changed to `'lambert'`
+- **Shader module index** — Updated exports to include Lambert and Unlit modules
+
+### Technical Notes
+
+- Lambert shader provides a good balance between visual quality and performance
+- Simpler than PBR (no metallic/roughness calculations) but still looks professional
+- Rim lighting adds subtle edge definition without expensive specular calculations
+
+---
+
 ## [0.14.1] - 2026-02-12
 
 ### Added

@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   BUILT_IN_SHADER_IDS,
+  BUILT_IN_LAMBERT_SHADER,
   BUILT_IN_PBR_SHADER,
   BUILT_IN_UNLIT_SHADER,
   BUILT_IN_SHADERS,
@@ -16,6 +17,10 @@ import { isShaderAsset } from '../../../src/core/assets/interfaces';
 
 describe('BuiltInShaders', () => {
   describe('BUILT_IN_SHADER_IDS', () => {
+    it('should have Lambert shader ID', () => {
+      expect(BUILT_IN_SHADER_IDS.LAMBERT).toBe('built-in-shader-lambert');
+    });
+
     it('should have PBR shader ID', () => {
       expect(BUILT_IN_SHADER_IDS.PBR).toBe('built-in-shader-pbr');
     });
@@ -25,7 +30,55 @@ describe('BuiltInShaders', () => {
     });
 
     it('should have unique IDs for each shader', () => {
+      expect(BUILT_IN_SHADER_IDS.LAMBERT).not.toBe(BUILT_IN_SHADER_IDS.PBR);
+      expect(BUILT_IN_SHADER_IDS.LAMBERT).not.toBe(BUILT_IN_SHADER_IDS.UNLIT);
       expect(BUILT_IN_SHADER_IDS.PBR).not.toBe(BUILT_IN_SHADER_IDS.UNLIT);
+    });
+  });
+
+  describe('BUILT_IN_LAMBERT_SHADER', () => {
+    it('should be a valid shader asset', () => {
+      expect(isShaderAsset(BUILT_IN_LAMBERT_SHADER)).toBe(true);
+    });
+
+    it('should have correct UUID', () => {
+      expect(BUILT_IN_LAMBERT_SHADER.uuid).toBe(BUILT_IN_SHADER_IDS.LAMBERT);
+    });
+
+    it('should be named Lambert', () => {
+      expect(BUILT_IN_LAMBERT_SHADER.name).toBe('Lambert');
+    });
+
+    it('should be marked as built-in', () => {
+      expect(BUILT_IN_LAMBERT_SHADER.isBuiltIn).toBe(true);
+    });
+
+    it('should have vertex source', () => {
+      expect(BUILT_IN_LAMBERT_SHADER.vertexSource).toContain('#version 300 es');
+      expect(BUILT_IN_LAMBERT_SHADER.vertexSource).toContain('uNormalMatrix');
+      expect(BUILT_IN_LAMBERT_SHADER.vertexSource).toContain('gl_Position');
+    });
+
+    it('should have fragment source with Lambertian diffuse', () => {
+      expect(BUILT_IN_LAMBERT_SHADER.fragmentSource).toContain('#version 300 es');
+      expect(BUILT_IN_LAMBERT_SHADER.fragmentSource).toContain('uLightDirections');
+      expect(BUILT_IN_LAMBERT_SHADER.fragmentSource).toContain('uAmbientColor');
+    });
+
+    it('should have base color uniform', () => {
+      const uniformNames = BUILT_IN_LAMBERT_SHADER.uniforms.map((u) => u.name);
+      expect(uniformNames).toContain('uBaseColor');
+    });
+
+    it('should have correct uniform types', () => {
+      const baseColor = BUILT_IN_LAMBERT_SHADER.uniforms.find((u) => u.name === 'uBaseColor');
+      expect(baseColor?.type).toBe('vec3');
+      expect(baseColor?.uiType).toBe('color');
+    });
+
+    it('should have a description', () => {
+      expect(BUILT_IN_LAMBERT_SHADER.description).toBeDefined();
+      expect(BUILT_IN_LAMBERT_SHADER.description).toContain('Lambertian');
     });
   });
 
@@ -152,7 +205,11 @@ describe('BuiltInShaders', () => {
 
   describe('BUILT_IN_SHADERS array', () => {
     it('should contain all built-in shaders', () => {
-      expect(BUILT_IN_SHADERS).toHaveLength(2);
+      expect(BUILT_IN_SHADERS).toHaveLength(3);
+    });
+
+    it('should contain Lambert shader', () => {
+      expect(BUILT_IN_SHADERS).toContain(BUILT_IN_LAMBERT_SHADER);
     });
 
     it('should contain PBR shader', () => {
@@ -168,9 +225,17 @@ describe('BuiltInShaders', () => {
         expect(isShaderAsset(shader)).toBe(true);
       }
     });
+
+    it('should have Lambert as the first (default) shader', () => {
+      expect(BUILT_IN_SHADERS[0]).toBe(BUILT_IN_LAMBERT_SHADER);
+    });
   });
 
   describe('isBuiltInShaderUUID', () => {
+    it('should return true for Lambert shader UUID', () => {
+      expect(isBuiltInShaderUUID(BUILT_IN_SHADER_IDS.LAMBERT)).toBe(true);
+    });
+
     it('should return true for PBR shader UUID', () => {
       expect(isBuiltInShaderUUID(BUILT_IN_SHADER_IDS.PBR)).toBe(true);
     });

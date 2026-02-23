@@ -420,7 +420,7 @@ export class Sphere implements IRenderable, IEntity, IMeshProvider, ICloneable, 
     // Material component
     const materialComponent: IMaterialComponent = {
       type: 'material',
-      shaderName: 'ForwardShader',
+      shaderName: 'lambert',
       color: [0.8, 0.8, 0.8], // Default gray
       opacity: 1,
       transparent: false,
