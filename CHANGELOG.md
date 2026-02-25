@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.14.3] - 2026-02-25
+
+### Fixed
+
+- **Shader Creation Flow** — Creating new shaders now prompts for project folder
+  - Displays "Project Required" dialog when attempting to create shader without open project
+  - New shaders are automatically saved to project folder after creation
+  - Added `ProjectService` dependency to `PropertiesPanel`
+- **Shader Dropdown Selection** — Custom shaders now correctly appear as selected
+  - `resolveCurrentShaderUuid()` now recognizes shader UUIDs as valid shader names
+  - Dropdown properly refreshes when new shaders are created via `asset:shaderCreated` event
+- **Custom Shader Rendering** — Entities now render with applied custom shaders
+  - `ForwardRenderer.resolveShaderUUID()` now checks `shaderEditorService.hasCachedProgram()`
+  - Custom shader UUIDs stored in `material.shaderName` are properly resolved
+- **Alpha Transparency** — Shader `outColor` alpha values now affect rendering
+  - Enabled WebGL blending in `ForwardRenderer.beginFrame()`
+  - Uses standard alpha blending: `SRC_ALPHA, ONE_MINUS_SRC_ALPHA`
+
+---
+
 ## [0.14.2] - 2026-02-23
 
 ### Added

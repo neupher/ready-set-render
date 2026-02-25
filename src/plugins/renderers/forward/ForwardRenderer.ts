@@ -153,7 +153,7 @@ export class ForwardRenderer implements IRenderPipeline {
 
   /**
    * Begin a new render frame.
-   * Sets up depth testing and culling, clears the screen.
+   * Sets up depth testing, culling, and blending, then clears the screen.
    */
   beginFrame(camera: ICamera): void {
     if (!this.gl || !this.initialized) return;
@@ -168,6 +168,10 @@ export class ForwardRenderer implements IRenderPipeline {
     this.gl.enable(this.gl.CULL_FACE);
     this.gl.cullFace(this.gl.BACK);
     this.gl.frontFace(this.gl.CCW);
+
+    // Enable alpha blending for transparency support
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Set clear color to match editor background
     this.gl.clearColor(0.15, 0.15, 0.17, 1.0);
@@ -338,8 +342,9 @@ export class ForwardRenderer implements IRenderPipeline {
    *
    * Priority:
    * 1. If material has materialAssetRef → get shader from material asset
-   * 2. Map shaderName to built-in shader UUID ('lambert', 'pbr', 'unlit')
-   * 3. Default to Lambert
+   * 2. Check if shaderName is already a valid shader UUID (custom shaders)
+   * 3. Map shaderName to built-in shader UUID ('lambert', 'pbr', 'unlit')
+   * 4. Default to Lambert
    */
   private resolveShaderUUID(material: IMaterialComponent | null): string {
     // Try to resolve via materialAssetRef → IMaterialAsset → shaderRef
@@ -350,9 +355,16 @@ export class ForwardRenderer implements IRenderPipeline {
       }
     }
 
+    const shaderName = material?.shaderName;
+
+    // Check if shaderName is already a UUID of a registered shader (custom shaders)
+    if (shaderName && this.shaderEditorService?.hasCachedProgram(shaderName)) {
+      return shaderName;
+    }
+
     // Map shaderName to built-in shader UUID
-    const shaderName = material?.shaderName?.toLowerCase();
-    switch (shaderName) {
+    const shaderNameLower = shaderName?.toLowerCase();
+    switch (shaderNameLower) {
       case 'pbr':
         return BUILT_IN_SHADER_IDS.PBR;
       case 'unlit':

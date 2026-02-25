@@ -33,7 +33,8 @@ import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
 import type { AssetSelectedEvent } from '../tabs/AssetBrowserTab';
 import { MonacoShaderEditor } from '../editors/MonacoShaderEditor';
-import { showUnsavedChangesDialog } from '../components/ConfirmDialog';
+import { showUnsavedChangesDialog, showConfirmDialog } from '../components/ConfirmDialog';
+import type { ProjectService } from '@core/ProjectService';
 import type { ShaderEditorService, ShaderCompilationEvent } from '@core/ShaderEditorService';
 
 export interface PropertiesPanelOptions {
@@ -49,6 +50,8 @@ export interface PropertiesPanelOptions {
   shaderFactory?: ShaderAssetFactory;
   /** Shader editor service for live shader editing (optional) */
   shaderEditorService?: ShaderEditorService;
+  /** Project service for project-based workflow (optional) */
+  projectService?: ProjectService;
 }
 
 /**
@@ -89,6 +92,9 @@ export class PropertiesPanel {
 
   /** Material factory for syncing parameters on shader change */
   private materialFactory: MaterialAssetFactory | null = null;
+
+  /** Project service for project-based workflow */
+  private projectService: ProjectService | null = null;
 
   /** Cleanup function for compilation event listener */
   private compilationUnsubscribe: (() => void) | null = null;
@@ -144,6 +150,7 @@ export class PropertiesPanel {
     this.assetRegistry = options.assetRegistry ?? null;
     this.shaderFactory = options.shaderFactory ?? null;
     this.materialFactory = options.materialFactory ?? null;
+    this.projectService = options.projectService ?? null;
 
     // Create Monaco shader editor (replaces textarea)
     this.monacoEditor = new MonacoShaderEditor();
@@ -290,6 +297,13 @@ export class PropertiesPanel {
     this.eventBus.on<AssetSelectedEvent>('asset:selected', (data) => {
       if (data.asset.type === 'shader') {
         this.openShaderWithDirtyCheck(data.asset as IShaderAsset);
+      }
+    });
+
+    // Re-render details when a new shader is created to refresh the dropdown
+    this.eventBus.on('asset:shaderCreated', () => {
+      if (this.selectedObject) {
+        this.renderDetails();
       }
     });
   }
@@ -1028,7 +1042,8 @@ export class PropertiesPanel {
    *
    * Resolution order:
    * 1. materialAssetRef → IMaterialAsset → shaderRef.uuid
-   * 2. Fallback: match shaderName ('pbr', 'unlit', 'lambert') to built-in shader
+   * 2. Check if shaderName is already a UUID matching a registered shader
+   * 3. Fallback: match shaderName ('pbr', 'unlit', 'lambert') to built-in shader
    */
   private resolveCurrentShaderUuid(material: IMaterialComponent): string | undefined {
     if (!this.assetRegistry) return undefined;
@@ -1041,11 +1056,23 @@ export class PropertiesPanel {
       }
     }
 
-    // Fallback: match shaderName to a built-in shader
+    // Get all available shaders
     const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
-    const shaderName = material.shaderName?.toLowerCase();
+    const shaderName = material.shaderName;
 
-    switch (shaderName) {
+    // Check if shaderName is already a UUID matching a registered shader
+    // This handles custom shaders that use their UUID as shaderName
+    if (shaderName) {
+      const matchingShader = shaders.find(s => s.uuid === shaderName);
+      if (matchingShader) {
+        return matchingShader.uuid;
+      }
+    }
+
+    // Fallback: match shaderName to a built-in shader (case-insensitive)
+    const shaderNameLower = shaderName?.toLowerCase();
+
+    switch (shaderNameLower) {
       case 'pbr':
         return shaders.find(s => s.name === 'PBR')?.uuid;
       case 'unlit':
@@ -1192,11 +1219,36 @@ export class PropertiesPanel {
    * Create a new shader asset and open it in the editor.
    * Uses the ShaderAssetFactory to create a default unlit shader,
    * registers it in the AssetRegistry, and opens it for editing.
+   *
+   * If no project folder is open, prompts the user to select one first,
+   * since shaders need a project folder to be persisted.
    */
-  private createAndOpenNewShader(): void {
+  private async createAndOpenNewShader(): Promise<void> {
     if (!this.shaderFactory || !this.assetRegistry || !this.shaderEditorService) {
       console.warn('PropertiesPanel: Cannot create shader — missing factory, registry, or editor service');
       return;
+    }
+
+    // Check if a project is open — shaders need to be saved to a project folder
+    if (this.projectService && !this.projectService.isProjectOpen) {
+      const shouldOpenProject = await showConfirmDialog({
+        title: 'Project Required',
+        message: 'To create a new shader, you need to open a project folder first. Shaders are saved to your project folder so they persist across sessions.\n\nWould you like to open a project folder now?',
+        confirmText: 'Open Project',
+        cancelText: 'Cancel',
+      });
+
+      if (shouldOpenProject) {
+        // Emit command to open project folder
+        this.eventBus.emit('command:openProject');
+
+        // Wait a bit for the project to open (dialog is async)
+        // We'll let the user retry after opening the project
+        return;
+      } else {
+        // User cancelled — don't create the shader
+        return;
+      }
     }
 
     const existingShaders = this.assetRegistry.getByType<IShaderAsset>('shader');
@@ -1204,6 +1256,11 @@ export class PropertiesPanel {
 
     const shader = this.shaderFactory.create({ name });
     this.assetRegistry.register(shader);
+
+    // Save the shader to the project folder if available
+    if (this.projectService?.isProjectOpen) {
+      await this.projectService.saveAsset(shader);
+    }
 
     this.shaderEditorService.openShader(shader.uuid);
 
@@ -1217,6 +1274,9 @@ export class PropertiesPanel {
         this.shaderEditorService.errors.length,
       );
     }
+
+    // Emit event to notify that a new shader is available (for dropdown refresh)
+    this.eventBus.emit('asset:shaderCreated', { shaderUUID: shader.uuid });
 
     this.switchTab('shader');
   }

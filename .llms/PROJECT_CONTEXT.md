@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-23T14:23:00Z
-> **Version:** 0.14.2
-> **Status:** Lambert Shader as Default + Shader Module Refactor
+> **Last Updated:** 2026-02-25T15:02:00Z
+> **Version:** 0.14.3
+> **Status:** Shader Creation & Application Fixes
 
 ---
 
@@ -25,14 +25,14 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 | 7 | Swappable render pipelines (forward/deferred/raytracing) | High | In Progress |
 | 8 | 3D model import (.obj, .gltf) | Medium | Not Started |
 | 9 | Texture support (.png, .jpg, .tga) | Medium | Not Started |
-| 10 | In-editor shader text editor | Medium | In Progress |
+| 10 | In-editor shader text editor | Medium | ✅ Complete |
 | 11 | Camera controls and scene navigation | High | ✅ Complete |
 | 12 | Comprehensive documentation | High | Ongoing |
 | 13 | Full test coverage | High | Ongoing |
 
 ---
 
-## Current State (v0.14.2)
+## Current State (v0.14.3)
 
 ### What's Working
 
@@ -42,6 +42,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `src/plugins/renderers/shaders/lambert/` — Lambert shader module (default for primitives)
   - `src/plugins/renderers/shaders/unlit/` — Unlit shader module
   - `src/plugins/renderers/shaders/pbr/` — PBR shader module
+- **Custom Shader Workflow** (v0.14.3)
+  - Project folder prompt when creating shaders without open project
+  - Custom shaders correctly appear as selected in dropdown after application
+  - Custom shaders render correctly (UUID resolution in ForwardRenderer)
+  - Alpha transparency support via WebGL blending
 - **Scene Controller**: New/Open/Save/Save As operations with File System Access API
   - `SceneController`: Central scene file operations manager
   - `ConfirmDialog`: Unsaved changes warning dialog
