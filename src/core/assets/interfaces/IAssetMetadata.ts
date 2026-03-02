@@ -22,7 +22,7 @@
  * Asset type identifiers.
  * Used for type-safe asset handling and file extension mapping.
  */
-export type AssetType = 'shader' | 'material' | 'scene' | 'texture';
+export type AssetType = 'shader' | 'material' | 'scene' | 'texture' | 'model' | 'mesh';
 
 /**
  * Base metadata interface that all assets must implement.
@@ -82,7 +82,7 @@ export function isAssetMetadata(obj: unknown): obj is IAssetMetadata {
     typeof asset.uuid === 'string' &&
     typeof asset.name === 'string' &&
     typeof asset.type === 'string' &&
-    ['shader', 'material', 'scene', 'texture'].includes(asset.type as string) &&
+    ['shader', 'material', 'scene', 'texture', 'model', 'mesh'].includes(asset.type as string) &&
     typeof asset.version === 'number' &&
     typeof asset.created === 'string' &&
     typeof asset.modified === 'string'
@@ -101,6 +101,8 @@ export function getAssetFileExtension(type: AssetType): string {
     material: '.material.json',
     scene: '.scene.json',
     texture: '.texture.json',
+    model: '.model.json',
+    mesh: '.mesh.bin',
   };
   return extensions[type];
 }

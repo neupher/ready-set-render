@@ -1,7 +1,7 @@
 # Library Tracking: WebGL Editor
 
-> **Last Updated:** 2026-02-12T11:02:00Z
-> **Version:** 0.1.4
+> **Last Updated:** 2026-03-02T12:17:00Z
+> **Version:** 0.1.5
 
 ---
 
@@ -177,6 +177,43 @@ Add a comment in package.json explaining why the library exists.
 ---
 
 ## Added Libraries
+
+### @gltf-transform/core
+
+**Added:** 2026-03-02
+**Version:** ^4.x.x
+**Category:** Import / 3D Models
+**Size:** ~50KB (minified + gzipped)
+**npm:** https://www.npmjs.com/package/@gltf-transform/core
+**GitHub:** https://github.com/donmccurdy/glTF-Transform
+
+#### Justification
+
+Required for **Goal #8: 3D Model Import (.obj, .gltf)**. @gltf-transform/core is the industry-standard GLTF/GLB parsing library, maintained by Don McCurdy (Khronos GLTF spec contributor). It provides:
+
+- Full GLTF 2.0 spec compliance
+- Direct Float32Array access to geometry data
+- PBR material property extraction
+- Scene hierarchy traversal
+- No rendering dependencies (pure data model)
+
+Implementing a custom GLTF parser would be impractical given the spec complexity (100+ page specification) and would not serve the learning goals of this project (which focus on WebGL2 rendering, not file format parsing).
+
+#### Usage
+
+- `src/plugins/importers/gltf/GLTFImportService.ts` — Core import logic
+- `src/plugins/importers/gltf/GLTFImporter.ts` — Plugin interface
+
+#### Alternatives Considered
+
+| Alternative | Why Not Chosen |
+|-------------|---------------|
+| Custom parser | GLTF spec too complex; would take months |
+| @loaders.gl/gltf | Larger (~80KB), more dependencies |
+| Three.js GLTFLoader | Forbidden (tied to Three.js, heavy abstractions) |
+| gltf-parser | Less maintained, weaker TypeScript support |
+
+---
 
 ### monaco-editor
 

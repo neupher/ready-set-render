@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-02T12:08:00Z
-> **Version:** 0.14.3
-> **Status:** GLTF Importer Planning Complete
+> **Last Updated:** 2026-03-02T13:37:00Z
+> **Version:** 0.15.0
+> **Status:** GLTF Importer Foundation Complete (Phases 1-3)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.14.3)
+## Current State (v0.15.0)
 
 ### What's Working
 
@@ -176,7 +176,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1033 tests passing** (includes Lambert shader + ShaderEditorService + ShaderDropdown tests)
+- **1137 tests passing** (includes GLTF Importer foundation tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights

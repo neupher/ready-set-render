@@ -60,21 +60,21 @@ npm install @gltf-transform/core
 interface IModelAsset extends IAsset {
   type: 'model';
   isBuiltIn: false;
-  
+
   /** Original source file info */
   source: {
     filename: string;
     format: 'gltf' | 'glb';
     importedAt: string;
   };
-  
+
   /** Contained sub-assets (meshes, materials) */
   contents: {
     meshes: IMeshAssetReference[];
     materials: IMaterialAssetReference[];
     textures: ITextureAssetReference[];  // Future
   };
-  
+
   /** Scene hierarchy from source file */
   hierarchy: IModelNode[];
 }
@@ -103,16 +103,16 @@ interface IMeshAssetReference {
 interface IMeshAsset extends IAsset {
   type: 'mesh';
   isBuiltIn: boolean;
-  
+
   /** Geometry data */
   positions: number[];  // Flat array [x,y,z,...]
   normals: number[];
   uvs?: number[];
   indices: number[];
-  
+
   /** Bounds for ray picking */
   bounds: MeshBounds;
-  
+
   /** Parent model asset reference (for imported meshes) */
   parentModelRef?: IAssetReference;
 }
@@ -129,10 +129,10 @@ class MeshEntity implements IEntity, IMeshProvider, ICloneable, ISerializable {
   readonly id: string;
   name: string;
   transform: Transform;
-  
+
   /** Reference to the mesh asset providing geometry */
   meshAssetRef: IAssetReference;
-  
+
   getMeshData(): IMeshData | null {
     // Retrieve from AssetRegistry via meshAssetRef
   }
@@ -169,32 +169,32 @@ import { Document, WebIO } from '@gltf-transform/core';
 
 class GLTFImportService {
   private io = new WebIO();
-  
+
   async import(file: File): Promise<GLTFImportResult> {
     const arrayBuffer = await file.arrayBuffer();
     const doc = await this.io.readBinary(new Uint8Array(arrayBuffer));
-    
+
     return {
       meshes: this.extractMeshes(doc),
       materials: this.extractMaterials(doc),
       hierarchy: this.extractHierarchy(doc),
     };
   }
-  
+
   private extractMeshes(doc: Document): IMeshData[] {
     const meshes: IMeshData[] = [];
-    
+
     for (const mesh of doc.getRoot().listMeshes()) {
       for (const primitive of mesh.listPrimitives()) {
         const positions = primitive.getAttribute('POSITION')?.getArray() as Float32Array;
         const normals = primitive.getAttribute('NORMAL')?.getArray() as Float32Array;
         const uvs = primitive.getAttribute('TEXCOORD_0')?.getArray() as Float32Array;
         const indices = primitive.getIndices()?.getArray() as Uint16Array;
-        
+
         // Apply Y-up to Z-up coordinate conversion
         const convertedPositions = this.convertCoordinates(positions);
         const convertedNormals = this.convertCoordinates(normals);
-        
+
         meshes.push({
           positions: convertedPositions,
           normals: convertedNormals,
@@ -204,10 +204,10 @@ class GLTFImportService {
         });
       }
     }
-    
+
     return meshes;
   }
-  
+
   private convertCoordinates(data: Float32Array): Float32Array {
     // GLTF Y-up → Project Z-up: swap Y and Z
     const result = new Float32Array(data.length);
@@ -229,7 +229,7 @@ private extractMaterials(doc: Document): IMaterialAsset[] {
     const baseColor = mat.getBaseColorFactor();
     const metallic = mat.getMetallicFactor();
     const roughness = mat.getRoughnessFactor();
-    
+
     return this.materialFactory.create({
       name: mat.getName() || 'Imported Material',
       shaderRef: { uuid: BUILT_IN_SHADER_IDS.PBR, type: 'shader' },
@@ -250,7 +250,7 @@ private extractMaterials(doc: Document): IMaterialAsset[] {
 private extractHierarchy(doc: Document): IModelNode[] {
   const scene = doc.getRoot().listScenes()[0];
   if (!scene) return [];
-  
+
   return scene.listChildren().map(node => this.nodeToModelNode(node));
 }
 
@@ -258,7 +258,7 @@ private nodeToModelNode(node: Node): IModelNode {
   const translation = node.getTranslation();
   const rotation = node.getRotation(); // Quaternion
   const scale = node.getScale();
-  
+
   return {
     name: node.getName() || 'Node',
     meshIndex: this.getMeshIndex(node.getMesh()),
@@ -289,32 +289,32 @@ class GLTFImporter implements IImporter {
   readonly name = 'GLTF/GLB Importer';
   readonly version = '1.0.0';
   readonly supportedExtensions = ['.gltf', '.glb'];
-  
+
   constructor(
     private importService: GLTFImportService,
     private assetRegistry: AssetRegistry,
     private modelFactory: ModelAssetFactory
   ) {}
-  
+
   canImport(file: File): boolean {
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
     return this.supportedExtensions.includes(ext);
   }
-  
+
   async import(file: File): Promise<ImportResult> {
     const result = await this.importService.import(file);
-    
+
     // Create model asset with all sub-assets
     const modelAsset = this.modelFactory.createFromImport(file.name, result);
-    
+
     // Register all assets
     this.assetRegistry.register(modelAsset);
     result.meshes.forEach(m => this.assetRegistry.register(m));
     result.materials.forEach(m => this.assetRegistry.register(m));
-    
+
     // Create scene objects from hierarchy
     const sceneObjects = this.createSceneObjects(result.hierarchy, result);
-    
+
     return {
       objects: sceneObjects,
       warnings: [],
@@ -358,7 +358,7 @@ class ImportController {
     projectService: ProjectService,
     gltfImporter: GLTFImporter
   );
-  
+
   async handleImport(): Promise<void> {
     // 1. Show file picker (.glb, .gltf)
     const [fileHandle] = await window.showOpenFilePicker({
@@ -370,16 +370,16 @@ class ImportController {
         }
       }]
     });
-    
+
     // 2. Validate project is open (or prompt)
     if (!this.projectService.isProjectOpen) {
       await this.promptOpenProject();
     }
-    
+
     // 3. Run importer
     const file = await fileHandle.getFile();
     const result = await this.gltfImporter.import(file);
-    
+
     // 4. Add to scene (optional, ask user)
     if (await this.confirmAddToScene()) {
       result.objects.forEach(obj => this.sceneGraph.add(obj));
@@ -414,7 +414,7 @@ Tree structure:
 ```
 Project
 ├── Materials
-├── Shaders  
+├── Shaders
 └── Imported          // NEW
     └── MyModel.glb   // Expandable compound asset
         ├── Meshes
@@ -459,7 +459,7 @@ Accept drops on viewport:
 canvas.addEventListener('drop', async (e) => {
   const uuid = e.dataTransfer.getData('application/x-asset-uuid');
   const type = e.dataTransfer.getData('application/x-asset-type');
-  
+
   if (type === 'model') {
     await this.instantiateModelAtPosition(uuid, dropPosition);
   } else if (type === 'mesh') {
@@ -482,7 +482,7 @@ Ensure imported model hierarchies render correctly:
 ```typescript
 private getNodeType(obj: SceneObject): TreeNode['type'] {
   // ... existing checks
-  
+
   // Model instance (has children from import)
   if (isEntity(obj) && obj.hasComponent('modelInstance')) {
     return 'group';  // Makes it expandable
@@ -516,7 +516,7 @@ Extend `discoverProjectAssets()` to find model files:
 ```typescript
 private async discoverProjectAssets(): Promise<void> {
   // ... existing code for shaders, materials
-  
+
   // Discover model files
   const modelExtensions = ['.glb', '.gltf'];
   for await (const entry of this.walkDirectory(this.rootHandle)) {
@@ -640,7 +640,7 @@ All import operations should be undoable:
 
 #### Justification
 
-Required for **3D Model Import (Goal #8)**. @gltf-transform/core is the industry-standard 
+Required for **3D Model Import (Goal #8)**. @gltf-transform/core is the industry-standard
 GLTF/GLB parsing library, maintained by Don McCurdy (Khronos GLTF spec contributor). It provides:
 
 - Full GLTF 2.0 spec compliance
@@ -649,8 +649,8 @@ GLTF/GLB parsing library, maintained by Don McCurdy (Khronos GLTF spec contribut
 - Scene hierarchy traversal
 - No rendering dependencies (pure data model)
 
-Implementing a custom GLTF parser would be impractical given the spec complexity 
-(100+ page specification) and would not serve the learning goals of this project 
+Implementing a custom GLTF parser would be impractical given the spec complexity
+(100+ page specification) and would not serve the learning goals of this project
 (which focus on WebGL2 rendering, not file format parsing).
 
 #### Usage
@@ -697,7 +697,7 @@ Phase 1 ──► Phase 2 ──► Phase 3 ──┬──► Phase 4
                                   ├──► Phase 5 ──► Phase 6
                                   │
                                   └──► Phase 7 ──► Phase 8
-                                  
+
 Phase 9 depends on Phases 3, 5, 7, 8
 Phase 10 depends on all previous phases
 ```

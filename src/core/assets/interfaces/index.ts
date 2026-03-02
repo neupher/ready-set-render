@@ -66,3 +66,31 @@ export {
   createDefaultSceneSettings,
   SCENE_ASSET_VERSION,
 } from './ISceneAsset';
+
+// Model Assets
+export type {
+  IModelAsset,
+  IModelSource,
+  IModelContents,
+  IModelNode,
+  IMeshAssetReference,
+  IMaterialAssetReference,
+  ITextureAssetReference,
+  ModelFormat,
+} from './IModelAsset';
+export {
+  isModelAsset,
+  isModelNode,
+  createDefaultModelContents,
+  createDefaultModelNode,
+  MODEL_ASSET_VERSION,
+} from './IModelAsset';
+
+// Mesh Assets
+export type { IMeshAsset, IMeshBounds } from './IMeshAsset';
+export {
+  isMeshAsset,
+  calculateMeshBounds,
+  createDefaultMeshBounds,
+  MESH_ASSET_VERSION,
+} from './IMeshAsset';

@@ -69,6 +69,6 @@ export function isAssetReference(obj: unknown): obj is IAssetReference {
   return (
     typeof ref.uuid === 'string' &&
     typeof ref.type === 'string' &&
-    ['shader', 'material', 'scene', 'texture'].includes(ref.type as string)
+    ['shader', 'material', 'scene', 'texture', 'model', 'mesh'].includes(ref.type as string)
   );
 }

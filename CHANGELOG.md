@@ -9,16 +9,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+---
+
+## [0.15.0] - 2026-03-02
+
 ### Added
 
+- **GLTF Importer Foundation (Phases 1-3)** — Core infrastructure for 3D model import
+  - `IModelAsset` interface — Compound asset for imported 3D models
+    - Contains hierarchy tree, mesh references, material references
+    - `IModelNode` for scene graph structure with transform and children
+    - `IModelSource` for tracking import metadata (filename, format, timestamp)
+  - `IMeshAsset` interface — Stores geometry data from imported models
+    - Positions, normals, UVs, indices arrays
+    - `IMeshBounds` for bounding box (min/max vectors)
+    - Vertex count and triangle count metadata
+  - `MeshEntity` class — Entity that references `IMeshAsset` for geometry
+    - Global mesh asset resolver pattern for decoupling from `AssetRegistry`
+    - Lazy caching of mesh data on first access
+    - Implements `IRenderable`, `IMeshProvider`, `ICloneable`, `ISerializable`
+  - `GLTFImportService` — Core GLTF parsing service
+    - Uses `@gltf-transform/core` (~50KB, Khronos ecosystem)
+    - Y-up to Z-up coordinate system conversion (GLTF → Blender convention)
+    - Mesh extraction with positions, normals, UVs, indices
+    - PBR material extraction (baseColor, metallic, roughness, emissive)
+    - Scene hierarchy preservation
+  - `AssetType` extended with `'model'` and `'mesh'` types
+  - `SerializedEntityType` extended with `'MeshEntity'`
+  - `FileSystemAssetStore` updated with `models/` and `meshes/` folders
 - **GLB/GLTF Importer Plan** — Comprehensive implementation plan for 3D model import
   - 10-phase implementation roadmap (~10 sessions estimated)
   - Library selection: `@gltf-transform/core` (Khronos ecosystem, ~50KB)
-  - New asset types: `IModelAsset`, `IMeshAsset`, `MeshEntity`
-  - Features: File menu import, hierarchy preservation, material creation
-  - Asset Browser enhancements: "Imported" category, drag-and-drop to viewport
-  - Project folder integration: auto-discovery of .glb/.gltf files
   - Documentation: `.llms/GLTF_IMPORTER_PLAN.md`
+- 104 new unit tests (total: 1137 passing)
+  - `IModelAsset.test.ts` — 40 tests for model asset interface
+  - `IMeshAsset.test.ts` — 34 tests for mesh asset interface
+  - `MeshEntity.test.ts` — 30 tests for mesh entity class
+
+### Changed
+
+- **Dependencies** — Added `@gltf-transform/core` ^4.1.1 for GLTF 2.0 parsing
+
+### Technical Notes
+
+- Coordinate conversion formula: `Y_new = -Z_old`, `Z_new = Y_old` (X unchanged)
+- `MeshEntity` uses resolver pattern to avoid circular dependency with `AssetRegistry`
+- Import service designed for async file parsing with `WebIO` from @gltf-transform
 
 ---
 

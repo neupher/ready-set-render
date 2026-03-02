@@ -67,6 +67,8 @@ const ASSET_FOLDERS: Record<AssetType, string> = {
   material: 'materials',
   scene: 'scenes',
   texture: 'textures',
+  model: 'models',
+  mesh: 'meshes',
 };
 
 /**

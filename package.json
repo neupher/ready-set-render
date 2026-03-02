@@ -39,6 +39,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@gltf-transform/core": "^4.3.0",
     "monaco-editor": "^0.52.2"
   }
 }
