@@ -298,7 +298,7 @@ export const DEFAULT_MENUS: Menu[] = [
     items: [
       { label: 'New', shortcut: 'Ctrl+N' },
       { label: 'Open', shortcut: 'Ctrl+O' },
-      { label: 'Import', separator: true, disabled: true },
+      { label: 'Import', shortcut: 'Ctrl+I', separator: true },
       { label: 'Export', disabled: true },
       { label: 'Export as HTML', separator: true },
       { label: 'Save', shortcut: 'Ctrl+S' },

@@ -83,6 +83,16 @@ export function registerEditorShortcuts(options: EditorShortcutOptions): void {
     eventBus,
   } = options;
 
+  // Import shortcut (Ctrl+I)
+  shortcutManager.register({
+    key: 'i',
+    ctrl: true,
+    action: () => {
+      eventBus.emit('command:import', undefined);
+    },
+    description: 'Import 3D model',
+  });
+
   // Delete shortcut (Delete key)
   shortcutManager.register({
     key: 'Delete',

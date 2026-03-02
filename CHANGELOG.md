@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **GLTF Importer Phase 4: File Menu & Import UI** — Complete import workflow
+  - `ImportController` class — Handles import command workflow
+    - File picker dialog for `.glb`/`.gltf` files (File System Access API with fallback)
+    - Project folder prompt when no project is open
+    - Emits `import:complete` event with import statistics
+  - `GLTFImporter` plugin — Bridges `GLTFImportService` to asset system
+    - Implements `IImporter` interface for plugin architecture
+    - Creates and registers mesh assets and material assets
+    - Converts GLTF hierarchy to `MeshEntity` scene objects
+  - File → Import menu item enabled (was disabled)
+  - `Ctrl+I` keyboard shortcut for import command
+  - `command:import` event handler wired in `Application.ts`
+  - 25 new unit tests (total: 1162 passing)
+    - `ImportController.test.ts` — 10 tests for import workflow
+    - `GLTFImporter.test.ts` — 15 tests for importer plugin
+
 ---
 
 ## [0.15.0] - 2026-03-02

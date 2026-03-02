@@ -28,6 +28,7 @@ import { InputManager } from '@core/InputManager';
 import { SettingsService } from '@core/SettingsService';
 import { SceneController } from '@core/SceneController';
 import { ShaderEditorService } from '@core/ShaderEditorService';
+import { ImportController } from '@core/ImportController';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
 import { SettingsWindow } from '@ui/windows/SettingsWindow';
@@ -51,8 +52,12 @@ import { TransformGizmoController } from '@plugins/gizmos';
 import { OrbitController } from '@plugins/navigation';
 import { DirectionalLight } from '@plugins/lights/DirectionalLight';
 import { LightManager } from '@core/LightManager';
+import { GLTFImportService } from '@plugins/importers/gltf/GLTFImportService';
+import { GLTFImporter } from '@plugins/importers/gltf/GLTFImporter';
+import { setMeshAssetResolver } from '@plugins/primitives/MeshEntity';
 
 import type { RenderCameraAdapter } from '@core/RenderCameraAdapter';
+import type { IMeshAsset } from '@core/assets/interfaces/IMeshAsset';
 
 /**
  * Configuration options for the Application.
@@ -198,6 +203,37 @@ export class Application {
 
     // Setup project commands
     this.setupProjectCommands(projectService);
+
+    // Set up mesh asset resolver for MeshEntity
+    setMeshAssetResolver((uuid: string) => {
+      const asset = assetRegistry.get(uuid);
+      if (asset && asset.type === 'mesh') {
+        return asset as IMeshAsset;
+      }
+      return null;
+    });
+    console.log('Mesh asset resolver configured');
+
+    // Initialize GLTF importer
+    const gltfImportService = new GLTFImportService();
+    const gltfImporter = new GLTFImporter(gltfImportService, assetRegistry, materialFactory);
+
+    // Initialize import controller
+    const importController = new ImportController({
+      eventBus: this.eventBus,
+      sceneGraph: this.sceneGraph,
+      projectService,
+      gltfImporter,
+    });
+
+    // Setup import command handler
+    this.eventBus.on('command:import', async () => {
+      const result = await importController.handleImport();
+      if (!result.success && result.error) {
+        console.error('Import failed:', result.error);
+      }
+    });
+    console.log('Import controller initialized');
 
     // Create default Cube primitive for testing
     const defaultCube = this.primitiveRegistry.create('Cube');

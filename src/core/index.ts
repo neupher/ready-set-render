@@ -55,6 +55,13 @@ export {
 } from './SceneLauncherExporter';
 export type { LauncherOptions, LauncherMessage } from './SceneLauncherExporter';
 
+// Import Controller
+export { ImportController } from './ImportController';
+export type {
+  ImportControllerOptions,
+  ImportOperationResult,
+} from './ImportController';
+
 // Plugin Manager
 export {
   PluginManager,

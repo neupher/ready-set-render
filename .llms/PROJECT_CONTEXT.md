@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-02T13:37:00Z
-> **Version:** 0.15.0
-> **Status:** GLTF Importer Foundation Complete (Phases 1-3)
+> **Last Updated:** 2026-03-02T16:46:00Z
+> **Version:** 0.15.1
+> **Status:** GLTF Importer Phase 4 Complete (File Menu & Import UI)
 
 ---
 
@@ -36,7 +36,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### What's Working
 
-- **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService
+- **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService, ImportController
 - **Built-in Shaders**: Lambert (default), PBR (Cook-Torrance BRDF), Unlit
   - Shader sources loaded from external `.glsl` files for maintainability
   - `src/plugins/renderers/shaders/lambert/` — Lambert shader module (default for primitives)
@@ -102,6 +102,16 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
     - Collapses to 28px sidebar with vertical title
     - Smooth CSS transitions for collapse/expand
     - Asset system initialized in Application with built-in assets
+- **GLTF Import (Phase 4)**: File Menu & Import UI
+  - `ImportController`: Import command workflow manager
+    - File picker dialog for `.glb`/`.gltf` files (File System Access API + fallback)
+    - Project folder prompt when no project is open
+    - `command:import` event handler wired in Application
+  - `GLTFImporter`: Plugin bridging `GLTFImportService` to asset system
+    - Creates and registers mesh/material assets
+    - Converts GLTF hierarchy to `MeshEntity` scene objects
+  - File → Import menu item (was disabled, now enabled)
+  - Keyboard shortcut: `Ctrl+I` for import
 - **Asset System (Phase F)**: Live Shader Editor
     - `ShaderEditorService`: Live editing lifecycle manager with debounced compilation (300ms)
       - Program cache (UUID → WebGLProgram + uniform locations)
@@ -176,7 +186,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1137 tests passing** (includes GLTF Importer foundation tests)
+- **1162 tests passing** (includes GLTF Importer Phase 4 tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -243,7 +253,7 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 | Phase 1 | Foundation — Asset Types & Interfaces (`IMeshAsset`, `IModelAsset`) | ✅ Complete |
 | Phase 2 | GLTF Import Service (`GLTFImportService` with @gltf-transform/core) | ✅ Complete |
 | Phase 3 | MeshEntity (generic mesh entity referencing `IMeshAsset`) | ✅ Complete |
-| Phase 4 | File Menu & Import UI (Ctrl+I shortcut) | Not Started |
+| Phase 4 | File Menu & Import UI (Ctrl+I shortcut) | ✅ Complete |
 | Phase 5 | Asset Browser Enhancements (Imported category, drag-drop) | Not Started |
 | Phase 6 | Hierarchy Panel Enhancements | Not Started |
 | Phase 7 | Project Folder Integration | Not Started |
@@ -255,8 +265,8 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 4: File Menu & Import UI** - Add Import menu item, Ctrl+I shortcut, ImportController
-2. **GLTF Importer Phase 5: Asset Browser Enhancements** - Imported category, drag-drop to viewport
+1. **GLTF Importer Phase 5: Asset Browser Enhancements** - Imported category, drag-drop to viewport
+2. **GLTF Importer Phase 6: Hierarchy Panel Enhancements** - Collapsible hierarchy nodes for imported models
 3. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
 
 ---
