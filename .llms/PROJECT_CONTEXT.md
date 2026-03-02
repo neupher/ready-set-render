@@ -23,7 +23,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 | 5 | Modular UI components with logic hooks | High | In Progress |
 | 6 | Main canvas WebGL renderer | High | ✅ Complete |
 | 7 | Swappable render pipelines (forward/deferred/raytracing) | High | In Progress |
-| 8 | 3D model import (.obj, .gltf) | Medium | Not Started |
+| 8 | 3D model import (.obj, .gltf) | Medium | In Progress |
 | 9 | Texture support (.png, .jpg, .tga) | Medium | Not Started |
 | 10 | In-editor shader text editor | Medium | ✅ Complete |
 | 11 | Camera controls and scene navigation | High | ✅ Complete |
@@ -234,13 +234,30 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 | Phase 2 | Migrate Common Shader Modules (math, brdf, lighting) | ✅ Complete |
 | Phase 3 | Migrate PBR Shaders (vertex, fragment with #include) | ✅ Complete |
 
+### GLTF Importer Implementation
+
+Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN.md):
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Foundation — Asset Types & Interfaces (`IMeshAsset`, `IModelAsset`) | ✅ Complete |
+| Phase 2 | GLTF Import Service (`GLTFImportService` with @gltf-transform/core) | ✅ Complete |
+| Phase 3 | MeshEntity (generic mesh entity referencing `IMeshAsset`) | ✅ Complete |
+| Phase 4 | File Menu & Import UI (Ctrl+I shortcut) | Not Started |
+| Phase 5 | Asset Browser Enhancements (Imported category, drag-drop) | Not Started |
+| Phase 6 | Hierarchy Panel Enhancements | Not Started |
+| Phase 7 | Project Folder Integration | Not Started |
+| Phase 8 | Scene Serialization Updates | Not Started |
+| Phase 9 | Testing (Integration) | Not Started |
+| Phase 10 | Polish & UX | Not Started |
+
 ---
 
 ## Next Steps (Recommended Order)
 
-1. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
-2. **Phase 6.10: Render Mode Dropdown** - Switch between Shaded/Wireframe/Both
-3. **3D Model Import (.obj, .gltf)** - Asset import pipeline
+1. **GLTF Importer Phase 4: File Menu & Import UI** - Add Import menu item, Ctrl+I shortcut, ImportController
+2. **GLTF Importer Phase 5: Asset Browser Enhancements** - Imported category, drag-drop to viewport
+3. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
 
 ---
 

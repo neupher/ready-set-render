@@ -1,7 +1,7 @@
 # Workflows: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:11:00Z
-> **Version:** 0.1.0
+> **Last Updated:** 2026-03-02T14:10:00Z
+> **Version:** 0.1.1
 
 ---
 
@@ -40,6 +40,26 @@ This document defines automated workflows triggered by specific phrases. When Cl
      - Sync "Current State" section
      - Update "Last Updated" timestamp
      - Update version number
+     - **Update "In Progress" section** (CRITICAL):
+       - If a new multi-phase feature was started, ADD a tracking table for it
+       - If phases were completed, UPDATE the tracking table to show progress
+       - Example tracking table format:
+         ```markdown
+         ### Feature Name
+
+         Brief description. See [FEATURE_PLAN.md](./FEATURE_PLAN.md):
+
+         | Phase | Description | Status |
+         |-------|-------------|--------|
+         | Phase 1 | Description | ✅ Complete |
+         | Phase 2 | Description | Not Started |
+         ```
+     - **Update "Next Steps" section** (CRITICAL):
+       - Replace generic feature names with specific next phase
+       - Example: Replace "3D Model Import" → "GLTF Importer Phase 4: File Menu & Import UI"
+     - **Update "Project Goals" table**:
+       - Change status from "Not Started" → "In Progress" when work begins
+       - Change status to "✅ Complete" when all phases are done
    - Update `IMPLEMENTATION_PLAN.md` (IF APPLICABLE)
      - Mark phases as complete when finished
      - Update bundle size tracking when measured
