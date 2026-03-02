@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **GLB/GLTF Importer Plan** — Comprehensive implementation plan for 3D model import
+  - 10-phase implementation roadmap (~10 sessions estimated)
+  - Library selection: `@gltf-transform/core` (Khronos ecosystem, ~50KB)
+  - New asset types: `IModelAsset`, `IMeshAsset`, `MeshEntity`
+  - Features: File menu import, hierarchy preservation, material creation
+  - Asset Browser enhancements: "Imported" category, drag-and-drop to viewport
+  - Project folder integration: auto-discovery of .glb/.gltf files
+  - Documentation: `.llms/GLTF_IMPORTER_PLAN.md`
+
+---
+
 ## [0.14.3] - 2026-02-25
 
 ### Fixed

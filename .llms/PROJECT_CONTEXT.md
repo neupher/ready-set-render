@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-02-25T15:02:00Z
+> **Last Updated:** 2026-03-02T12:08:00Z
 > **Version:** 0.14.3
-> **Status:** Shader Creation & Application Fixes
+> **Status:** GLTF Importer Planning Complete
 
 ---
 
