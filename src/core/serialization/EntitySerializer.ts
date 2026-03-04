@@ -25,6 +25,8 @@ import { Cube } from '@plugins/primitives/Cube';
 import { Sphere } from '@plugins/primitives/Sphere';
 import { DirectionalLight } from '@plugins/lights/DirectionalLight';
 import { CameraEntity } from '@core/CameraEntity';
+import { MeshEntity } from '@plugins/primitives/MeshEntity';
+import { GroupEntity } from '@plugins/primitives/GroupEntity';
 
 /**
  * Entity factory function type.
@@ -88,6 +90,20 @@ function initializeDefaultFactories(): void {
     const camera = new CameraEntity({ id: data.uuid, name: data.name });
     camera.fromJSON(data);
     return camera;
+  });
+
+  // MeshEntity factory (for imported meshes)
+  registerEntityFactory('MeshEntity', (data: ISerializedEntity): IEntity => {
+    const entity = new MeshEntity(data.uuid, data.name);
+    entity.fromJSON(data);
+    return entity;
+  });
+
+  // GroupEntity factory (for mesh hierarchy containers)
+  registerEntityFactory('GroupEntity', (data: ISerializedEntity): IEntity => {
+    const entity = new GroupEntity(data.name, data.uuid);
+    entity.fromJSON(data);
+    return entity;
   });
 }
 

@@ -2,7 +2,7 @@
  * EntitySerializer Tests
  *
  * Tests for entity serialization and deserialization.
- * Covers all supported entity types: Cube, Sphere, DirectionalLight, Camera.
+ * Covers all supported entity types: Cube, Sphere, DirectionalLight, Camera, MeshEntity, GroupEntity.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -14,6 +14,8 @@ import { Cube } from '../../../src/plugins/primitives/Cube';
 import { Sphere } from '../../../src/plugins/primitives/Sphere';
 import { DirectionalLight } from '../../../src/plugins/lights/DirectionalLight';
 import { CameraEntity } from '../../../src/core/CameraEntity';
+import { MeshEntity } from '../../../src/plugins/primitives/MeshEntity';
+import { GroupEntity } from '../../../src/plugins/primitives/GroupEntity';
 
 describe('EntitySerializer', () => {
   describe('serializeEntity', () => {
@@ -170,6 +172,97 @@ describe('EntitySerializer', () => {
         expect(cameraComponent?.fieldOfView).toBe(75);
         expect(cameraComponent?.nearClipPlane).toBe(0.5);
         expect(cameraComponent?.farClipPlane).toBe(500);
+      });
+    });
+
+    describe('MeshEntity serialization', () => {
+      it('should serialize a MeshEntity with default values', () => {
+        const meshEntity = new MeshEntity('test-mesh-id', 'Test Mesh');
+
+        const serialized = EntitySerializer.serializeEntity(meshEntity);
+
+        expect(serialized.uuid).toBe('test-mesh-id');
+        expect(serialized.name).toBe('Test Mesh');
+        expect(serialized.type).toBe('MeshEntity');
+      });
+
+      it('should serialize MeshEntity transform', () => {
+        const meshEntity = new MeshEntity('test-mesh-id', 'Test Mesh');
+        meshEntity.transform.position = [1, 2, 3];
+        meshEntity.transform.rotation = [45, 90, 0];
+        meshEntity.transform.scale = [2, 2, 2];
+
+        const serialized = EntitySerializer.serializeEntity(meshEntity);
+
+        expect(serialized.transform.position).toEqual([1, 2, 3]);
+        expect(serialized.transform.rotation).toEqual([45, 90, 0]);
+        expect(serialized.transform.scale).toEqual([2, 2, 2]);
+      });
+
+      it('should serialize MeshEntity with mesh asset reference', () => {
+        const meshEntity = new MeshEntity('test-mesh-id', 'Test Mesh');
+        meshEntity.meshAssetRef = { uuid: 'mesh-asset-uuid', type: 'mesh' };
+
+        const serialized = EntitySerializer.serializeEntity(meshEntity);
+
+        expect(serialized.metadata?.meshAssetRef).toEqual({
+          uuid: 'mesh-asset-uuid',
+          type: 'mesh',
+        });
+      });
+
+      it('should serialize MeshEntity parent reference', () => {
+        const parent = new GroupEntity('Parent');
+        (parent as unknown as { id: string }).id = 'parent-id';
+        const meshEntity = new MeshEntity('mesh-id', 'Child Mesh');
+        meshEntity.parent = parent as any;
+
+        const serialized = EntitySerializer.serializeEntity(meshEntity);
+
+        expect(serialized.parentUuid).toBe('parent-id');
+      });
+    });
+
+    describe('GroupEntity serialization', () => {
+      it('should serialize a GroupEntity', () => {
+        const group = new GroupEntity('Test Group', 'test-group-id');
+
+        const serialized = EntitySerializer.serializeEntity(group);
+
+        expect(serialized.uuid).toBe('test-group-id');
+        expect(serialized.name).toBe('Test Group');
+        expect(serialized.type).toBe('GroupEntity');
+      });
+
+      it('should serialize GroupEntity transform', () => {
+        const group = new GroupEntity('Test Group', 'test-group-id');
+        group.transform.position = [5, 10, 15];
+        group.transform.rotation = [30, 60, 90];
+        group.transform.scale = [2, 2, 2];
+
+        const serialized = EntitySerializer.serializeEntity(group);
+
+        expect(serialized.transform.position).toEqual([5, 10, 15]);
+        expect(serialized.transform.rotation).toEqual([30, 60, 90]);
+        expect(serialized.transform.scale).toEqual([2, 2, 2]);
+      });
+
+      it('should serialize GroupEntity with isMeshGroup metadata', () => {
+        const group = new GroupEntity('Test Group', 'test-group-id');
+
+        const serialized = EntitySerializer.serializeEntity(group);
+
+        expect(serialized.metadata?.isMeshGroup).toBe(true);
+      });
+
+      it('should serialize GroupEntity parent reference', () => {
+        const parent = new GroupEntity('Parent', 'parent-id');
+        const child = new GroupEntity('Child', 'child-id');
+        child.parent = parent;
+
+        const serialized = EntitySerializer.serializeEntity(child);
+
+        expect(serialized.parentUuid).toBe('parent-id');
       });
     });
 
@@ -426,6 +519,162 @@ describe('EntitySerializer', () => {
         expect(cameraComponent?.fieldOfView).toBe(90);
         expect(cameraComponent?.nearClipPlane).toBe(0.01);
         expect(cameraComponent?.farClipPlane).toBe(5000);
+      });
+    });
+
+    describe('MeshEntity deserialization', () => {
+      it('should deserialize a MeshEntity', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'mesh-uuid',
+          name: 'Test Mesh',
+          type: 'MeshEntity',
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+          components: [],
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized);
+
+        expect(entity.id).toBe('mesh-uuid');
+        expect(entity.name).toBe('Test Mesh');
+        expect(entity).toBeInstanceOf(MeshEntity);
+      });
+
+      it('should deserialize MeshEntity transform', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'mesh-uuid',
+          name: 'Test Mesh',
+          type: 'MeshEntity',
+          transform: {
+            position: [10, 20, 30],
+            rotation: [45, 90, 180],
+            scale: [0.5, 2, 1],
+          },
+          components: [],
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized);
+
+        expect(entity.transform.position).toEqual([10, 20, 30]);
+        expect(entity.transform.rotation).toEqual([45, 90, 180]);
+        expect(entity.transform.scale).toEqual([0.5, 2, 1]);
+      });
+
+      it('should deserialize MeshEntity with mesh asset reference', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'mesh-uuid',
+          name: 'Imported Mesh',
+          type: 'MeshEntity',
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+          components: [],
+          metadata: {
+            meshAssetRef: { uuid: 'mesh-asset-uuid', type: 'mesh' },
+          },
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized) as MeshEntity;
+
+        expect(entity.meshAssetRef).toEqual({ uuid: 'mesh-asset-uuid', type: 'mesh' });
+      });
+
+      it('should deserialize MeshEntity material component', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'mesh-uuid',
+          name: 'Test Mesh',
+          type: 'MeshEntity',
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+          components: [
+            {
+              type: 'material',
+              shaderName: 'pbr',
+              color: [1.0, 0.5, 0.0],
+              opacity: 0.8,
+              transparent: false,
+            },
+          ],
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized) as MeshEntity;
+        const material = entity.getComponent<IMaterialComponent>('material');
+
+        expect(material).toBeDefined();
+        expect(material?.shaderName).toBe('pbr');
+        expect(material?.color).toEqual([1.0, 0.5, 0.0]);
+        expect(material?.opacity).toBe(0.8);
+      });
+    });
+
+    describe('GroupEntity deserialization', () => {
+      it('should deserialize a GroupEntity', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'group-uuid',
+          name: 'Test Group',
+          type: 'GroupEntity',
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+          components: [],
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized);
+
+        expect(entity.id).toBe('group-uuid');
+        expect(entity.name).toBe('Test Group');
+        expect(entity).toBeInstanceOf(GroupEntity);
+      });
+
+      it('should deserialize GroupEntity transform', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'group-uuid',
+          name: 'Test Group',
+          type: 'GroupEntity',
+          transform: {
+            position: [5, 10, 15],
+            rotation: [30, 60, 90],
+            scale: [2, 2, 2],
+          },
+          components: [],
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized);
+
+        expect(entity.transform.position).toEqual([5, 10, 15]);
+        expect(entity.transform.rotation).toEqual([30, 60, 90]);
+        expect(entity.transform.scale).toEqual([2, 2, 2]);
+      });
+
+      it('should deserialize GroupEntity and preserve isMeshGroup', () => {
+        const serialized: ISerializedEntity = {
+          uuid: 'group-uuid',
+          name: 'Mesh Group',
+          type: 'GroupEntity',
+          transform: {
+            position: [0, 0, 0],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          },
+          components: [],
+          metadata: {
+            isMeshGroup: true,
+          },
+        };
+
+        const entity = EntitySerializer.deserializeEntity(serialized) as GroupEntity;
+
+        expect(entity.isMeshGroup).toBe(true);
       });
     });
 
@@ -690,6 +939,41 @@ describe('EntitySerializer', () => {
       expect(deserCamera?.nearClipPlane).toBe(origCamera?.nearClipPlane);
       expect(deserCamera?.farClipPlane).toBe(origCamera?.farClipPlane);
     });
+
+    it('should preserve MeshEntity data through serialize/deserialize cycle', () => {
+      const original = new MeshEntity('mesh-id', 'Test Mesh');
+      original.transform.position = [5, 10, 15];
+      original.transform.rotation = [30, 60, 90];
+      original.transform.scale = [2, 3, 4];
+      original.meshAssetRef = { uuid: 'mesh-asset-uuid', type: 'mesh' };
+
+      const serialized = EntitySerializer.serializeEntity(original);
+      const deserialized = EntitySerializer.deserializeEntity(serialized) as MeshEntity;
+
+      expect(deserialized.id).toBe(original.id);
+      expect(deserialized.name).toBe(original.name);
+      expect(deserialized.transform.position).toEqual(original.transform.position);
+      expect(deserialized.transform.rotation).toEqual(original.transform.rotation);
+      expect(deserialized.transform.scale).toEqual(original.transform.scale);
+      expect(deserialized.meshAssetRef).toEqual(original.meshAssetRef);
+    });
+
+    it('should preserve GroupEntity data through serialize/deserialize cycle', () => {
+      const original = new GroupEntity('Test Group', 'group-id');
+      original.transform.position = [1, 2, 3];
+      original.transform.rotation = [15, 30, 45];
+      original.transform.scale = [1.5, 1.5, 1.5];
+
+      const serialized = EntitySerializer.serializeEntity(original);
+      const deserialized = EntitySerializer.deserializeEntity(serialized) as GroupEntity;
+
+      expect(deserialized.id).toBe(original.id);
+      expect(deserialized.name).toBe(original.name);
+      expect(deserialized.transform.position).toEqual(original.transform.position);
+      expect(deserialized.transform.rotation).toEqual(original.transform.rotation);
+      expect(deserialized.transform.scale).toEqual(original.transform.scale);
+      expect(deserialized.isMeshGroup).toBe(original.isMeshGroup);
+    });
   });
 
   describe('isTypeSupported', () => {
@@ -698,6 +982,8 @@ describe('EntitySerializer', () => {
       expect(EntitySerializer.isTypeSupported('Sphere')).toBe(true);
       expect(EntitySerializer.isTypeSupported('DirectionalLight')).toBe(true);
       expect(EntitySerializer.isTypeSupported('Camera')).toBe(true);
+      expect(EntitySerializer.isTypeSupported('MeshEntity')).toBe(true);
+      expect(EntitySerializer.isTypeSupported('GroupEntity')).toBe(true);
     });
 
     it('should return false for unsupported types', () => {
@@ -715,13 +1001,15 @@ describe('EntitySerializer', () => {
       expect(types).toContain('Sphere');
       expect(types).toContain('DirectionalLight');
       expect(types).toContain('Camera');
+      expect(types).toContain('MeshEntity');
+      expect(types).toContain('GroupEntity');
     });
 
     it('should return an array', () => {
       const types = EntitySerializer.getSupportedTypes();
 
       expect(Array.isArray(types)).toBe(true);
-      expect(types.length).toBeGreaterThanOrEqual(4);
+      expect(types.length).toBeGreaterThanOrEqual(6);
     });
   });
 
@@ -747,6 +1035,163 @@ describe('EntitySerializer', () => {
 
       const entity = EntitySerializer.deserializeEntity(serialized);
       expect(entity.id).toBe('custom-uuid');
+    });
+  });
+
+  describe('imported model hierarchy serialization', () => {
+    it('should serialize GroupEntity with MeshEntity children', () => {
+      const group = new GroupEntity('CarModel', 'car-group-id');
+      const body = new MeshEntity('body-id', 'Body');
+      const wheel = new MeshEntity('wheel-id', 'Wheel');
+
+      body.parent = group as any;
+      wheel.parent = group as any;
+      group.children.push(body as any, wheel as any);
+
+      const groupSerialized = EntitySerializer.serializeEntity(group);
+      const bodySerialized = EntitySerializer.serializeEntity(body);
+      const wheelSerialized = EntitySerializer.serializeEntity(wheel);
+
+      expect(groupSerialized.type).toBe('GroupEntity');
+      expect(bodySerialized.type).toBe('MeshEntity');
+      expect(bodySerialized.parentUuid).toBe('car-group-id');
+      expect(wheelSerialized.parentUuid).toBe('car-group-id');
+    });
+
+    it('should deserialize imported model hierarchy', () => {
+      const serializedData: ISerializedEntity[] = [
+        {
+          uuid: 'model-root-uuid',
+          name: 'ImportedModel',
+          type: 'GroupEntity',
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+          metadata: { isMeshGroup: true },
+        },
+        {
+          uuid: 'mesh-1-uuid',
+          name: 'Mesh1',
+          type: 'MeshEntity',
+          parentUuid: 'model-root-uuid',
+          transform: { position: [1, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+          metadata: { meshAssetRef: { uuid: 'asset-1', type: 'mesh' } },
+        },
+        {
+          uuid: 'mesh-2-uuid',
+          name: 'Mesh2',
+          type: 'MeshEntity',
+          parentUuid: 'model-root-uuid',
+          transform: { position: [-1, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+          metadata: { meshAssetRef: { uuid: 'asset-2', type: 'mesh' } },
+        },
+      ];
+
+      const entities = EntitySerializer.deserializeEntities(serializedData);
+
+      expect(entities).toHaveLength(3);
+
+      const root = entities.find(e => e.id === 'model-root-uuid')!;
+      const mesh1 = entities.find(e => e.id === 'mesh-1-uuid')!;
+      const mesh2 = entities.find(e => e.id === 'mesh-2-uuid')!;
+
+      expect(root).toBeInstanceOf(GroupEntity);
+      expect(mesh1).toBeInstanceOf(MeshEntity);
+      expect(mesh2).toBeInstanceOf(MeshEntity);
+
+      expect(mesh1.parent).toBe(root);
+      expect(mesh2.parent).toBe(root);
+      expect(root.children).toContain(mesh1);
+      expect(root.children).toContain(mesh2);
+    });
+
+    it('should handle nested GroupEntity hierarchy', () => {
+      const serializedData: ISerializedEntity[] = [
+        {
+          uuid: 'root-group-uuid',
+          name: 'Root',
+          type: 'GroupEntity',
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+        },
+        {
+          uuid: 'child-group-uuid',
+          name: 'ChildGroup',
+          type: 'GroupEntity',
+          parentUuid: 'root-group-uuid',
+          transform: { position: [0, 0, 1], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+        },
+        {
+          uuid: 'nested-mesh-uuid',
+          name: 'NestedMesh',
+          type: 'MeshEntity',
+          parentUuid: 'child-group-uuid',
+          transform: { position: [1, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          components: [],
+          metadata: { meshAssetRef: { uuid: 'mesh-asset', type: 'mesh' } },
+        },
+      ];
+
+      const entities = EntitySerializer.deserializeEntities(serializedData);
+
+      expect(entities).toHaveLength(3);
+
+      const rootGroup = entities.find(e => e.id === 'root-group-uuid')!;
+      const childGroup = entities.find(e => e.id === 'child-group-uuid')!;
+      const nestedMesh = entities.find(e => e.id === 'nested-mesh-uuid')!;
+
+      expect(childGroup.parent).toBe(rootGroup);
+      expect(nestedMesh.parent).toBe(childGroup);
+      expect(rootGroup.children).toContain(childGroup);
+      expect(childGroup.children).toContain(nestedMesh);
+    });
+
+    it('should round-trip complex imported model hierarchy', () => {
+      // Build a hierarchy: GroupEntity -> 2 MeshEntities
+      const rootGroup = new GroupEntity('Model', 'model-uuid');
+      rootGroup.transform.position = [5, 5, 5];
+
+      const meshA = new MeshEntity('mesh-a-uuid', 'MeshA');
+      meshA.transform.position = [1, 0, 0];
+      meshA.meshAssetRef = { uuid: 'mesh-asset-a', type: 'mesh' };
+      meshA.parent = rootGroup as any;
+
+      const meshB = new MeshEntity('mesh-b-uuid', 'MeshB');
+      meshB.transform.position = [-1, 0, 0];
+      meshB.meshAssetRef = { uuid: 'mesh-asset-b', type: 'mesh' };
+      meshB.parent = rootGroup as any;
+
+      rootGroup.children.push(meshA as any, meshB as any);
+
+      // Serialize
+      const serialized = EntitySerializer.serializeEntities([rootGroup as any, meshA, meshB]);
+
+      // Deserialize
+      const deserialized = EntitySerializer.deserializeEntities(serialized);
+
+      const deserRoot = deserialized.find(e => e.id === 'model-uuid')! as GroupEntity;
+      const deserMeshA = deserialized.find(e => e.id === 'mesh-a-uuid')! as MeshEntity;
+      const deserMeshB = deserialized.find(e => e.id === 'mesh-b-uuid')! as MeshEntity;
+
+      // Verify
+      expect(deserRoot).toBeInstanceOf(GroupEntity);
+      expect(deserRoot.transform.position).toEqual([5, 5, 5]);
+      expect(deserRoot.isMeshGroup).toBe(true);
+
+      expect(deserMeshA).toBeInstanceOf(MeshEntity);
+      expect(deserMeshA.transform.position).toEqual([1, 0, 0]);
+      expect(deserMeshA.meshAssetRef).toEqual({ uuid: 'mesh-asset-a', type: 'mesh' });
+      expect(deserMeshA.parent).toBe(deserRoot);
+
+      expect(deserMeshB).toBeInstanceOf(MeshEntity);
+      expect(deserMeshB.transform.position).toEqual([-1, 0, 0]);
+      expect(deserMeshB.meshAssetRef).toEqual({ uuid: 'mesh-asset-b', type: 'mesh' });
+      expect(deserMeshB.parent).toBe(deserRoot);
+
+      expect(deserRoot.children).toContain(deserMeshA);
+      expect(deserRoot.children).toContain(deserMeshB);
     });
   });
 });

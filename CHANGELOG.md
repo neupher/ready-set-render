@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.4] - 2026-03-04
+
+### Added
+
+- **GLTF Importer Phase 8: Scene Serialization Updates** — Save/load scenes with imported models
+  - `GroupEntity` serialization support
+    - Added `'GroupEntity'` to `SerializedEntityType` union type
+    - Implemented `ISerializable` interface with `toJSON()`/`fromJSON()` methods
+    - Added `entityId` property (required by `IEntity` interface)
+  - `EntitySerializer` factory registration
+    - Registered `MeshEntity` factory for deserializing imported meshes
+    - Registered `GroupEntity` factory for deserializing hierarchy containers
+  - 14 new serialization tests
+    - MeshEntity serialization/deserialization (8 tests)
+    - GroupEntity serialization/deserialization (6 tests)
+    - Imported model hierarchy round-trip tests (4 tests)
+  - Total: **1235 tests passing** (61 in EntitySerializer.test.ts)
+
+### Changed
+
+- `GroupEntity.getComponent<T>()` return type changed from `IComponent | undefined` to `T | null` (IEntity compliance)
+
+---
+
 ## [0.15.3] - 2026-03-04
 
 ### Added

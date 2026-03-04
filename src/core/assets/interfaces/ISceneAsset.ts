@@ -113,7 +113,8 @@ export type SerializedEntityType =
   | 'Sphere'
   | 'DirectionalLight'
   | 'Camera'
-  | 'MeshEntity';
+  | 'MeshEntity'
+  | 'GroupEntity';
 
 /**
  * Serialized entity data.

@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-04T15:15:00Z
-> **Version:** 0.15.3
-> **Status:** GLTF Importer Phase 7 Complete (Project Folder Integration)
+> **Last Updated:** 2026-03-04T15:38:00Z
+> **Version:** 0.15.4
+> **Status:** GLTF Importer Phase 8 Complete (Scene Serialization Updates)
 
 ---
 
@@ -32,11 +32,16 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.3)
+## Current State (v0.15.4)
 
 ### What's Working
 
 - **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService, ImportController
+- **GLTF Scene Serialization** (Phase 8 - Complete)
+  - `GroupEntity` implements `ISerializable` with `toJSON()`/`fromJSON()` methods
+  - `EntitySerializer` registers factories for `MeshEntity` and `GroupEntity`
+  - Imported model hierarchies can be saved/loaded with scenes
+  - Full round-trip serialization preserves mesh asset references and parent-child relationships
 - **GLTF Hierarchy Preservation** (Phase 5 - Complete)
   - `GroupEntity`: New entity type for non-mesh nodes in GLTF hierarchies
     - `isMeshGroup: true` marker for UI detection
@@ -207,7 +212,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1162 tests passing** (includes GLTF Importer Phase 4 tests)
+- **1235 tests passing** (includes GLTF Importer Phase 8 serialization tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -278,7 +283,7 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 | Phase 5 | Hierarchy Preservation & GroupEntity | ✅ Complete |
 | Phase 6 | Hierarchy Panel Enhancements | ⏭️ Skipped |
 | Phase 7 | Project Folder Integration | ✅ Complete |
-| Phase 8 | Scene Serialization Updates | Not Started |
+| Phase 8 | Scene Serialization Updates | ✅ Complete |
 | Phase 9 | Testing (Integration) | Not Started |
 | Phase 10 | Polish & UX | Not Started |
 
@@ -286,8 +291,8 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 8: Scene Serialization Updates** - Save/load scenes with imported models
-2. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
+1. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow
+2. **GLTF Importer Phase 10: Polish & UX** - Error handling and undo/redo integration
 3. **Phase 6.10: Render Mode Dropdown** - Wireframe, shaded, textured views
 
 ---

@@ -26,7 +26,13 @@ import type {
   IEntity,
 } from '@core/interfaces';
 import { createDefaultTransform } from '@core/interfaces';
+import type { ISerializable } from '@core/assets/interfaces/ISerializable';
+import type {
+  ISerializedEntity,
+  ISerializedTransform,
+} from '@core/assets/interfaces/ISceneAsset';
 import { generateUUID } from '@utils/uuid';
+import { EntityIdGenerator } from '@utils/EntityIdGenerator';
 import {
   mat4Multiply,
   mat4Translation,
@@ -41,8 +47,9 @@ import {
  * A group entity for containing mesh hierarchies.
  * Provides proper world transform computation for child entities.
  */
-export class GroupEntity implements ISceneObject, IEntity {
+export class GroupEntity implements ISceneObject, IEntity, ISerializable<ISerializedEntity> {
   readonly id: string;
+  readonly entityId: number;
   name: string;
   parent: ISceneObject | null = null;
   children: ISceneObject[] = [];
@@ -57,6 +64,7 @@ export class GroupEntity implements ISceneObject, IEntity {
 
   constructor(name: string, id?: string) {
     this.id = id ?? generateUUID();
+    this.entityId = EntityIdGenerator.next();
     this.name = name;
     this.transform = createDefaultTransform();
   }
@@ -68,8 +76,9 @@ export class GroupEntity implements ISceneObject, IEntity {
   /**
    * Get a component by type.
    */
-  getComponent(type: string): IComponent | undefined {
-    return this.components.get(type);
+  getComponent<T extends IComponent>(type: string): T | null {
+    const component = this.components.get(type);
+    return component ? (component as T) : null;
   }
 
   /**
@@ -157,6 +166,51 @@ export class GroupEntity implements ISceneObject, IEntity {
     }
 
     return localMatrix;
+  }
+
+  // =========================================
+  // ISerializable Implementation
+  // =========================================
+
+  /**
+   * Serialize this GroupEntity to a JSON-compatible structure.
+   *
+   * @returns The serialized entity data
+   */
+  toJSON(): ISerializedEntity {
+    const transform: ISerializedTransform = {
+      position: [...this.transform.position],
+      rotation: [...this.transform.rotation],
+      scale: [...this.transform.scale],
+    };
+
+    return {
+      uuid: this.id,
+      name: this.name,
+      type: 'GroupEntity',
+      parentUuid: this.parent?.id,
+      transform,
+      components: [],
+      metadata: {
+        isMeshGroup: this.isMeshGroup,
+      },
+    };
+  }
+
+  /**
+   * Deserialize data from JSON into this GroupEntity.
+   *
+   * @param data - The serialized entity data to load
+   */
+  fromJSON(data: ISerializedEntity): void {
+    this.name = data.name;
+
+    // Restore transform
+    if (data.transform) {
+      this.transform.position = [...data.transform.position];
+      this.transform.rotation = [...data.transform.rotation];
+      this.transform.scale = [...data.transform.scale];
+    }
   }
 }
 
