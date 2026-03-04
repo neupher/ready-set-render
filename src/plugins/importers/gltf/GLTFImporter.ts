@@ -9,10 +9,15 @@
  * - Converts geometry from Y-up to Z-up coordinate system
  * - Extracts PBR materials from GLTF files
  * - Preserves scene hierarchy with parent-child relationships
+ * - Creates IModelAsset for project folder persistence
+ * - Optionally saves all assets to project folder when ProjectService is provided
  *
  * @example
  * ```typescript
- * const importer = new GLTFImporter(importService, assetRegistry);
+ * const importer = new GLTFImporter(importService, assetRegistry, materialFactory);
+ *
+ * // With project folder integration
+ * importer.setProjectService(projectService);
  *
  * if (importer.canImport(file)) {
  *   const result = await importer.import(file);
@@ -28,11 +33,14 @@ import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import type { IMeshAsset } from '@core/assets/interfaces/IMeshAsset';
+import type { IModelAsset, IModelNode } from '@core/assets/interfaces/IModelAsset';
 import type { IAssetReference } from '@core/assets/interfaces/IAssetReference';
+import type { ProjectService } from '@core/ProjectService';
 import { generateUUID } from '@utils/uuid';
 import { MeshEntity } from '@plugins/primitives/MeshEntity';
 import { GroupEntity } from '@plugins/primitives/GroupEntity';
 import { BUILT_IN_SHADER_IDS } from '@core/assets/BuiltInShaders';
+import { ModelAssetFactory } from '@core/assets/ModelAssetFactory';
 import {
   GLTFImportService,
   type IGLTFMeshData,
@@ -48,6 +56,8 @@ export interface GLTFImportResult extends ImportResult {
   meshAssets: IMeshAsset[];
   /** The material assets created during import */
   materialAssets: IMaterialAsset[];
+  /** The model asset that contains all imported data (for project persistence) */
+  modelAsset: IModelAsset;
 }
 
 /**
@@ -65,6 +75,8 @@ export class GLTFImporter implements IImporter {
   private readonly importService: GLTFImportService;
   private readonly assetRegistry: AssetRegistry;
   private readonly materialFactory: MaterialAssetFactory;
+  private readonly modelFactory: ModelAssetFactory;
+  private projectService: ProjectService | null = null;
 
   /**
    * Create a new GLTFImporter.
@@ -81,6 +93,17 @@ export class GLTFImporter implements IImporter {
     this.importService = importService;
     this.assetRegistry = assetRegistry;
     this.materialFactory = materialFactory;
+    this.modelFactory = new ModelAssetFactory();
+  }
+
+  /**
+   * Set the project service for saving assets to the project folder.
+   * When set, imported assets will be automatically saved to the project.
+   *
+   * @param projectService - The project service instance
+   */
+  setProjectService(projectService: ProjectService | null): void {
+    this.projectService = projectService;
   }
 
   /**
@@ -116,6 +139,9 @@ export class GLTFImporter implements IImporter {
    * Parses the file, creates mesh and material assets, registers them,
    * and creates MeshEntity scene objects from the hierarchy.
    *
+   * If a ProjectService is set and a project is open, all assets will
+   * be saved to the project folder.
+   *
    * @param file - The file to import
    * @returns Import result with scene objects and warnings
    */
@@ -129,6 +155,16 @@ export class GLTFImporter implements IImporter {
     // Create and register material assets
     const materialAssets = this.createMaterialAssets(gltfResult.materials);
 
+    // Create model hierarchy for IModelAsset
+    const modelHierarchy = this.convertGLTFHierarchyToModelNodes(gltfResult.hierarchy);
+
+    // Create the model asset that ties everything together
+    const modelAsset = this.modelFactory.createFromImport(file.name, {
+      meshAssets,
+      materialAssets,
+      hierarchy: modelHierarchy,
+    });
+
     // Register all assets
     for (const mesh of meshAssets) {
       this.assetRegistry.register(mesh);
@@ -136,6 +172,10 @@ export class GLTFImporter implements IImporter {
     for (const material of materialAssets) {
       this.assetRegistry.register(material);
     }
+    this.assetRegistry.register(modelAsset);
+
+    // Save to project folder if available (copy source file + save model metadata)
+    await this.saveToProjectFolder(file, modelAsset);
 
     // Create scene objects from hierarchy
     const objects = this.createSceneObjects(
@@ -149,6 +189,62 @@ export class GLTFImporter implements IImporter {
       warnings: gltfResult.warnings,
       meshAssets,
       materialAssets,
+      modelAsset,
+    };
+  }
+
+  /**
+   * Save imported model to the project folder.
+   * Only saves if ProjectService is set and a project is open.
+   *
+   * This method:
+   * 1. Copies the source .glb file to the project's sources/models folder
+   * 2. Saves the model asset metadata (hierarchy and references)
+   *
+   * The mesh and material data are loaded on-demand from the asset registry
+   * which is populated during import. Individual mesh/material files are NOT
+   * saved to disk - the data lives in the GLB file.
+   */
+  private async saveToProjectFolder(
+    sourceFile: File,
+    modelAsset: IModelAsset
+  ): Promise<void> {
+    if (!this.projectService || !this.projectService.isProjectOpen) {
+      return;
+    }
+
+    // Copy the source .glb file to the project folder
+    const projectPath = await this.projectService.copySourceFile(sourceFile, 'models');
+    if (projectPath) {
+      // Store the relative path in the model asset for future reference
+      modelAsset.source.projectPath = projectPath;
+    }
+
+    // Save the model asset metadata (contains hierarchy and references)
+    await this.projectService.saveAsset(modelAsset);
+  }
+
+  /**
+   * Convert GLTF hierarchy nodes to IModelNode format for storage.
+   */
+  private convertGLTFHierarchyToModelNodes(nodes: IGLTFNodeData[]): IModelNode[] {
+    return nodes.map((node) => this.convertGLTFNodeToModelNode(node));
+  }
+
+  /**
+   * Convert a single GLTF node to IModelNode format.
+   */
+  private convertGLTFNodeToModelNode(node: IGLTFNodeData): IModelNode {
+    return {
+      name: node.name,
+      meshIndex: node.meshIndex,
+      materialIndices: node.materialIndices,
+      transform: {
+        position: [...node.transform.position],
+        rotation: [...node.transform.rotation],
+        scale: [...node.transform.scale],
+      },
+      children: node.children.map((child) => this.convertGLTFNodeToModelNode(child)),
     };
   }
 

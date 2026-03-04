@@ -66,6 +66,7 @@ describe('ImportController', () => {
     mockGltfImporter = {
       canImport: vi.fn().mockReturnValue(true),
       import: vi.fn(),
+      setProjectService: vi.fn(),
     } as unknown as GLTFImporter;
   });
 
@@ -96,6 +97,7 @@ describe('ImportController', () => {
         warnings: [],
         meshAssets: [{ uuid: 'mesh-1' } as never],
         materialAssets: [],
+        modelAsset: { uuid: 'model-1', name: 'test', type: 'model' } as never,
       };
 
       vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
@@ -149,6 +151,7 @@ describe('ImportController', () => {
         warnings: [],
         meshAssets: [],
         materialAssets: [],
+        modelAsset: { uuid: 'model-1', name: 'test', type: 'model' } as never,
       };
 
       vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
@@ -170,6 +173,7 @@ describe('ImportController', () => {
         warnings: [],
         meshAssets: [{ uuid: 'mesh-1' } as never, { uuid: 'mesh-2' } as never],
         materialAssets: [{ uuid: 'mat-1' } as never],
+        modelAsset: { uuid: 'model-1', name: 'test', type: 'model' } as never,
       };
 
       vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
@@ -184,6 +188,7 @@ describe('ImportController', () => {
         objectCount: 1,
         meshAssetCount: 2,
         materialAssetCount: 1,
+        modelAssetId: 'model-1',
       });
     });
 
@@ -193,6 +198,7 @@ describe('ImportController', () => {
         warnings: ['Missing normals', 'Unsupported extension'],
         meshAssets: [],
         materialAssets: [],
+        modelAsset: { uuid: 'model-1', name: 'test', type: 'model' } as never,
       };
 
       vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
@@ -243,6 +249,7 @@ describe('ImportController', () => {
         warnings: [],
         meshAssets: [],
         materialAssets: [],
+        modelAsset: { uuid: 'model-1', name: 'test', type: 'model' } as never,
       };
 
       vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResultSuccess);
@@ -275,6 +282,7 @@ describe('ImportController', () => {
         warnings: [],
         meshAssets: [],
         materialAssets: [],
+        modelAsset: { uuid: 'model-1', name: 'test', type: 'model' } as never,
       };
 
       vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResultSuccess);

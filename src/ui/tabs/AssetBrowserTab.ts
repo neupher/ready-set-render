@@ -28,7 +28,12 @@ import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
 import type { IModelAsset } from '@core/assets/interfaces/IModelAsset';
 import type { IAsset } from '@core/assets/interfaces/IAsset';
 import type { ProjectService } from '@core/ProjectService';
-import type { ProjectOpenedEvent, ProjectClosedEvent } from '@core/interfaces/IProjectService';
+import type {
+  ProjectOpenedEvent,
+  ProjectClosedEvent,
+  ProjectRefreshedEvent,
+  ISourceFile,
+} from '@core/interfaces/IProjectService';
 import { BUILT_IN_SHADER_IDS } from '@core/assets/BuiltInShaders';
 import { TreeView, TreeNode, ContextMenuData } from '../components/TreeView';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
@@ -72,6 +77,22 @@ export interface AssetDragStartEvent {
 }
 
 /**
+ * Event emitted when a source file import is requested.
+ */
+export interface SourceFileImportRequestedEvent {
+  path: string;
+  name: string;
+  format: string;
+}
+
+/**
+ * Event emitted when a source file is selected.
+ */
+export interface SourceFileSelectedEvent {
+  sourceFile: ISourceFile;
+}
+
+/**
  * Special node IDs for section and category groups.
  */
 const SECTION_IDS = {
@@ -82,10 +103,24 @@ const SECTION_IDS = {
 const CATEGORY_IDS = {
   BUILTIN_MATERIALS: '__category_builtin_materials__',
   BUILTIN_SHADERS: '__category_builtin_shaders__',
-  PROJECT_MATERIALS: '__category_project_materials__',
-  PROJECT_SHADERS: '__category_project_shaders__',
-  PROJECT_IMPORTED: '__category_project_imported__',
+  // Project folder structure - mirrors actual disk layout
+  PROJECT_ASSETS: '__folder_assets__',
+  PROJECT_ASSETS_MATERIALS: '__folder_assets_materials__',
+  PROJECT_ASSETS_MESHES: '__folder_assets_meshes__',
+  PROJECT_ASSETS_MODELS: '__folder_assets_models__',
+  PROJECT_ASSETS_SCENES: '__folder_assets_scenes__',
+  PROJECT_ASSETS_SHADERS: '__folder_assets_shaders__',
+  PROJECT_ASSETS_TEXTURES: '__folder_assets_textures__',
+  PROJECT_SOURCES: '__folder_sources__',
+  PROJECT_SOURCES_MODELS: '__folder_sources_models__',
+  PROJECT_SOURCES_TEXTURES: '__folder_sources_textures__',
+  PROJECT_SOURCES_OTHER: '__folder_sources_other__',
 } as const;
+
+/**
+ * Prefix for source file node IDs.
+ */
+const SOURCE_FILE_PREFIX = 'source:';
 
 /**
  * Asset Browser tab component.
@@ -100,15 +135,21 @@ export class AssetBrowserTab {
   private readonly projectService?: ProjectService;
   private readonly treeView: TreeView;
   private readonly noProjectMessage: HTMLDivElement;
+  private readonly toolbar: HTMLDivElement;
+  private readonly refreshButton: HTMLButtonElement;
   private contextMenu: ContextMenu | null = null;
+  private isRefreshing = false;
   private expandedCategories = new Set<string>([
     SECTION_IDS.BUILT_IN,
     SECTION_IDS.PROJECT,
     CATEGORY_IDS.BUILTIN_MATERIALS,
     CATEGORY_IDS.BUILTIN_SHADERS,
-    CATEGORY_IDS.PROJECT_MATERIALS,
-    CATEGORY_IDS.PROJECT_SHADERS,
-    CATEGORY_IDS.PROJECT_IMPORTED,
+    CATEGORY_IDS.PROJECT_ASSETS,
+    CATEGORY_IDS.PROJECT_ASSETS_MATERIALS,
+    CATEGORY_IDS.PROJECT_ASSETS_MODELS,
+    CATEGORY_IDS.PROJECT_ASSETS_SHADERS,
+    CATEGORY_IDS.PROJECT_SOURCES,
+    CATEGORY_IDS.PROJECT_SOURCES_MODELS,
   ]);
 
   constructor(options: AssetBrowserTabOptions) {
@@ -127,6 +168,11 @@ export class AssetBrowserTab {
       height: 100%;
       overflow: hidden;
     `;
+
+    // Create toolbar with refresh button
+    this.toolbar = this.createToolbar();
+    this.refreshButton = this.toolbar.querySelector('.refresh-button') as HTMLButtonElement;
+    this.container.appendChild(this.toolbar);
 
     // Create "no project open" message
     this.noProjectMessage = this.createNoProjectMessage();
@@ -230,8 +276,140 @@ export class AssetBrowserTab {
   }
 
   /**
+   * Create the toolbar with refresh and other action buttons.
+   */
+  private createToolbar(): HTMLDivElement {
+    const toolbar = document.createElement('div');
+    toolbar.className = 'asset-browser-toolbar';
+    toolbar.style.cssText = `
+      display: none;
+      align-items: center;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      border-bottom: 1px solid var(--border-color);
+      gap: var(--spacing-xs);
+      background: var(--bg-secondary);
+    `;
+
+    // Refresh button
+    const refreshBtn = document.createElement('button');
+    refreshBtn.className = 'refresh-button';
+    refreshBtn.title = 'Refresh project files (rescan disk for changes)';
+    refreshBtn.innerHTML = '🔄';
+    refreshBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      padding: 0;
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.15s ease;
+    `;
+    refreshBtn.addEventListener('mouseenter', () => {
+      if (!this.isRefreshing) {
+        refreshBtn.style.background = 'var(--bg-hover)';
+        refreshBtn.style.borderColor = 'var(--border-color)';
+      }
+    });
+    refreshBtn.addEventListener('mouseleave', () => {
+      refreshBtn.style.background = 'transparent';
+      refreshBtn.style.borderColor = 'transparent';
+    });
+    refreshBtn.addEventListener('click', () => {
+      this.handleRefreshClick();
+    });
+    toolbar.appendChild(refreshBtn);
+
+    // Spacer
+    const spacer = document.createElement('div');
+    spacer.style.flex = '1';
+    toolbar.appendChild(spacer);
+
+    // Import button
+    const importBtn = document.createElement('button');
+    importBtn.className = 'import-button';
+    importBtn.title = 'Import a 3D model file';
+    importBtn.innerHTML = '+ Import';
+    importBtn.style.cssText = `
+      display: flex;
+      align-items: center;
+      padding: var(--spacing-xs) var(--spacing-sm);
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: var(--font-size-xs);
+      transition: all 0.15s ease;
+    `;
+    importBtn.addEventListener('mouseenter', () => {
+      importBtn.style.background = 'var(--bg-hover)';
+      importBtn.style.color = 'var(--text-primary)';
+    });
+    importBtn.addEventListener('mouseleave', () => {
+      importBtn.style.background = 'transparent';
+      importBtn.style.color = 'var(--text-secondary)';
+    });
+    importBtn.addEventListener('click', () => {
+      this.eventBus.emit('command:import');
+    });
+    toolbar.appendChild(importBtn);
+
+    return toolbar;
+  }
+
+  /**
+   * Handle refresh button click.
+   */
+  private async handleRefreshClick(): Promise<void> {
+    if (this.isRefreshing || !this.projectService?.isProjectOpen) {
+      return;
+    }
+
+    this.isRefreshing = true;
+    this.updateRefreshButtonState();
+
+    try {
+      await this.projectService.rescanProject();
+    } catch (error) {
+      console.error('Failed to refresh project:', error);
+    } finally {
+      this.isRefreshing = false;
+      this.updateRefreshButtonState();
+    }
+  }
+
+  /**
+   * Update the refresh button visual state.
+   */
+  private updateRefreshButtonState(): void {
+    if (this.isRefreshing) {
+      this.refreshButton.style.opacity = '0.5';
+      this.refreshButton.style.cursor = 'wait';
+      this.refreshButton.style.animation = 'spin 1s linear infinite';
+    } else {
+      this.refreshButton.style.opacity = '1';
+      this.refreshButton.style.cursor = 'pointer';
+      this.refreshButton.style.animation = 'none';
+    }
+  }
+
+  /**
+   * Update toolbar visibility based on project state.
+   */
+  private updateToolbarVisibility(): void {
+    const isProjectOpen = this.projectService?.isProjectOpen ?? false;
+    this.toolbar.style.display = isProjectOpen ? 'flex' : 'none';
+  }
+
+  /**
    * Build tree data from the asset registry.
-   * Separates assets into Built-in and Project sections.
+   * Shows Built-in section and Project folder structure mirroring actual disk layout.
    */
   private buildTreeData(): TreeNode[] {
     const materials = this.assetRegistry.getByType<IMaterialAsset>('material');
@@ -243,7 +421,6 @@ export class AssetBrowserTab {
     const builtInShaders = shaders.filter((s) => s.isBuiltIn);
     const userMaterials = materials.filter((m) => !m.isBuiltIn);
     const userShaders = shaders.filter((s) => !s.isBuiltIn);
-    // Models are never built-in
     const userModels = models;
 
     // Sort alphabetically
@@ -264,31 +441,28 @@ export class AssetBrowserTab {
       type: 'texture' as const,
     }));
 
-    // Build Project section nodes
-    const projectMaterialNodes: TreeNode[] = sortByName(userMaterials).map((m) => ({
-      id: m.uuid,
-      name: m.name,
-      type: 'material' as const,
-      draggable: true,
-      assetType: 'material',
-    }));
-
-    const projectShaderNodes: TreeNode[] = sortByName(userShaders).map((s) => ({
-      id: s.uuid,
-      name: s.name,
-      type: 'texture' as const,
-    }));
-
-    // Build imported model nodes with their sub-assets
-    const projectImportedNodes: TreeNode[] = sortByName(userModels).map((model) =>
-      this.buildModelNode(model)
-    );
-
     const isProjectOpen = this.projectService?.isProjectOpen ?? false;
     const projectName = this.projectService?.projectName ?? 'Project';
 
     // Update no-project message visibility
     this.updateNoProjectMessageVisibility(!isProjectOpen);
+
+    // Update toolbar visibility
+    this.updateToolbarVisibility();
+
+    // Build project folder structure (mirrors actual disk layout)
+    const projectChildren: TreeNode[] = [];
+    if (isProjectOpen) {
+      // assets/ folder
+      const assetsFolder = this.buildAssetsFolderNode(userMaterials, userShaders, userModels);
+      projectChildren.push(assetsFolder);
+
+      // sources/ folder
+      const sourcesFolder = this.buildSourcesFolderNode();
+      if (sourcesFolder) {
+        projectChildren.push(sourcesFolder);
+      }
+    }
 
     // Build the tree structure
     const tree: TreeNode[] = [
@@ -315,37 +489,13 @@ export class AssetBrowserTab {
           },
         ],
       },
-      // Project Section (shows content when project open, placeholder otherwise)
+      // Project Section - mirrors actual folder structure
       {
         id: SECTION_IDS.PROJECT,
         name: isProjectOpen ? projectName : 'Project',
         type: 'group' as const,
         selectable: false,
-        children: isProjectOpen
-          ? [
-              {
-                id: CATEGORY_IDS.PROJECT_MATERIALS,
-                name: 'Materials',
-                type: 'group' as const,
-                selectable: false,
-                children: projectMaterialNodes,
-              },
-              {
-                id: CATEGORY_IDS.PROJECT_SHADERS,
-                name: 'Shaders',
-                type: 'group' as const,
-                selectable: false,
-                children: projectShaderNodes,
-              },
-              {
-                id: CATEGORY_IDS.PROJECT_IMPORTED,
-                name: 'Imported',
-                type: 'group' as const,
-                selectable: false,
-                children: projectImportedNodes,
-              },
-            ]
-          : [],
+        children: projectChildren,
       },
     ];
 
@@ -353,56 +503,179 @@ export class AssetBrowserTab {
   }
 
   /**
-   * Build a tree node for an imported model with its sub-assets.
+   * Build the assets/ folder node mirroring actual disk structure.
    */
-  private buildModelNode(model: IModelAsset): TreeNode {
-    const meshChildren: TreeNode[] = model.contents.meshes.map((meshRef) => ({
-      id: meshRef.uuid,
-      name: meshRef.name,
-      type: 'mesh' as const,
-      draggable: true,
-      assetType: 'mesh',
-    }));
+  private buildAssetsFolderNode(
+    userMaterials: IMaterialAsset[],
+    userShaders: IShaderAsset[],
+    userModels: IModelAsset[]
+  ): TreeNode {
+    const sortByName = <T extends IAsset>(assets: T[]): T[] => {
+      return [...assets].sort((a, b) => a.name.localeCompare(b.name));
+    };
 
-    const materialChildren: TreeNode[] = model.contents.materials.map((matRef) => ({
-      id: matRef.uuid,
-      name: matRef.name,
+    // materials/ subfolder
+    const materialNodes: TreeNode[] = sortByName(userMaterials).map((m) => ({
+      id: m.uuid,
+      name: `${m.uuid.substring(0, 8)}...material.json`,
+      displayName: m.name,
       type: 'material' as const,
       draggable: true,
       assetType: 'material',
     }));
 
-    const children: TreeNode[] = [];
-
-    if (meshChildren.length > 0) {
-      children.push({
-        id: `${model.uuid}__meshes`,
-        name: 'Meshes',
-        type: 'group' as const,
-        selectable: false,
-        children: meshChildren,
-      });
+    // meshes/ subfolder - meshes are stored inside models, extract them
+    const meshNodes: TreeNode[] = [];
+    for (const model of userModels) {
+      for (const meshRef of model.contents.meshes) {
+        meshNodes.push({
+          id: meshRef.uuid,
+          name: `${meshRef.uuid.substring(0, 8)}...mesh.json`,
+          displayName: meshRef.name,
+          type: 'mesh' as const,
+          draggable: true,
+          assetType: 'mesh',
+        });
+      }
     }
 
-    if (materialChildren.length > 0) {
-      children.push({
-        id: `${model.uuid}__materials`,
-        name: 'Materials',
-        type: 'group' as const,
-        selectable: false,
-        children: materialChildren,
-      });
-    }
-
-    return {
+    // models/ subfolder
+    const modelNodes: TreeNode[] = sortByName(userModels).map((model) => ({
       id: model.uuid,
-      name: model.name,
+      name: `${model.uuid.substring(0, 8)}...model.json`,
+      displayName: model.name,
       type: 'model' as const,
       draggable: true,
       assetType: 'model',
-      children: children.length > 0 ? children : undefined,
+    }));
+
+    // shaders/ subfolder
+    const shaderNodes: TreeNode[] = sortByName(userShaders).map((s) => ({
+      id: s.uuid,
+      name: `${s.uuid.substring(0, 8)}...shader.json`,
+      displayName: s.name,
+      type: 'texture' as const,
+    }));
+
+    return {
+      id: CATEGORY_IDS.PROJECT_ASSETS,
+      name: 'assets',
+      type: 'group' as const,
+      selectable: false,
+      children: [
+        {
+          id: CATEGORY_IDS.PROJECT_ASSETS_MATERIALS,
+          name: 'materials',
+          type: 'group' as const,
+          selectable: false,
+          children: materialNodes,
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_ASSETS_MESHES,
+          name: 'meshes',
+          type: 'group' as const,
+          selectable: false,
+          children: meshNodes,
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_ASSETS_MODELS,
+          name: 'models',
+          type: 'group' as const,
+          selectable: false,
+          children: modelNodes,
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_ASSETS_SCENES,
+          name: 'scenes',
+          type: 'group' as const,
+          selectable: false,
+          children: [], // Future: scene files
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_ASSETS_SHADERS,
+          name: 'shaders',
+          type: 'group' as const,
+          selectable: false,
+          children: shaderNodes,
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_ASSETS_TEXTURES,
+          name: 'textures',
+          type: 'group' as const,
+          selectable: false,
+          children: [], // Future: texture files
+        },
+      ],
     };
   }
+
+  /**
+   * Build the sources/ folder node mirroring actual disk structure.
+   */
+  private buildSourcesFolderNode(): TreeNode | null {
+    if (!this.projectService) {
+      return null;
+    }
+
+    const sourceFiles = this.projectService.getSourceFiles();
+
+    // Group source files by type
+    const modelFiles = sourceFiles.filter((f) => f.type === 'model');
+    const textureFiles = sourceFiles.filter((f) => f.type === 'texture');
+    const otherFiles = sourceFiles.filter((f) => f.type === 'other');
+
+    // Build model source file nodes
+    const modelNodes = this.buildSourceFileNodes(modelFiles);
+    const textureNodes = this.buildSourceFileNodes(textureFiles);
+    const otherNodes = this.buildSourceFileNodes(otherFiles);
+
+    return {
+      id: CATEGORY_IDS.PROJECT_SOURCES,
+      name: 'sources',
+      type: 'group' as const,
+      selectable: false,
+      children: [
+        {
+          id: CATEGORY_IDS.PROJECT_SOURCES_MODELS,
+          name: 'models',
+          type: 'group' as const,
+          selectable: false,
+          children: modelNodes,
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_SOURCES_OTHER,
+          name: 'other',
+          type: 'group' as const,
+          selectable: false,
+          children: otherNodes,
+        },
+        {
+          id: CATEGORY_IDS.PROJECT_SOURCES_TEXTURES,
+          name: 'textures',
+          type: 'group' as const,
+          selectable: false,
+          children: textureNodes,
+        },
+      ],
+    };
+  }
+
+/**
+ * Build tree nodes for source files.
+ */
+private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
+  // Sort by name
+  const sorted = [...files].sort((a, b) => a.name.localeCompare(b.name));
+
+  return sorted.map((file) => ({
+    id: `${SOURCE_FILE_PREFIX}${file.path}`,
+    name: file.isImported ? `${file.name} ✓` : file.name,
+    type: 'model' as const,
+    selectable: true,
+    // Store source file info for context menu
+    sourceFile: file,
+  }));
+}
 
   /**
    * Update the visibility of the no-project message.
@@ -437,6 +710,11 @@ export class AssetBrowserTab {
       this.refresh();
     });
 
+    // Listen for project refresh
+    this.eventBus.on<ProjectRefreshedEvent>('project:refreshed', () => {
+      this.refresh();
+    });
+
     // Close context menu on click outside
     document.addEventListener('click', () => {
       this.closeContextMenu();
@@ -449,6 +727,20 @@ export class AssetBrowserTab {
   private handleAssetSelect(id: string, _node: TreeNode): void {
     // Ignore section and category nodes
     if (this.isSectionOrCategoryId(id)) {
+      return;
+    }
+
+    // Handle source file selection
+    if (this.isSourceFileId(id)) {
+      const sourcePath = this.getSourceFilePathFromId(id);
+      if (sourcePath) {
+        const sourceFile = this.projectService?.getSourceFiles().find(
+          (f) => f.path === sourcePath
+        );
+        if (sourceFile) {
+          this.eventBus.emit('sourceFile:selected', { sourceFile });
+        }
+      }
       return;
     }
 
@@ -477,12 +769,35 @@ export class AssetBrowserTab {
       id === SECTION_IDS.PROJECT ||
       id === CATEGORY_IDS.BUILTIN_MATERIALS ||
       id === CATEGORY_IDS.BUILTIN_SHADERS ||
-      id === CATEGORY_IDS.PROJECT_MATERIALS ||
-      id === CATEGORY_IDS.PROJECT_SHADERS ||
-      id === CATEGORY_IDS.PROJECT_IMPORTED ||
-      id.endsWith('__meshes') ||
-      id.endsWith('__materials')
+      id === CATEGORY_IDS.PROJECT_ASSETS ||
+      id === CATEGORY_IDS.PROJECT_ASSETS_MATERIALS ||
+      id === CATEGORY_IDS.PROJECT_ASSETS_MESHES ||
+      id === CATEGORY_IDS.PROJECT_ASSETS_MODELS ||
+      id === CATEGORY_IDS.PROJECT_ASSETS_SCENES ||
+      id === CATEGORY_IDS.PROJECT_ASSETS_SHADERS ||
+      id === CATEGORY_IDS.PROJECT_ASSETS_TEXTURES ||
+      id === CATEGORY_IDS.PROJECT_SOURCES ||
+      id === CATEGORY_IDS.PROJECT_SOURCES_MODELS ||
+      id === CATEGORY_IDS.PROJECT_SOURCES_TEXTURES ||
+      id === CATEGORY_IDS.PROJECT_SOURCES_OTHER
     );
+  }
+
+  /**
+   * Check if an ID is a source file node.
+   */
+  private isSourceFileId(id: string): boolean {
+    return id.startsWith(SOURCE_FILE_PREFIX);
+  }
+
+  /**
+   * Get the source file path from a source file node ID.
+   */
+  private getSourceFilePathFromId(id: string): string | null {
+    if (!this.isSourceFileId(id)) {
+      return null;
+    }
+    return id.substring(SOURCE_FILE_PREFIX.length);
   }
 
   /**
@@ -494,8 +809,8 @@ export class AssetBrowserTab {
     const { node, x, y } = data;
     const isProjectOpen = this.projectService?.isProjectOpen ?? false;
 
-    // Handle context menu on Project section category nodes (for creating assets)
-    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_MATERIALS) {
+    // Handle context menu on assets/materials/ folder
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_ASSETS_MATERIALS) {
       this.contextMenu = new ContextMenu();
       this.contextMenu.show({
         items: [
@@ -510,7 +825,8 @@ export class AssetBrowserTab {
       return;
     }
 
-    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_SHADERS) {
+    // Handle context menu on assets/shaders/ folder
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_ASSETS_SHADERS) {
       this.contextMenu = new ContextMenu();
       this.contextMenu.show({
         items: [
@@ -525,7 +841,8 @@ export class AssetBrowserTab {
       return;
     }
 
-    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_IMPORTED) {
+    // Handle context menu on assets/models/ folder
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_ASSETS_MODELS) {
       this.contextMenu = new ContextMenu();
       this.contextMenu.show({
         items: [
@@ -538,6 +855,45 @@ export class AssetBrowserTab {
         y,
       });
       return;
+    }
+
+    // Handle context menu on sources/models/ folder
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_SOURCES_MODELS) {
+      this.contextMenu = new ContextMenu();
+      this.contextMenu.show({
+        items: [
+          {
+            label: 'Refresh',
+            action: () => this.handleRefreshClick(),
+          },
+          {
+            label: 'Import Model...',
+            action: () => this.eventBus.emit('command:import'),
+          },
+        ],
+        x,
+        y,
+      });
+      return;
+    }
+
+    // Handle context menu on source files
+    if (isProjectOpen && this.isSourceFileId(node.id)) {
+      const sourcePath = this.getSourceFilePathFromId(node.id);
+      if (sourcePath) {
+        const sourceFile = this.projectService?.getSourceFiles().find(
+          (f) => f.path === sourcePath
+        );
+        if (sourceFile) {
+          this.contextMenu = new ContextMenu();
+          this.contextMenu.show({
+            items: this.getSourceFileContextMenuItems(sourceFile),
+            x,
+            y,
+          });
+          return;
+        }
+      }
     }
 
     // Ignore other section and category nodes
@@ -643,6 +999,55 @@ export class AssetBrowserTab {
 
     return items;
   }
+
+/**
+ * Get context menu items for source files.
+ */
+private getSourceFileContextMenuItems(sourceFile: ISourceFile): ContextMenuItem[] {
+  const items: ContextMenuItem[] = [];
+
+  if (sourceFile.isImported) {
+    // Already imported - offer to re-import or view imported asset
+    items.push(
+      {
+        label: 'Re-import',
+        action: () => this.importSourceFile(sourceFile),
+      },
+      {
+        label: 'Show Imported Asset',
+        action: () => {
+          if (sourceFile.importedAssetId) {
+            this.treeView.select(sourceFile.importedAssetId);
+          }
+        },
+      }
+    );
+  } else {
+    // Not imported - offer to import
+    items.push({
+      label: 'Import',
+      action: () => this.importSourceFile(sourceFile),
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Import a source file from the project folder.
+ */
+private async importSourceFile(sourceFile: ISourceFile): Promise<void> {
+  if (!this.projectService) {
+    return;
+  }
+
+  // Emit event to trigger import from project source
+  this.eventBus.emit('sourceFile:importRequested', {
+    path: sourceFile.path,
+    name: sourceFile.name,
+    format: sourceFile.format,
+  });
+}
 
   /**
    * Handle rename from tree view.

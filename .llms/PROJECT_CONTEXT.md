@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-04T11:36:00Z
-> **Version:** 0.15.2
-> **Status:** GLTF Importer Phase 5 Complete (Hierarchy & Transform Preservation)
+> **Last Updated:** 2026-03-04T15:15:00Z
+> **Version:** 0.15.3
+> **Status:** GLTF Importer Phase 7 Complete (Project Folder Integration)
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.2)
+## Current State (v0.15.3)
 
 ### What's Working
 
@@ -47,6 +47,15 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - `ForwardRenderer`: Uses entity's `getModelMatrix()` for world transform (hierarchy inheritance)
   - TreeView `meshGroup` type with solid cube + wireframe icon
   - SelectionController gizmo drag tracking to prevent selection on release
+- **GLTF Project Folder Integration** (Phase 7 - Complete)
+  - **Source File Scanning**: `scanSourceFiles()` detects .glb/.gltf in `sources/` folder
+  - **Refresh Mechanism**: Toolbar with 🔄 button to rescan project
+  - **Source Files in Tree View**: Shows import status (✓) with context menu actions
+  - **Import from Project Sources**: `importFromProject()` method for source files
+  - **Folder Structure Mirroring**: AssetBrowserTab shows actual disk structure
+    - `assets/` with subfolders: materials, meshes, models, scenes, shaders, textures
+    - `sources/` with subfolders: models, other, textures
+  - Source files copied to project on import via `copySourceFile()`
 - **Built-in Shaders**: Lambert (default), PBR (Cook-Torrance BRDF), Unlit
   - Shader sources loaded from external `.glsl` files for maintainability
   - `src/plugins/renderers/shaders/lambert/` — Lambert shader module (default for primitives)
@@ -103,10 +112,10 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - All entity types support `ISerializable`: Cube, Sphere, DirectionalLight, CameraEntity
   - Type guards: `isSceneAsset()`, `isSerializedEntity()`
 - **Asset System (Phase E)**: Asset Browser UI
-  - `AssetBrowserTab`: Two-section tree view (Built-in / Project)
+  - `AssetBrowserTab`: Folder-based tree view mirroring actual disk structure
     - **Built-in section**: Immutable framework assets (shaders 🔒, materials)
-    - **Project section**: User's project assets (when project is open)
-  - Right-click context menus for create/duplicate/rename/delete operations
+    - **Project section**: `assets/` and `sources/` folders with real subfolders
+  - Right-click context menus for create/duplicate/rename/delete/import operations
   - "No project open" message with "Open Project Folder" button
   - **Assets Panel**: Standalone collapsible panel to the right of Properties
     - Collapses to 28px sidebar with vertical title
@@ -117,9 +126,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
     - File picker dialog for `.glb`/`.gltf` files (File System Access API + fallback)
     - Project folder prompt when no project is open
     - `command:import` event handler wired in Application
+    - `importFromProject()` for importing from project sources
   - `GLTFImporter`: Plugin bridging `GLTFImportService` to asset system
     - Creates and registers mesh/material assets
     - Converts GLTF hierarchy to `MeshEntity` scene objects
+    - Copies source .glb to project and saves model metadata
   - File → Import menu item (was disabled, now enabled)
   - Keyboard shortcut: `Ctrl+I` for import
 - **Asset System (Phase F)**: Live Shader Editor
@@ -265,8 +276,8 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 | Phase 3 | MeshEntity (generic mesh entity referencing `IMeshAsset`) | ✅ Complete |
 | Phase 4 | File Menu & Import UI (Ctrl+I shortcut) | ✅ Complete |
 | Phase 5 | Hierarchy Preservation & GroupEntity | ✅ Complete |
-| Phase 6 | Hierarchy Panel Enhancements | Not Started |
-| Phase 7 | Project Folder Integration | Not Started |
+| Phase 6 | Hierarchy Panel Enhancements | ⏭️ Skipped |
+| Phase 7 | Project Folder Integration | ✅ Complete |
 | Phase 8 | Scene Serialization Updates | Not Started |
 | Phase 9 | Testing (Integration) | Not Started |
 | Phase 10 | Polish & UX | Not Started |
@@ -275,9 +286,9 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 6: Hierarchy Panel Enhancements** - Collapsible hierarchy nodes for imported models
-2. **GLTF Importer Phase 7: Project Folder Integration** - Save/load imported models with project
-3. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
+1. **GLTF Importer Phase 8: Scene Serialization Updates** - Save/load scenes with imported models
+2. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
+3. **Phase 6.10: Render Mode Dropdown** - Wireframe, shaded, textured views
 
 ---
 

@@ -123,6 +123,10 @@ export {
 export { SceneAssetFactory } from './SceneAssetFactory';
 export type { CreateSceneOptions } from './SceneAssetFactory';
 
+// Model Assets
+export { ModelAssetFactory } from './ModelAssetFactory';
+export type { IImportedModelData, IModelCreateOptions } from './ModelAssetFactory';
+
 // Re-export scene-related types from interfaces
 export type {
   ISceneAsset,
@@ -142,4 +146,37 @@ export {
   isSerializedEntity,
   createDefaultSceneSettings,
   SCENE_ASSET_VERSION,
+} from './interfaces';
+
+// Re-export model-related types from interfaces
+export type {
+  IModelAsset,
+  IModelSource,
+  IModelContents,
+  IModelNode,
+  IMeshAssetReference,
+  IMaterialAssetReference,
+  ITextureAssetReference,
+  ModelFormat,
+} from './interfaces';
+
+export {
+  isModelAsset,
+  isModelNode,
+  createDefaultModelContents,
+  createDefaultModelNode,
+  MODEL_ASSET_VERSION,
+} from './interfaces';
+
+// Re-export mesh-related types from interfaces
+export type {
+  IMeshAsset,
+  IMeshBounds,
+} from './interfaces';
+
+export {
+  isMeshAsset,
+  calculateMeshBounds,
+  createDefaultMeshBounds,
+  MESH_ASSET_VERSION,
 } from './interfaces';

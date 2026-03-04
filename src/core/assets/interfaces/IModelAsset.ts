@@ -71,6 +71,13 @@ export interface IModelSource {
    * File size in bytes (optional, for display purposes).
    */
   fileSize?: number;
+
+  /**
+   * Relative path to the source file within the project folder.
+   * Set when the file is copied to the project on import.
+   * Example: "sources/models/car.glb"
+   */
+  projectPath?: string;
 }
 
 /**

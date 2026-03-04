@@ -45,10 +45,36 @@ import type {
   IProjectMetadata,
   IProjectOpenResult,
   IProjectCloseResult,
+  ISourceFile,
+  SourceFileType,
   ProjectOpenedEvent,
   ProjectClosedEvent,
+  SourceFilesScannedEvent,
+  ProjectRefreshedEvent,
 } from './interfaces/IProjectService';
 import type { IAsset, AssetType } from './assets/interfaces';
+import type { IModelAsset } from './assets/interfaces/IModelAsset';
+
+/**
+ * Supported source file extensions and their types.
+ */
+const SOURCE_FILE_EXTENSIONS: Record<string, { type: SourceFileType; format: string }> = {
+  '.glb': { type: 'model', format: 'glb' },
+  '.gltf': { type: 'model', format: 'gltf' },
+  // Future: texture support
+  // '.png': { type: 'texture', format: 'png' },
+  // '.jpg': { type: 'texture', format: 'jpg' },
+  // '.jpeg': { type: 'texture', format: 'jpeg' },
+};
+
+/**
+ * Folders to scan for source files.
+ */
+const SOURCE_FOLDERS: Record<SourceFileType, string> = {
+  model: 'models',
+  texture: 'textures',
+  other: 'other',
+};
 
 /**
  * Current project file format version.
@@ -93,6 +119,11 @@ export class ProjectService implements IProjectService {
   private _projectMetadata: IProjectMetadata | undefined;
   private rootHandle: FileSystemDirectoryHandle | null = null;
   private metadataHandle: FileSystemDirectoryHandle | null = null;
+
+  /**
+   * Cached source files from the last scan.
+   */
+  private _sourceFiles: ISourceFile[] = [];
 
   constructor(options: ProjectServiceOptions) {
     this.eventBus = options.eventBus;
@@ -186,6 +217,9 @@ export class ProjectService implements IProjectService {
       // Scan for assets and register them
       const assets = await this.scanForAssets();
 
+      // Scan for source files
+      const sourceFiles = await this.scanSourceFiles();
+
       // Remember this project for next session
       this.saveLastProject(this.rootHandle.name);
 
@@ -196,6 +230,8 @@ export class ProjectService implements IProjectService {
         assetsDiscovered: assets.length,
         isNew,
       });
+
+      console.log(`Project opened: ${assets.length} assets, ${sourceFiles.length} source files`);
 
       return {
         success: true,
@@ -242,6 +278,7 @@ export class ProjectService implements IProjectService {
       this._projectMetadata = undefined;
       this.rootHandle = null;
       this.metadataHandle = null;
+      this._sourceFiles = [];
 
       // Clear last project
       this.clearLastProject();
@@ -274,8 +311,8 @@ export class ProjectService implements IProjectService {
 
     const discoveredAssets: IAsset[] = [];
 
-    // List all assets from the store
-    const assetTypes: AssetType[] = ['shader', 'material', 'scene', 'texture'];
+    // List all assets from the store (includes mesh and model assets)
+    const assetTypes: AssetType[] = ['shader', 'material', 'scene', 'texture', 'mesh', 'model'];
 
     for (const type of assetTypes) {
       const metadata = await this.assetStore.listAssets(type);
@@ -300,6 +337,266 @@ export class ProjectService implements IProjectService {
     }
 
     return discoveredAssets;
+  }
+
+  /**
+   * Scan the project folder for source files (e.g., .glb, .gltf).
+   * Source files are the original files that can be imported into the editor.
+   */
+  async scanSourceFiles(): Promise<ISourceFile[]> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      this._sourceFiles = [];
+      return [];
+    }
+
+    const sourceFiles: ISourceFile[] = [];
+
+    try {
+      // Get or create the sources directory
+      const sourcesHandle = await this.rootHandle.getDirectoryHandle('sources', { create: true });
+
+      // Scan each source folder type
+      for (const [type, folderName] of Object.entries(SOURCE_FOLDERS)) {
+        try {
+          const folderHandle = await sourcesHandle.getDirectoryHandle(folderName, { create: true });
+          const filesInFolder = await this.scanSourceFolder(
+            folderHandle,
+            `sources/${folderName}`,
+            type as SourceFileType
+          );
+          sourceFiles.push(...filesInFolder);
+        } catch (error) {
+          // Folder doesn't exist or can't be accessed - skip it
+          console.debug(`Source folder not found or inaccessible: sources/${folderName}`);
+        }
+      }
+
+      // Check which source files have been imported
+      await this.markImportedSourceFiles(sourceFiles);
+
+      // Cache the results
+      this._sourceFiles = sourceFiles;
+
+      // Emit event
+      const importedCount = sourceFiles.filter(f => f.isImported).length;
+      this.eventBus.emit<SourceFilesScannedEvent>('sourceFiles:scanned', {
+        sourceFiles,
+        newFiles: sourceFiles.length - importedCount,
+        importedFiles: importedCount,
+      });
+
+      console.log(`Scanned ${sourceFiles.length} source files (${importedCount} imported)`);
+      return sourceFiles;
+    } catch (error) {
+      console.error('Failed to scan source files:', error);
+      this._sourceFiles = [];
+      return [];
+    }
+  }
+
+  /**
+   * Get the cached source files from the last scan.
+   */
+  getSourceFiles(): ISourceFile[] {
+    return this._sourceFiles;
+  }
+
+  /**
+   * Read a source file from the project folder.
+   */
+  async readSourceFile(relativePath: string): Promise<File | null> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      console.warn('Cannot read source file: no project is open');
+      return null;
+    }
+
+    try {
+      // Split the path into parts
+      const parts = relativePath.split('/');
+      const fileName = parts.pop();
+      if (!fileName) {
+        console.error('Invalid source file path:', relativePath);
+        return null;
+      }
+
+      // Navigate to the directory
+      let currentHandle: FileSystemDirectoryHandle = this.rootHandle;
+      for (const part of parts) {
+        currentHandle = await currentHandle.getDirectoryHandle(part);
+      }
+
+      // Get the file
+      const fileHandle = await currentHandle.getFileHandle(fileName);
+      return await fileHandle.getFile();
+    } catch (error) {
+      console.error('Failed to read source file:', relativePath, error);
+      return null;
+    }
+  }
+
+  /**
+   * Rescan the entire project (assets and source files).
+   * Clears and repopulates the asset registry with fresh data from disk.
+   */
+  async rescanProject(): Promise<void> {
+    if (!this.isProjectOpen) {
+      console.warn('Cannot rescan: no project is open');
+      return;
+    }
+
+    console.log('Rescanning project...');
+
+    // Clear user assets from registry (keep built-in)
+    this.clearUserAssets();
+
+    // Clear source file cache
+    this._sourceFiles = [];
+
+    // Rescan assets
+    const assets = await this.scanForAssets();
+
+    // Rescan source files
+    const sourceFiles = await this.scanSourceFiles();
+
+    // Emit refresh event
+    this.eventBus.emit<ProjectRefreshedEvent>('project:refreshed', {
+      assetsDiscovered: assets.length,
+      sourceFilesDiscovered: sourceFiles.length,
+    });
+
+    console.log(`Project rescanned: ${assets.length} assets, ${sourceFiles.length} source files`);
+  }
+
+  /**
+   * Scan a single source folder for files.
+   */
+  private async scanSourceFolder(
+    folderHandle: FileSystemDirectoryHandle,
+    basePath: string,
+    expectedType: SourceFileType
+  ): Promise<ISourceFile[]> {
+    const files: ISourceFile[] = [];
+
+    for await (const [name, handle] of folderHandle.entries()) {
+      if (handle.kind !== 'file') {
+        // Skip directories for now (could recurse in future)
+        continue;
+      }
+
+      // Check if it's a supported file type
+      const ext = this.getFileExtension(name);
+      const fileInfo = SOURCE_FILE_EXTENSIONS[ext];
+
+      if (!fileInfo) {
+        // Unsupported file type
+        continue;
+      }
+
+      // Only include files that match the expected type for this folder
+      if (fileInfo.type !== expectedType) {
+        continue;
+      }
+
+      try {
+        const fileHandle = handle as FileSystemFileHandle;
+        const file = await fileHandle.getFile();
+
+        files.push({
+          name,
+          path: `${basePath}/${name}`,
+          type: fileInfo.type,
+          format: fileInfo.format,
+          size: file.size,
+          lastModified: new Date(file.lastModified),
+          isImported: false, // Will be set by markImportedSourceFiles
+        });
+      } catch (error) {
+        console.warn(`Failed to read source file: ${name}`, error);
+      }
+    }
+
+    return files;
+  }
+
+  /**
+   * Mark source files that have been imported (have corresponding assets).
+   */
+  private async markImportedSourceFiles(sourceFiles: ISourceFile[]): Promise<void> {
+    // Get all model assets
+    const modelAssets = this.assetRegistry.getByType<IModelAsset>('model');
+
+    // Create a map of source paths to model assets
+    const importedPaths = new Map<string, string>();
+    for (const model of modelAssets) {
+      if (model.source.projectPath) {
+        importedPaths.set(model.source.projectPath, model.uuid);
+      }
+    }
+
+    // Mark source files that have been imported
+    for (const sourceFile of sourceFiles) {
+      const modelUuid = importedPaths.get(sourceFile.path);
+      if (modelUuid) {
+        sourceFile.isImported = true;
+        sourceFile.importedAssetId = modelUuid;
+      }
+    }
+  }
+
+  /**
+   * Get the file extension (including dot) from a filename.
+   */
+  private getFileExtension(filename: string): string {
+    const lastDot = filename.lastIndexOf('.');
+    if (lastDot === -1) {
+      return '';
+    }
+    return filename.substring(lastDot).toLowerCase();
+  }
+
+  /**
+   * Copy a source file (like .glb) to the project's sources folder.
+   * Returns the relative path to the copied file within the project.
+   *
+   * @param file - The file to copy
+   * @param subfolder - Optional subfolder within sources (e.g., 'models')
+   * @returns The relative path to the copied file, or null if failed
+   */
+  async copySourceFile(file: File, subfolder?: string): Promise<string | null> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      console.warn('Cannot copy file: no project is open');
+      return null;
+    }
+
+    try {
+      // Get or create the sources directory
+      const sourcesHandle = await this.rootHandle.getDirectoryHandle('sources', { create: true });
+
+      // Get or create the subfolder if specified
+      let targetHandle = sourcesHandle;
+      if (subfolder) {
+        targetHandle = await sourcesHandle.getDirectoryHandle(subfolder, { create: true });
+      }
+
+      // Create the file in the target directory
+      const fileHandle = await targetHandle.getFileHandle(file.name, { create: true });
+      const writable = await fileHandle.createWritable();
+
+      // Write the file contents
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+
+      // Return the relative path
+      const relativePath = subfolder
+        ? `sources/${subfolder}/${file.name}`
+        : `sources/${file.name}`;
+
+      console.log(`Copied source file to project: ${relativePath}`);
+      return relativePath;
+    } catch (error) {
+      console.error('Failed to copy source file:', error);
+      return null;
+    }
   }
 
   /**

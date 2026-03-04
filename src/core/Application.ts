@@ -233,6 +233,18 @@ export class Application {
         console.error('Import failed:', result.error);
       }
     });
+
+    // Setup source file import handler (from project sources folder)
+    this.eventBus.on('sourceFile:importRequested', async (data: { path: string; name: string; format: string }) => {
+      console.log(`Source file import requested: ${data.path}`);
+      const result = await importController.importFromProject(data.path);
+      if (!result.success && result.error) {
+        console.error('Source file import failed:', result.error);
+      } else {
+        // Refresh project to update source file import status
+        await projectService.rescanProject();
+      }
+    });
     console.log('Import controller initialized');
 
     // Setup viewport drop handler for drag-and-drop instantiation

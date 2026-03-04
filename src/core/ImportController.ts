@@ -165,6 +165,53 @@ export class ImportController {
   }
 
   /**
+   * Import a source file from the project folder.
+   * Reads the file from the project's sources directory and imports it.
+   *
+   * @param sourcePath - Relative path within the project (e.g., "sources/models/car.glb")
+   * @returns Result of the import operation
+   */
+  async importFromProject(sourcePath: string): Promise<ImportOperationResult> {
+    try {
+      // Ensure project is open
+      if (!this.projectService.isProjectOpen) {
+        return {
+          success: false,
+          error: 'No project is open. Cannot import from project source.',
+        };
+      }
+
+      // Read the source file from project
+      const file = await this.projectService.readSourceFile(sourcePath);
+      if (!file) {
+        return {
+          success: false,
+          error: `Source file not found: ${sourcePath}`,
+        };
+      }
+
+      console.log(`Importing from project source: ${sourcePath}`);
+
+      // Use the standard import flow
+      if (this.gltfImporter.canImport(file)) {
+        return await this.importWithGLTF(file);
+      }
+
+      return {
+        success: false,
+        error: `Unsupported file format: ${file.name}`,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Import from project failed:', errorMessage);
+      return {
+        success: false,
+        error: `Import failed: ${errorMessage}`,
+      };
+    }
+  }
+
+  /**
    * Show the file picker dialog for 3D model files.
    *
    * @returns The selected file or null if cancelled
@@ -260,6 +307,11 @@ export class ImportController {
   private async importWithGLTF(file: File): Promise<ImportOperationResult> {
     console.log(`Importing GLTF file: ${file.name}`);
 
+    // Wire up project service for asset persistence
+    this.gltfImporter.setProjectService(
+      this.projectService.isProjectOpen ? this.projectService : null
+    );
+
     const result = await this.gltfImporter.import(file);
 
     // Log warnings
@@ -278,12 +330,14 @@ export class ImportController {
       objectCount: result.objects.length,
       meshAssetCount: result.meshAssets.length,
       materialAssetCount: result.materialAssets.length,
+      modelAssetId: result.modelAsset.uuid,
     });
 
     console.log(
       `Import complete: ${result.objects.length} objects, ` +
       `${result.meshAssets.length} mesh assets, ` +
-      `${result.materialAssets.length} material assets`
+      `${result.materialAssets.length} material assets` +
+      (this.projectService.isProjectOpen ? ' (saved to project)' : '')
     );
 
     return {

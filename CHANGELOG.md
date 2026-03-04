@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.3] - 2026-03-04
+
+### Added
+
+- **GLTF Importer Phase 7: Project Folder Integration** — Complete source file management
+  - **Source File Scanning (Phase 7.1)**
+    - `ISourceFile` interface for representing source files (.glb, .gltf)
+    - `scanSourceFiles()` method in ProjectService — Detects files in `sources/` folder
+    - `getSourceFiles()` method — Returns cached source files from last scan
+    - `readSourceFile()` method — Reads source file by relative path
+    - `rescanProject()` method — Full rescan of assets and source files
+    - Auto-detection of import status (links source files to imported model assets)
+    - `SourceFilesScannedEvent` and `ProjectRefreshedEvent` events
+  - **Refresh Mechanism (Phase 7.2)**
+    - Toolbar added to AssetBrowserTab with 🔄 refresh button
+    - `+ Import` quick action button in toolbar
+    - Visual feedback during refresh (spinning animation)
+    - Toolbar only visible when project is open
+  - **Source Files in Tree View (Phase 7.3)**
+    - Sources folder section showing source files with import status (✓)
+    - Context menu for source files: "Import" / "Re-import" / "Show Imported Asset"
+    - `SourceFileImportRequestedEvent` for triggering imports
+  - **Import from Project Sources (Phase 7.4)**
+    - `importFromProject()` method in ImportController
+    - Event handler for `sourceFile:importRequested` in Application
+    - Auto-refresh after import to update source file status
+  - **Folder Structure Mirroring**
+    - AssetBrowserTab completely redesigned to mirror actual disk structure
+    - Shows `assets/` folder with subfolders: materials, meshes, models, scenes, shaders, textures
+    - Shows `sources/` folder with subfolders: models, other, textures
+    - Files displayed with actual UUID-based filenames
+  - `copySourceFile()` method — Copies .glb files to project's `sources/models/` folder
+  - `projectPath` field in `IModelSource` — Tracks source file location in project
+
+### Changed
+
+- **AssetBrowserTab tree structure** — Now mirrors actual folder structure instead of logical groupings
+  - Old: Materials → Shaders → Imported (logical categories)
+  - New: assets/ → sources/ (actual disk structure)
+- GLTFImporter `saveToProjectFolder()` — Now copies source .glb file and stores path in model asset
+
+---
+
 ## [0.15.2] - 2026-03-04
 
 ### Added

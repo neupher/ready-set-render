@@ -1,6 +1,6 @@
 # GLB/GLTF Importer Implementation Plan
 
-> **Last Updated:** 2026-03-02T16:46:00Z
+> **Last Updated:** 2026-03-04T11:45:00Z
 > **Estimated Effort:** Medium (~10 sessions)
 > **Dependencies:** Asset System (complete), Project Folder (Phase 1-4 complete)
 
@@ -470,37 +470,13 @@ canvas.addEventListener('drop', async (e) => {
 
 ---
 
-## Phase 6: Hierarchy Panel Enhancements
+## Phase 6: Hierarchy Panel Enhancements — SKIPPED
 
-**Estimated Effort:** ~0.5 session
+**Status:** ⏭️ Skipped (2026-03-04)
+**Reason:** Existing TreeView hierarchy support is sufficient for imported models.
 
-### 6.1 Collapsible Hierarchy Nodes
-
-The current hierarchy already supports expand/collapse via TreeView.
-Ensure imported model hierarchies render correctly:
-
-```typescript
-private getNodeType(obj: SceneObject): TreeNode['type'] {
-  // ... existing checks
-
-  // Model instance (has children from import)
-  if (isEntity(obj) && obj.hasComponent('modelInstance')) {
-    return 'group';  // Makes it expandable
-  }
-}
-```
-
-### 6.2 Model Instance Component
-
-**File:** `src/core/interfaces/IModelInstanceComponent.ts`
-
-```typescript
-interface IModelInstanceComponent extends IComponent {
-  type: 'modelInstance';
-  modelAssetRef: IAssetReference;
-  rootNodeIndex: number;
-}
-```
+The current implementation with `GroupEntity` (Phase 5) and TreeView's `meshGroup` type
+already provides adequate hierarchy visualization for imported GLTF models.
 
 ---
 
@@ -677,8 +653,8 @@ Phase 1 (Foundation)     ████████░░  ✅ Complete
 Phase 2 (Import Service) ████████░░  ✅ Complete
 Phase 3 (Importer)       ████████░░  ✅ Complete
 Phase 4 (File Menu)      ████████░░  ✅ Complete
-Phase 5 (Asset Browser)  ░░░░░░░░░░  ~2 sessions
-Phase 6 (Hierarchy)      ░░░░░░░░░░  ~0.5 session
+Phase 5 (Hierarchy)      ████████░░  ✅ Complete
+Phase 6 (Hierarchy UI)   ████████░░  ⏭️ Skipped (sufficient support)
 Phase 7 (Project)        ░░░░░░░░░░  ~1 session
 Phase 8 (Serialization)  ░░░░░░░░░░  ~0.5 session
 Phase 9 (Testing)        ░░░░░░░░░░  ~1 session
