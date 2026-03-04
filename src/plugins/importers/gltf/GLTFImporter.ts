@@ -8,7 +8,7 @@
  * - Imports .gltf and .glb files
  * - Converts geometry from Y-up to Z-up coordinate system
  * - Extracts PBR materials from GLTF files
- * - Preserves scene hierarchy
+ * - Preserves scene hierarchy with parent-child relationships
  *
  * @example
  * ```typescript
@@ -16,6 +16,7 @@
  *
  * if (importer.canImport(file)) {
  *   const result = await importer.import(file);
+ *   // Add root objects - children are already attached
  *   result.objects.forEach(obj => sceneGraph.add(obj));
  * }
  * ```
@@ -30,6 +31,7 @@ import type { IMeshAsset } from '@core/assets/interfaces/IMeshAsset';
 import type { IAssetReference } from '@core/assets/interfaces/IAssetReference';
 import { generateUUID } from '@utils/uuid';
 import { MeshEntity } from '@plugins/primitives/MeshEntity';
+import { GroupEntity } from '@plugins/primitives/GroupEntity';
 import { BUILT_IN_SHADER_IDS } from '@core/assets/BuiltInShaders';
 import {
   GLTFImportService,
@@ -200,35 +202,48 @@ export class GLTFImporter implements IImporter {
   }
 
   /**
-   * Create scene objects (MeshEntity instances) from GLTF hierarchy.
+   * Create scene objects from GLTF hierarchy, preserving parent-child relationships.
+   * Returns only root-level objects; children are attached to their parents.
    */
   private createSceneObjects(
     hierarchy: IGLTFNodeData[],
     meshAssets: IMeshAsset[],
     materialAssets: IMaterialAsset[]
   ): ISceneObject[] {
-    const objects: ISceneObject[] = [];
+    const rootObjects: ISceneObject[] = [];
 
     for (const node of hierarchy) {
-      const nodeObjects = this.createNodeEntities(node, meshAssets, materialAssets);
-      objects.push(...nodeObjects);
+      const sceneObject = this.createNodeWithHierarchy(
+        node,
+        meshAssets,
+        materialAssets
+      );
+      if (sceneObject) {
+        rootObjects.push(sceneObject);
+      }
     }
 
-    return objects;
+    return rootObjects;
   }
 
   /**
-   * Create MeshEntity instances from a single hierarchy node.
-   * Recursively processes child nodes.
+   * Create a scene object from a GLTF node, preserving hierarchy.
+   * Creates MeshEntity for nodes with meshes, SceneObject for group nodes.
+   * Recursively creates and attaches child objects.
+   *
+   * @param node - The GLTF node data
+   * @param meshAssets - All mesh assets
+   * @param materialAssets - All material assets
+   * @returns The created scene object with children attached, or null if node should be skipped
    */
-  private createNodeEntities(
+  private createNodeWithHierarchy(
     node: IGLTFNodeData,
     meshAssets: IMeshAsset[],
     materialAssets: IMaterialAsset[]
-  ): MeshEntity[] {
-    const entities: MeshEntity[] = [];
+  ): ISceneObject | null {
+    let sceneObject: ISceneObject;
 
-    // Create entity if node has a mesh
+    // Create appropriate object type based on whether node has a mesh
     if (node.meshIndex !== undefined) {
       const meshAsset = meshAssets[node.meshIndex];
       if (meshAsset) {
@@ -240,7 +255,7 @@ export class GLTFImporter implements IImporter {
           type: 'mesh',
         } as IAssetReference;
 
-        // Apply transform
+        // Apply local transform (relative to parent)
         entity.transform.position = [...node.transform.position];
         entity.transform.rotation = [...node.transform.rotation];
         entity.transform.scale = [...node.transform.scale];
@@ -259,16 +274,41 @@ export class GLTFImporter implements IImporter {
           }
         }
 
-        entities.push(entity);
+        sceneObject = entity;
+      } else {
+        // Mesh asset not found, create empty group
+        sceneObject = new GroupEntity(node.name);
+        sceneObject.transform.position = [...node.transform.position];
+        sceneObject.transform.rotation = [...node.transform.rotation];
+        sceneObject.transform.scale = [...node.transform.scale];
+      }
+    } else {
+      // No mesh - create a group node (SceneObject) if it has children
+      // Skip empty nodes with no children
+      if (node.children.length === 0) {
+        return null;
+      }
+
+      sceneObject = new GroupEntity(node.name);
+      sceneObject.transform.position = [...node.transform.position];
+      sceneObject.transform.rotation = [...node.transform.rotation];
+      sceneObject.transform.scale = [...node.transform.scale];
+    }
+
+    // Recursively create and attach children
+    for (const childNode of node.children) {
+      const childObject = this.createNodeWithHierarchy(
+        childNode,
+        meshAssets,
+        materialAssets
+      );
+      if (childObject) {
+        // Set up parent-child relationship
+        childObject.parent = sceneObject;
+        sceneObject.children.push(childObject);
       }
     }
 
-    // Process children recursively
-    for (const child of node.children) {
-      const childEntities = this.createNodeEntities(child, meshAssets, materialAssets);
-      entities.push(...childEntities);
-    }
-
-    return entities;
+    return sceneObject;
   }
 }

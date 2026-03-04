@@ -20,11 +20,15 @@ export interface TreeNode {
   /** Display name */
   name: string;
   /** Node type for icon selection */
-  type: 'group' | 'mesh' | 'material' | 'texture' | 'light' | 'camera';
+  type: 'meshGroup' | 'group' | 'mesh' | 'material' | 'texture' | 'light' | 'camera' | 'model';
   /** Child nodes */
   children?: TreeNode[];
   /** Whether this node can be selected (default: true) */
   selectable?: boolean;
+  /** Whether this node is draggable (default: false) */
+  draggable?: boolean;
+  /** Asset type for drag-and-drop (e.g., 'model', 'mesh', 'material') */
+  assetType?: string;
 }
 
 export interface ContextMenuData {
@@ -45,6 +49,8 @@ export interface TreeViewOptions {
   onRename?: (id: string, newName: string) => void;
   /** Callback when a node is right-clicked (context menu) */
   onContextMenu?: (data: ContextMenuData) => void;
+  /** Callback when a node drag starts */
+  onDragStart?: (id: string, node: TreeNode, event: DragEvent) => void;
   /** Initially selected node ID */
   selectedId?: string;
   /** Initially expanded node IDs */
@@ -64,6 +70,7 @@ export class TreeView {
   private readonly onToggle?: (id: string, expanded: boolean) => void;
   private readonly onRename?: (id: string, newName: string) => void;
   private readonly onContextMenu?: (data: ContextMenuData) => void;
+  private readonly onDragStart?: (id: string, node: TreeNode, event: DragEvent) => void;
   private nodeMap = new Map<string, TreeNode>();
   private editingId: string | null = null;
 
@@ -72,6 +79,7 @@ export class TreeView {
     this.onToggle = options.onToggle;
     this.onRename = options.onRename;
     this.onContextMenu = options.onContextMenu;
+    this.onDragStart = options.onDragStart;
     this.selectedId = options.selectedId ?? null;
     this.expandedIds = options.expandedIds ?? new Set();
 
@@ -269,6 +277,24 @@ export class TreeView {
     name.style.userSelect = 'none';
     item.appendChild(name);
 
+    // Drag and drop support
+    if (node.draggable) {
+      item.draggable = true;
+      item.addEventListener('dragstart', (e) => {
+        if (this.onDragStart) {
+          this.onDragStart(node.id, node, e);
+        }
+        // Set default drag data
+        if (e.dataTransfer) {
+          e.dataTransfer.setData('application/x-asset-uuid', node.id);
+          if (node.assetType) {
+            e.dataTransfer.setData('application/x-asset-type', node.assetType);
+          }
+          e.dataTransfer.effectAllowed = 'copy';
+        }
+      });
+    }
+
     // Double-click handler for renaming
     name.addEventListener('dblclick', (e) => {
       e.stopPropagation();
@@ -420,12 +446,18 @@ export class TreeView {
           <path d="M2 5L8 2L14 5V11L8 14L2 11V5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
           <path d="M8 8V14M8 8L2 5M8 8L14 5" stroke="currentColor" stroke-width="1.5"/>
         </svg>`;
+      case 'meshGroup':
+          // Solid cube with wireframe overlay (for imported model groups)
+          return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 5L8 2L14 5V11L8 14L2 11V5Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="M8 8V14M8 8L2 5M8 8L14 5" stroke="currentColor" stroke-width="1.5"/>
+          </svg>`;
       case 'group':
-        // Folder/package icon
-        return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 4C2 3.44772 2.44772 3 3 3H6L8 5H13C13.5523 5 14 5.44772 14 6V12C14 12.5523 13.5523 13 13 13H3C2.44772 13 2 12.5523 2 12V4Z" stroke="currentColor" stroke-width="1.5"/>
-        </svg>`;
-      case 'material':
+          // Folder/package icon
+          return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 4C2 3.44772 2.44772 3 3 3H6L8 5H13C13.5523 5 14 5.44772 14 6V12C14 12.5523 13.5523 13 13 13H3C2.44772 13 2 12.5523 2 12V4Z" stroke="currentColor" stroke-width="1.5"/>
+          </svg>`;
+        case 'material':
         // Circle icon
         return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.5"/>
@@ -449,6 +481,13 @@ export class TreeView {
         return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="1" y="5" width="10" height="7" rx="1" fill="currentColor"/>
           <path d="M11 7l4-2v6l-4-2" fill="currentColor"/>
+        </svg>`;
+      case 'model':
+        // Package/3D model icon (cube with center dot)
+        return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 5L8 2L13 5V11L8 14L3 11V5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M8 8V14M8 8L3 5M8 8L13 5" stroke="currentColor" stroke-width="1"/>
+          <circle cx="8" cy="8" r="2" fill="currentColor"/>
         </svg>`;
       default:
         return '';

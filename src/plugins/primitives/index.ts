@@ -15,6 +15,7 @@ export type {
   MeshAssetResolver,
   ISerializedMeshEntityComponent,
 } from './MeshEntity';
+export { GroupEntity, isGroupEntity } from './GroupEntity';
 export { PrimitiveRegistry } from './PrimitiveRegistry';
 export type { PrimitiveRegistryOptions } from './PrimitiveRegistry';
 export type { IPrimitiveFactory, PrimitiveCategory } from './interfaces/IPrimitiveFactory';

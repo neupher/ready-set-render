@@ -235,6 +235,10 @@ export class Application {
     });
     console.log('Import controller initialized');
 
+    // Setup viewport drop handler for drag-and-drop instantiation
+    this.setupViewportDropHandler(assetRegistry, gltfImporter);
+    console.log('Viewport drop handler initialized');
+
     // Create default Cube primitive for testing
     const defaultCube = this.primitiveRegistry.create('Cube');
     if (defaultCube) {
@@ -651,5 +655,117 @@ export class Application {
         console.error('Failed to close project:', result.error);
       }
     });
+  }
+
+  /**
+   * Set up viewport drop handler for drag-and-drop instantiation.
+   * Handles dropping models and meshes from the Asset Browser onto the viewport.
+   */
+  private setupViewportDropHandler(
+    assetRegistry: AssetRegistry,
+    gltfImporter: GLTFImporter
+  ): void {
+    // Handle viewport:drop event
+    this.eventBus.on('viewport:drop', async (data: {
+      assetUuid: string;
+      assetType: string;
+      ndcX: number;
+      ndcY: number;
+    }) => {
+      // Import dynamically to avoid circular dependency (ES module dynamic import)
+      const { MeshEntity } = await import('@plugins/primitives/MeshEntity');
+      const { CreateEntityCommand } = await import('@core/commands');
+
+      const { assetUuid, assetType } = data;
+
+      if (assetType === 'model') {
+        // Instantiate entire model hierarchy
+        this.instantiateModel(assetUuid, assetRegistry, gltfImporter, MeshEntity, CreateEntityCommand);
+      } else if (assetType === 'mesh') {
+        // Create single MeshEntity for the mesh
+        this.instantiateMesh(assetUuid, assetRegistry, MeshEntity, CreateEntityCommand);
+      }
+    });
+
+    // Handle model:instantiate event (from context menu)
+    this.eventBus.on('model:instantiate', async (data: { modelUuid: string }) => {
+      const { MeshEntity } = await import('@plugins/primitives/MeshEntity');
+      const { CreateEntityCommand } = await import('@core/commands');
+      this.instantiateModel(data.modelUuid, assetRegistry, gltfImporter, MeshEntity, CreateEntityCommand);
+    });
+  }
+
+  /**
+   * Instantiate a model into the scene.
+   */
+  private instantiateModel(
+    modelUuid: string,
+    assetRegistry: AssetRegistry,
+    _gltfImporter: GLTFImporter,
+    MeshEntityClass: typeof import('@plugins/primitives/MeshEntity').MeshEntity,
+    CreateEntityCommandClass: typeof import('@core/commands').CreateEntityCommand
+  ): void {
+    const modelAsset = assetRegistry.get(modelUuid);
+    if (!modelAsset || modelAsset.type !== 'model') {
+      console.warn(`Model asset not found: ${modelUuid}`);
+      return;
+    }
+
+    const model = modelAsset as import('@core/assets/interfaces/IModelAsset').IModelAsset;
+
+    // For each mesh in the model, create a MeshEntity
+    // Start batch mode for undo/redo
+    this.commandHistory.beginBatch();
+
+    try {
+      for (const meshRef of model.contents.meshes) {
+        const meshEntity = new MeshEntityClass(undefined, meshRef.name);
+        meshEntity.meshAssetRef = { uuid: meshRef.uuid, type: 'mesh' };
+
+        // Create command and execute
+        const command = new CreateEntityCommandClass(
+          meshEntity,
+          this.sceneGraph,
+          this.eventBus
+        );
+        this.commandHistory.execute(command);
+      }
+    } finally {
+      this.commandHistory.endBatch();
+    }
+
+    console.log(`Instantiated model: ${model.name} (${model.contents.meshes.length} meshes)`);
+  }
+
+  /**
+   * Instantiate a single mesh into the scene.
+   */
+  private instantiateMesh(
+    meshUuid: string,
+    assetRegistry: AssetRegistry,
+    MeshEntityClass: typeof import('@plugins/primitives/MeshEntity').MeshEntity,
+    CreateEntityCommandClass: typeof import('@core/commands').CreateEntityCommand
+  ): void {
+    const meshAsset = assetRegistry.get(meshUuid);
+    if (!meshAsset || meshAsset.type !== 'mesh') {
+      console.warn(`Mesh asset not found: ${meshUuid}`);
+      return;
+    }
+
+    const mesh = meshAsset as import('@core/assets/interfaces/IMeshAsset').IMeshAsset;
+
+    // Create MeshEntity referencing the mesh asset
+    const meshEntity = new MeshEntityClass(undefined, mesh.name);
+    meshEntity.meshAssetRef = { uuid: meshUuid, type: 'mesh' };
+
+    // Create command and execute (supports undo/redo)
+    const command = new CreateEntityCommandClass(
+      meshEntity,
+      this.sceneGraph,
+      this.eventBus
+    );
+    this.commandHistory.execute(command);
+
+    console.log(`Instantiated mesh: ${mesh.name}`);
   }
 }

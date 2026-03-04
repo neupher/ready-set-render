@@ -73,11 +73,13 @@ export class AssetRegistry {
    * @param eventBus - The event bus for publishing asset events
    */
   constructor(private readonly eventBus: EventBus) {
-    // Initialize type indices
+    // Initialize type indices for all asset types
     this.typeIndex.set('shader', new Set());
     this.typeIndex.set('material', new Set());
     this.typeIndex.set('scene', new Set());
     this.typeIndex.set('texture', new Set());
+    this.typeIndex.set('model', new Set());
+    this.typeIndex.set('mesh', new Set());
   }
 
   /**

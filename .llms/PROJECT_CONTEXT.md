@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-02T16:46:00Z
-> **Version:** 0.15.1
-> **Status:** GLTF Importer Phase 4 Complete (File Menu & Import UI)
+> **Last Updated:** 2026-03-04T11:36:00Z
+> **Version:** 0.15.2
+> **Status:** GLTF Importer Phase 5 Complete (Hierarchy & Transform Preservation)
 
 ---
 
@@ -32,11 +32,21 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.0)
+## Current State (v0.15.2)
 
 ### What's Working
 
 - **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService, ImportController
+- **GLTF Hierarchy Preservation** (Phase 5 - Complete)
+  - `GroupEntity`: New entity type for non-mesh nodes in GLTF hierarchies
+    - `isMeshGroup: true` marker for UI detection
+    - `getModelMatrix()` computes world transform via parent chain traversal
+  - `GLTFImporter.createNodeWithHierarchy()`: Preserves parent-child relationships
+  - `MeshEntity.getModelMatrix()`: Updated to compute world transforms
+  - `SceneGraph.registerRecursively()`: Registers all children in objectMap
+  - `ForwardRenderer`: Uses entity's `getModelMatrix()` for world transform (hierarchy inheritance)
+  - TreeView `meshGroup` type with solid cube + wireframe icon
+  - SelectionController gizmo drag tracking to prevent selection on release
 - **Built-in Shaders**: Lambert (default), PBR (Cook-Torrance BRDF), Unlit
   - Shader sources loaded from external `.glsl` files for maintainability
   - `src/plugins/renderers/shaders/lambert/` — Lambert shader module (default for primitives)
@@ -254,7 +264,7 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 | Phase 2 | GLTF Import Service (`GLTFImportService` with @gltf-transform/core) | ✅ Complete |
 | Phase 3 | MeshEntity (generic mesh entity referencing `IMeshAsset`) | ✅ Complete |
 | Phase 4 | File Menu & Import UI (Ctrl+I shortcut) | ✅ Complete |
-| Phase 5 | Asset Browser Enhancements (Imported category, drag-drop) | Not Started |
+| Phase 5 | Hierarchy Preservation & GroupEntity | ✅ Complete |
 | Phase 6 | Hierarchy Panel Enhancements | Not Started |
 | Phase 7 | Project Folder Integration | Not Started |
 | Phase 8 | Scene Serialization Updates | Not Started |
@@ -265,8 +275,8 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 5: Asset Browser Enhancements** - Imported category, drag-drop to viewport
-2. **GLTF Importer Phase 6: Hierarchy Panel Enhancements** - Collapsible hierarchy nodes for imported models
+1. **GLTF Importer Phase 6: Hierarchy Panel Enhancements** - Collapsible hierarchy nodes for imported models
+2. **GLTF Importer Phase 7: Project Folder Integration** - Save/load imported models with project
 3. **Project Folder Phase 5: Asset Auto-Save** - Automatic asset persistence to project folder
 
 ---

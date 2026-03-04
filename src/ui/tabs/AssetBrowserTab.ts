@@ -1,7 +1,7 @@
 /**
  * AssetBrowserTab
  *
- * A tab component for browsing and managing assets (materials, shaders).
+ * A tab component for browsing and managing assets (materials, shaders, models).
  * Displays assets in two sections:
  * - Built-in: Immutable framework assets (shaders, materials)
  * - Project: User's project assets (when a project is open)
@@ -25,6 +25,7 @@ import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
+import type { IModelAsset } from '@core/assets/interfaces/IModelAsset';
 import type { IAsset } from '@core/assets/interfaces/IAsset';
 import type { ProjectService } from '@core/ProjectService';
 import type { ProjectOpenedEvent, ProjectClosedEvent } from '@core/interfaces/IProjectService';
@@ -63,6 +64,14 @@ export interface ShaderEditRequestedEvent {
 }
 
 /**
+ * Event emitted when an asset drag starts.
+ */
+export interface AssetDragStartEvent {
+  asset: IAsset;
+  event: DragEvent;
+}
+
+/**
  * Special node IDs for section and category groups.
  */
 const SECTION_IDS = {
@@ -75,6 +84,7 @@ const CATEGORY_IDS = {
   BUILTIN_SHADERS: '__category_builtin_shaders__',
   PROJECT_MATERIALS: '__category_project_materials__',
   PROJECT_SHADERS: '__category_project_shaders__',
+  PROJECT_IMPORTED: '__category_project_imported__',
 } as const;
 
 /**
@@ -98,6 +108,7 @@ export class AssetBrowserTab {
     CATEGORY_IDS.BUILTIN_SHADERS,
     CATEGORY_IDS.PROJECT_MATERIALS,
     CATEGORY_IDS.PROJECT_SHADERS,
+    CATEGORY_IDS.PROJECT_IMPORTED,
   ]);
 
   constructor(options: AssetBrowserTabOptions) {
@@ -126,6 +137,7 @@ export class AssetBrowserTab {
       onSelect: this.handleAssetSelect.bind(this),
       onContextMenu: this.handleContextMenu.bind(this),
       onRename: this.handleRename.bind(this),
+      onDragStart: this.handleDragStart.bind(this),
       expandedIds: this.expandedCategories,
     });
     this.treeView.element.style.cssText = `
@@ -224,12 +236,15 @@ export class AssetBrowserTab {
   private buildTreeData(): TreeNode[] {
     const materials = this.assetRegistry.getByType<IMaterialAsset>('material');
     const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
+    const models = this.assetRegistry.getByType<IModelAsset>('model');
 
     // Separate built-in from user assets
     const builtInMaterials = materials.filter((m) => m.isBuiltIn);
     const builtInShaders = shaders.filter((s) => s.isBuiltIn);
     const userMaterials = materials.filter((m) => !m.isBuiltIn);
     const userShaders = shaders.filter((s) => !s.isBuiltIn);
+    // Models are never built-in
+    const userModels = models;
 
     // Sort alphabetically
     const sortByName = <T extends IAsset>(assets: T[]): T[] => {
@@ -254,6 +269,8 @@ export class AssetBrowserTab {
       id: m.uuid,
       name: m.name,
       type: 'material' as const,
+      draggable: true,
+      assetType: 'material',
     }));
 
     const projectShaderNodes: TreeNode[] = sortByName(userShaders).map((s) => ({
@@ -261,6 +278,11 @@ export class AssetBrowserTab {
       name: s.name,
       type: 'texture' as const,
     }));
+
+    // Build imported model nodes with their sub-assets
+    const projectImportedNodes: TreeNode[] = sortByName(userModels).map((model) =>
+      this.buildModelNode(model)
+    );
 
     const isProjectOpen = this.projectService?.isProjectOpen ?? false;
     const projectName = this.projectService?.projectName ?? 'Project';
@@ -315,12 +337,71 @@ export class AssetBrowserTab {
                 selectable: false,
                 children: projectShaderNodes,
               },
+              {
+                id: CATEGORY_IDS.PROJECT_IMPORTED,
+                name: 'Imported',
+                type: 'group' as const,
+                selectable: false,
+                children: projectImportedNodes,
+              },
             ]
           : [],
       },
     ];
 
     return tree;
+  }
+
+  /**
+   * Build a tree node for an imported model with its sub-assets.
+   */
+  private buildModelNode(model: IModelAsset): TreeNode {
+    const meshChildren: TreeNode[] = model.contents.meshes.map((meshRef) => ({
+      id: meshRef.uuid,
+      name: meshRef.name,
+      type: 'mesh' as const,
+      draggable: true,
+      assetType: 'mesh',
+    }));
+
+    const materialChildren: TreeNode[] = model.contents.materials.map((matRef) => ({
+      id: matRef.uuid,
+      name: matRef.name,
+      type: 'material' as const,
+      draggable: true,
+      assetType: 'material',
+    }));
+
+    const children: TreeNode[] = [];
+
+    if (meshChildren.length > 0) {
+      children.push({
+        id: `${model.uuid}__meshes`,
+        name: 'Meshes',
+        type: 'group' as const,
+        selectable: false,
+        children: meshChildren,
+      });
+    }
+
+    if (materialChildren.length > 0) {
+      children.push({
+        id: `${model.uuid}__materials`,
+        name: 'Materials',
+        type: 'group' as const,
+        selectable: false,
+        children: materialChildren,
+      });
+    }
+
+    return {
+      id: model.uuid,
+      name: model.name,
+      type: 'model' as const,
+      draggable: true,
+      assetType: 'model',
+      children: children.length > 0 ? children : undefined,
+    };
   }
 
   /**
@@ -378,6 +459,16 @@ export class AssetBrowserTab {
   }
 
   /**
+   * Handle drag start for draggable assets.
+   */
+  private handleDragStart(id: string, node: TreeNode, event: DragEvent): void {
+    const asset = this.assetRegistry.get(id);
+    if (asset) {
+      this.eventBus.emit<AssetDragStartEvent>('asset:dragStart', { asset, event });
+    }
+  }
+
+  /**
    * Check if an ID is a section or category ID (not an actual asset).
    */
   private isSectionOrCategoryId(id: string): boolean {
@@ -387,7 +478,10 @@ export class AssetBrowserTab {
       id === CATEGORY_IDS.BUILTIN_MATERIALS ||
       id === CATEGORY_IDS.BUILTIN_SHADERS ||
       id === CATEGORY_IDS.PROJECT_MATERIALS ||
-      id === CATEGORY_IDS.PROJECT_SHADERS
+      id === CATEGORY_IDS.PROJECT_SHADERS ||
+      id === CATEGORY_IDS.PROJECT_IMPORTED ||
+      id.endsWith('__meshes') ||
+      id.endsWith('__materials')
     );
   }
 
@@ -423,6 +517,21 @@ export class AssetBrowserTab {
           {
             label: 'Create Shader',
             action: () => this.createNewShader(),
+          },
+        ],
+        x,
+        y,
+      });
+      return;
+    }
+
+    if (isProjectOpen && node.id === CATEGORY_IDS.PROJECT_IMPORTED) {
+      this.contextMenu = new ContextMenu();
+      this.contextMenu.show({
+        items: [
+          {
+            label: 'Import Model...',
+            action: () => this.eventBus.emit('command:import'),
           },
         ],
         x,
@@ -513,6 +622,23 @@ export class AssetBrowserTab {
           }
         );
       }
+    } else if (asset.type === 'model') {
+      const model = asset as IModelAsset;
+
+      items.push(
+        {
+          label: 'Add to Scene',
+          action: () => this.addModelToScene(model),
+        },
+        {
+          label: 'Rename',
+          action: () => this.startRename(model.uuid),
+        },
+        {
+          label: 'Delete',
+          action: () => this.deleteModel(model),
+        }
+      );
     }
 
     return items;
@@ -667,6 +793,27 @@ export class AssetBrowserTab {
     // TODO: Check for references from materials before deleting
     this.assetRegistry.unregister(shader.uuid);
     this.refresh();
+  }
+
+  /**
+   * Delete a model and its associated meshes.
+   */
+  private deleteModel(model: IModelAsset): void {
+    // Unregister all associated mesh assets
+    for (const meshRef of model.contents.meshes) {
+      this.assetRegistry.unregister(meshRef.uuid);
+    }
+
+    // Unregister the model asset
+    this.assetRegistry.unregister(model.uuid);
+    this.refresh();
+  }
+
+  /**
+   * Add a model to the scene.
+   */
+  private addModelToScene(model: IModelAsset): void {
+    this.eventBus.emit('model:instantiate', { modelUuid: model.uuid });
   }
 
   /**

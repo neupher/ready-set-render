@@ -2,6 +2,7 @@
  * ViewportPanel
  *
  * Displays the WebGL canvas and viewport controls.
+ * Supports drag-and-drop of assets from the Asset Browser.
  * NOT a plugin - standard UI panel.
  *
  * @example
@@ -24,6 +25,24 @@ export interface ViewportPanelOptions {
   gl: WebGL2RenderingContext;
   /** Settings service for grid toggle (optional for backward compatibility) */
   settingsService?: SettingsService;
+}
+
+/**
+ * Event emitted when an asset is dropped on the viewport.
+ */
+export interface ViewportDropEvent {
+  /** UUID of the dropped asset */
+  assetUuid: string;
+  /** Type of the dropped asset (e.g., 'model', 'mesh', 'material') */
+  assetType: string;
+  /** X position in canvas coordinates */
+  canvasX: number;
+  /** Y position in canvas coordinates */
+  canvasY: number;
+  /** Normalized device coordinates X (-1 to 1) */
+  ndcX: number;
+  /** Normalized device coordinates Y (-1 to 1) */
+  ndcY: number;
 }
 
 /**
@@ -91,6 +110,7 @@ export class ViewportPanel {
     // Setup resize handling
     this.setupResizeObserver();
     this.setupEvents();
+    this.setupDragAndDrop();
   }
 
   /**
@@ -149,6 +169,58 @@ export class ViewportPanel {
     // Listen for render requests
     this.eventBus.on('render:request', () => {
       this.eventBus.emit('viewport:render');
+    });
+  }
+
+  /**
+   * Setup drag and drop event handlers for the canvas.
+   */
+  private setupDragAndDrop(): void {
+    // Prevent default drag behavior on canvas
+    this.canvas.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+      // Add visual feedback
+      this.canvas.style.outline = '2px solid var(--accent-primary)';
+    });
+
+    this.canvas.addEventListener('dragleave', () => {
+      // Remove visual feedback
+      this.canvas.style.outline = '';
+    });
+
+    this.canvas.addEventListener('drop', (e) => {
+      e.preventDefault();
+      // Remove visual feedback
+      this.canvas.style.outline = '';
+
+      if (!e.dataTransfer) return;
+
+      const assetUuid = e.dataTransfer.getData('application/x-asset-uuid');
+      const assetType = e.dataTransfer.getData('application/x-asset-type');
+
+      if (!assetUuid || !assetType) return;
+
+      // Calculate canvas-relative coordinates
+      const rect = this.canvas.getBoundingClientRect();
+      const canvasX = e.clientX - rect.left;
+      const canvasY = e.clientY - rect.top;
+
+      // Calculate normalized device coordinates (-1 to 1)
+      const ndcX = (canvasX / this.canvas.width) * 2 - 1;
+      const ndcY = -((canvasY / this.canvas.height) * 2 - 1);
+
+      // Emit viewport drop event
+      this.eventBus.emit<ViewportDropEvent>('viewport:drop', {
+        assetUuid,
+        assetType,
+        canvasX,
+        canvasY,
+        ndcX,
+        ndcY,
+      });
     });
   }
 

@@ -12,8 +12,45 @@ import { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import { BUILT_IN_SHADERS } from '@core/assets/BuiltInShaders';
 import { BUILT_IN_MATERIALS } from '@core/assets/BuiltInMaterials';
+import type { IModelAsset } from '@core/assets/interfaces/IModelAsset';
 
 console.log('Test suite starting...');
+
+/**
+ * Create a mock model asset for testing.
+ */
+function createMockModelAsset(name: string, uuid: string): IModelAsset {
+  return {
+    uuid,
+    name,
+    type: 'model',
+    version: 1,
+    created: new Date().toISOString(),
+    modified: new Date().toISOString(),
+    isBuiltIn: false,
+    source: {
+      filename: `${name}.glb`,
+      format: 'glb',
+      importedAt: new Date().toISOString(),
+    },
+    contents: {
+      meshes: [
+        { uuid: `${uuid}-mesh-1`, name: 'Body', vertexCount: 100, triangleCount: 50 },
+        { uuid: `${uuid}-mesh-2`, name: 'Wheels', vertexCount: 200, triangleCount: 100 },
+      ],
+      materials: [
+        { uuid: `${uuid}-mat-1`, name: 'CarPaint' },
+      ],
+    },
+    hierarchy: [
+      {
+        name: 'Root',
+        transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+        children: [],
+      },
+    ],
+  };
+}
 
 describe('AssetBrowserTab', () => {
   let eventBus: EventBus;
@@ -222,6 +259,175 @@ describe('AssetBrowserTab', () => {
 
       // Tree view should be disposed (content cleared)
       expect(treeView?.children.length).toBe(0);
+    });
+  });
+
+  describe('imported models', () => {
+    it('should display Imported category in Project section when project is open', () => {
+      // Create mock project service
+      const mockProjectService = {
+        isProjectOpen: true,
+        projectName: 'Test Project',
+      };
+
+      // Create new AssetBrowserTab with project service
+      const tabWithProject = new AssetBrowserTab({
+        eventBus,
+        assetRegistry,
+        materialFactory,
+        shaderFactory,
+        projectService: mockProjectService as any,
+      });
+
+      const treeItems = Array.from(tabWithProject.element.querySelectorAll('.tree-item'));
+      const names = treeItems.map(item => item.querySelector('.tree-name')?.textContent);
+
+      expect(names).toContain('Imported');
+
+      tabWithProject.dispose();
+    });
+
+    it('should display model assets under Imported category', () => {
+      // Create mock project service
+      const mockProjectService = {
+        isProjectOpen: true,
+        projectName: 'Test Project',
+      };
+
+      // Register a model asset
+      const modelAsset = createMockModelAsset('TestCar', 'model-uuid-1');
+      assetRegistry.register(modelAsset);
+
+      // Create new AssetBrowserTab with project service
+      const tabWithProject = new AssetBrowserTab({
+        eventBus,
+        assetRegistry,
+        materialFactory,
+        shaderFactory,
+        projectService: mockProjectService as any,
+      });
+
+      const treeItems = Array.from(tabWithProject.element.querySelectorAll('.tree-item'));
+      const names = treeItems.map(item => item.querySelector('.tree-name')?.textContent);
+
+      // Model should appear in tree
+      expect(names).toContain('TestCar');
+
+      tabWithProject.dispose();
+    });
+
+    it('should show model sub-assets (meshes, materials) as children', () => {
+      // Create mock project service
+      const mockProjectService = {
+        isProjectOpen: true,
+        projectName: 'Test Project',
+      };
+
+      // Register a model asset
+      const modelAsset = createMockModelAsset('TestCar', 'model-uuid-2');
+      assetRegistry.register(modelAsset);
+
+      // Create new AssetBrowserTab with project service and expand the model
+      const tabWithProject = new AssetBrowserTab({
+        eventBus,
+        assetRegistry,
+        materialFactory,
+        shaderFactory,
+        projectService: mockProjectService as any,
+      });
+
+      // Get tree items and find model-related nodes
+      const treeItems = Array.from(tabWithProject.element.querySelectorAll('.tree-item'));
+      const names = treeItems.map(item => item.querySelector('.tree-name')?.textContent);
+
+      // Model and its sub-categories should exist
+      expect(names).toContain('TestCar');
+      // Meshes category within the model
+      expect(names.some(n => n === 'Meshes')).toBe(true);
+      // Individual mesh names
+      expect(names).toContain('Body');
+      expect(names).toContain('Wheels');
+      // Materials category within the model
+      expect(names.filter(n => n === 'Materials').length).toBeGreaterThanOrEqual(2);
+      // Individual material name
+      expect(names).toContain('CarPaint');
+
+      tabWithProject.dispose();
+    });
+
+    it('should emit asset:selected when model asset is clicked', () => {
+      // Create mock project service
+      const mockProjectService = {
+        isProjectOpen: true,
+        projectName: 'Test Project',
+      };
+
+      // Register a model asset
+      const modelAsset = createMockModelAsset('TestCar', 'model-uuid-3');
+      assetRegistry.register(modelAsset);
+
+      // Create new AssetBrowserTab
+      const tabWithProject = new AssetBrowserTab({
+        eventBus,
+        assetRegistry,
+        materialFactory,
+        shaderFactory,
+        projectService: mockProjectService as any,
+      });
+
+      const selectHandler = vi.fn();
+      eventBus.on('asset:selected', selectHandler);
+
+      // Find and click the model item
+      const treeItems = tabWithProject.element.querySelectorAll('.tree-item');
+      const modelItem = Array.from(treeItems).find(item => {
+        const name = item.querySelector('.tree-name')?.textContent;
+        return name === 'TestCar';
+      });
+
+      expect(modelItem).not.toBeNull();
+      modelItem?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+      expect(selectHandler).toHaveBeenCalledTimes(1);
+      expect(selectHandler).toHaveBeenCalledWith({
+        asset: expect.objectContaining({ uuid: 'model-uuid-3', type: 'model' }),
+      });
+
+      tabWithProject.dispose();
+    });
+
+    it('should refresh when model asset is registered', () => {
+      // Create mock project service
+      const mockProjectService = {
+        isProjectOpen: true,
+        projectName: 'Test Project',
+      };
+
+      // Create new AssetBrowserTab
+      const tabWithProject = new AssetBrowserTab({
+        eventBus,
+        assetRegistry,
+        materialFactory,
+        shaderFactory,
+        projectService: mockProjectService as any,
+      });
+
+      const initialItems = tabWithProject.element.querySelectorAll('.tree-item').length;
+
+      // Register a model asset
+      const modelAsset = createMockModelAsset('NewModel', 'model-uuid-4');
+      assetRegistry.register(modelAsset);
+
+      // Tree should have more items now
+      const newItems = tabWithProject.element.querySelectorAll('.tree-item').length;
+      expect(newItems).toBeGreaterThan(initialItems);
+
+      // Model should appear
+      const names = Array.from(tabWithProject.element.querySelectorAll('.tree-item'))
+        .map(item => item.querySelector('.tree-name')?.textContent);
+      expect(names).toContain('NewModel');
+
+      tabWithProject.dispose();
     });
   });
 });

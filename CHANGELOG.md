@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.15.2] - 2026-03-04
+
+### Added
+
+- **GLTF Importer Phase 5: Hierarchy & Transform Preservation**
+  - `GroupEntity` class — Container for hierarchical mesh groups from imported models
+    - Implements `ISceneObject`, `IEntity` with `getModelMatrix()` for world transform computation
+    - `isMeshGroup` marker property for UI icon differentiation
+  - Parent-child hierarchy preserved during GLTF import (not flattened)
+  - World transform computation — `MeshEntity.getModelMatrix()` now traverses parent chain
+  - `SceneGraph.add()` now recursively registers all descendants
+  - `'meshGroup'` TreeView icon — Solid cube with wireframe overlay for imported groups
+
+### Fixed
+
+- **Mesh transform inheritance** — Meshes now correctly inherit transforms from parent groups
+  - `ForwardRenderer` now calls `getModelMatrix()` on entities (when available) instead of computing from local transform only
+  - Enables proper world-space positioning for hierarchical GLTF imports
+- **Gizmo drag selection** — Releasing gizmo after dragging no longer selects another mesh
+  - `SelectionController` now tracks `gizmoIsDragging` flag via `gizmo:dragStart`/`gizmo:dragEnd` events
+- **Browser compatibility** — Replaced `require()` with ES module dynamic `import()` in viewport drop handler
+
+---
+
+## [0.15.1] - 2026-03-02
 
 ### Added
 
@@ -19,10 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GLTFImporter` plugin — Bridges `GLTFImportService` to asset system
     - Implements `IImporter` interface for plugin architecture
     - Creates and registers mesh assets and material assets
-    - Converts GLTF hierarchy to `MeshEntity` scene objects
+    - Converts GLTF hierarchy to `MeshEntity` scene objects with `GroupEntity` parents
   - File → Import menu item enabled (was disabled)
   - `Ctrl+I` keyboard shortcut for import command
   - `command:import` event handler wired in `Application.ts`
+  - Viewport drop handler for drag-and-drop instantiation (ES module dynamic imports)
   - 25 new unit tests (total: 1162 passing)
     - `ImportController.test.ts` — 10 tests for import workflow
     - `GLTFImporter.test.ts` — 15 tests for importer plugin

@@ -43,3 +43,7 @@ export {
   DuplicateEntityCommand,
   type DuplicateEntityCommandOptions
 } from './DuplicateEntityCommand';
+export {
+  CreateEntityCommand,
+  type CreateEntityCommandOptions
+} from './CreateEntityCommand';

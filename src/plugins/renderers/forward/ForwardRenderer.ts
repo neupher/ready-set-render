@@ -315,8 +315,14 @@ export class ForwardRenderer implements IRenderPipeline {
     const activeProgram = this.shaderEditorService.getCompiledProgram(this.currentShaderUUID!) ?? program;
     if (!activeProgram) return;
 
-    // Compute model matrix from transform
-    const modelMatrix = this.computeModelMatrix(renderable.transform);
+    // Compute model matrix - use entity's getModelMatrix() if available (for hierarchy support)
+    // Otherwise fall back to computing from local transform only
+    let modelMatrix: Float32Array;
+    if ('getModelMatrix' in renderable && typeof (renderable as { getModelMatrix: () => Float32Array }).getModelMatrix === 'function') {
+      modelMatrix = (renderable as { getModelMatrix: () => Float32Array }).getModelMatrix();
+    } else {
+      modelMatrix = this.computeModelMatrix(renderable.transform);
+    }
 
     // Compute normal matrix for correct lighting
     const normalMat = normalMatrix(modelMatrix);

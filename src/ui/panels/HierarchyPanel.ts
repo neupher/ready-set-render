@@ -275,6 +275,11 @@ export class HierarchyPanel {
       return 'group';
     }
 
+    // Check if it's a GroupEntity (imported mesh hierarchy group)
+    if ('isMeshGroup' in obj && (obj as { isMeshGroup?: boolean }).isMeshGroup === true) {
+      return 'meshGroup';
+    }
+
     // Check if it's an entity with specific component types
     if (isEntity(obj)) {
       // Camera entity

@@ -179,7 +179,7 @@ export class ImportController {
     const options: FilePickerOptions = {
       types: [
         {
-          description: '3D Models',
+          description: 'glTF Models (.glb, .gltf)',
           accept: {
             'model/gltf-binary': ['.glb'],
             'model/gltf+json': ['.gltf'],

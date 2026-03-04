@@ -66,6 +66,9 @@ export class SelectionController {
   private viewportWidth = 1;
   private viewportHeight = 1;
 
+  // Track if gizmo is currently being dragged (to prevent selection on release)
+  private gizmoIsDragging = false;
+
   constructor(options: SelectionControllerOptions) {
     this.eventBus = options.eventBus;
     this.selectionManager = options.selectionManager;
@@ -84,6 +87,8 @@ export class SelectionController {
     this.eventBus.off('input:mouseUp', this.handleMouseUp);
     this.eventBus.off('input:keyDown', this.handleKeyDown);
     this.eventBus.off('selection:changed', this.handleSelectionChanged);
+    this.eventBus.off('gizmo:dragStart', this.handleGizmoDragStart);
+    this.eventBus.off('gizmo:dragEnd', this.handleGizmoDragEnd);
   }
 
   private setupEventListeners(): void {
@@ -92,6 +97,8 @@ export class SelectionController {
     this.handleMouseUp = this.handleMouseUp.bind(this);
     this.handleKeyDown = this.handleKeyDown.bind(this);
     this.handleSelectionChanged = this.handleSelectionChanged.bind(this);
+    this.handleGizmoDragStart = this.handleGizmoDragStart.bind(this);
+    this.handleGizmoDragEnd = this.handleGizmoDragEnd.bind(this);
 
     // Track viewport dimensions
     this.eventBus.on('viewport:resized', this.handleViewportResized);
@@ -105,6 +112,10 @@ export class SelectionController {
     // Sync selection from hierarchy panel
     this.eventBus.on('selection:changed', this.handleSelectionChanged);
 
+    // Listen for gizmo drag start/end to prevent selection change during drag
+    this.eventBus.on('gizmo:dragStart', this.handleGizmoDragStart);
+    this.eventBus.on('gizmo:dragEnd', this.handleGizmoDragEnd);
+
     console.log('Selection controller initialized (Click=select, Ctrl+Click=toggle, F=focus)');
   }
 
@@ -113,12 +124,36 @@ export class SelectionController {
     this.viewportHeight = data.height;
   }
 
+  /**
+   * Handle gizmo drag start event.
+   * Sets flag to prevent selection changes during drag.
+   */
+  private handleGizmoDragStart(): void {
+    this.gizmoIsDragging = true;
+  }
+
+  /**
+   * Handle gizmo drag end event.
+   * Clears the dragging flag after a short delay to prevent the mouseUp from changing selection.
+   */
+  private handleGizmoDragEnd(): void {
+    // Use setTimeout to ensure the flag is cleared AFTER handleMouseUp processes
+    setTimeout(() => {
+      this.gizmoIsDragging = false;
+    }, 100);
+  }
+
   private handleMouseUp(data: {
     button: number;
     x: number;
     y: number;
     modifiers: { alt: boolean; ctrl: boolean };
   }): void {
+    // Skip selection if gizmo is being dragged or just finished dragging
+    if (this.gizmoIsDragging) {
+      return;
+    }
+
     // Only handle left click without Alt (Alt is for navigation)
     if (data.button !== 0 || data.modifiers.alt) return;
 

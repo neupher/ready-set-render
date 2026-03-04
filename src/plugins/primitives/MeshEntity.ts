@@ -345,9 +345,9 @@ export class MeshEntity
   // =========================================
 
   /**
-   * Compute the model matrix from the transform.
+   * Compute the local model matrix from this entity's transform.
    */
-  getModelMatrix(): Float32Array {
+  private computeLocalModelMatrix(): Float32Array {
     const { position, rotation, scale } = this.transform;
 
     const t = mat4Translation(position[0], position[1], position[2]);
@@ -362,6 +362,56 @@ export class MeshEntity
     model = mat4Multiply(model, s);
 
     return model;
+  }
+
+  /**
+   * Compute the world model matrix by multiplying parent transforms.
+   * This traverses up the hierarchy and combines all parent transforms.
+   */
+  getModelMatrix(): Float32Array {
+    const localMatrix = this.computeLocalModelMatrix();
+
+    // If no parent or parent is root, just return local matrix
+    if (!this.parent || this.parent.id === 'root') {
+      return localMatrix;
+    }
+
+    // Get parent's world matrix and multiply with local
+    const parentMatrix = this.getParentWorldMatrix(this.parent);
+    return mat4Multiply(parentMatrix, localMatrix);
+  }
+
+  /**
+   * Get the world matrix of a parent object.
+   * Works with any IRenderable that has transform and parent.
+   */
+  private getParentWorldMatrix(parent: IRenderable): Float32Array {
+    // Check if parent has getModelMatrix method (it's a MeshEntity or similar)
+    if ('getModelMatrix' in parent && typeof parent.getModelMatrix === 'function') {
+      return parent.getModelMatrix();
+    }
+
+    // Otherwise compute from transform (for SceneObject groups)
+    const { position, rotation, scale } = parent.transform;
+
+    const t = mat4Translation(position[0], position[1], position[2]);
+    const rx = mat4RotationX(degToRad(rotation[0]));
+    const ry = mat4RotationY(degToRad(rotation[1]));
+    const rz = mat4RotationZ(degToRad(rotation[2]));
+    const s = mat4Scale(scale[0], scale[1], scale[2]);
+
+    let localMatrix = mat4Multiply(t, rz);
+    localMatrix = mat4Multiply(localMatrix, ry);
+    localMatrix = mat4Multiply(localMatrix, rx);
+    localMatrix = mat4Multiply(localMatrix, s);
+
+    // Recurse up to get parent's parent matrix
+    if (parent.parent && parent.parent.id !== 'root') {
+      const grandParentMatrix = this.getParentWorldMatrix(parent.parent as IRenderable);
+      return mat4Multiply(grandParentMatrix, localMatrix);
+    }
+
+    return localMatrix;
   }
 
   /**

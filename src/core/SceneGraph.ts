@@ -104,6 +104,7 @@ export class SceneGraph implements IScene {
 
   /**
    * Add an object to the scene graph.
+   * If the object has children, they will also be registered recursively.
    *
    * @param object - The object to add
    * @param parent - Optional parent object (defaults to root)
@@ -120,14 +121,24 @@ export class SceneGraph implements IScene {
     parentNode.children.push(object);
     object.parent = parentNode;
 
-    // Register in map
-    this.objectMap.set(object.id, object);
+    // Register in map (including all descendants)
+    this.registerRecursively(object);
 
     // Emit event
     this.eventBus.emit('scene:objectAdded', {
       object,
       parent: parentNode,
     });
+  }
+
+  /**
+   * Recursively register an object and all its descendants in the objectMap.
+   */
+  private registerRecursively(object: ISceneObject): void {
+    this.objectMap.set(object.id, object);
+    for (const child of object.children) {
+      this.registerRecursively(child);
+    }
   }
 
   /**
