@@ -27,6 +27,7 @@ import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
 import type { ProjectService } from '@core/ProjectService';
+import type { AssetMetaService } from '@core/assets/AssetMetaService';
 import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
 
 /**
@@ -43,6 +44,8 @@ export interface AssetsPanelOptions {
   shaderFactory: ShaderAssetFactory;
   /** Project service for project-based workflow (optional) */
   projectService?: ProjectService;
+  /** Asset meta service for reading .assetmeta files (optional) */
+  assetMetaService?: AssetMetaService;
 }
 
 /**
@@ -88,6 +91,7 @@ export class AssetsPanel {
       materialFactory: options.materialFactory,
       shaderFactory: options.shaderFactory,
       projectService: options.projectService,
+      assetMetaService: options.assetMetaService,
     });
     this.content.appendChild(this.assetBrowserTab.element);
 

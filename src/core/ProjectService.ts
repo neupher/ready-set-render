@@ -626,6 +626,39 @@ export class ProjectService implements IProjectService {
   }
 
   /**
+   * Get a directory handle for a given relative path.
+   * Creates intermediate directories if they don't exist.
+   *
+   * @param relativePath - Relative path from project root (e.g., "Assets/Models/car.glb")
+   * @returns The directory handle containing the file, or null if project not open
+   */
+  async getDirectoryHandleForPath(relativePath: string): Promise<FileSystemDirectoryHandle | null> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      console.warn('Cannot get directory handle: no project is open');
+      return null;
+    }
+
+    try {
+      // Split the path into parts and remove the filename
+      const parts = relativePath.split('/');
+      parts.pop(); // Remove filename
+
+      // Navigate/create directories
+      let currentHandle = this.rootHandle;
+      for (const part of parts) {
+        if (part) {
+          currentHandle = await currentHandle.getDirectoryHandle(part, { create: true });
+        }
+      }
+
+      return currentHandle;
+    } catch (error) {
+      console.error('Failed to get directory handle for path:', relativePath, error);
+      return null;
+    }
+  }
+
+  /**
    * Delete an asset from the project folder.
    */
   async deleteAsset(uuid: string): Promise<boolean> {

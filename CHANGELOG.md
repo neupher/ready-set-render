@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.5] - 2026-03-05
+
+### Added
+
+- **Asset Metadata System Phase 3: Asset Browser Refactor** — Hierarchical expandable view
+  - `AssetBrowserTab` refactored to show `.assetmeta` source assets as expandable tree nodes
+  - Hierarchical model display: `.glb` files expand to show derived meshes/materials as children
+  - Derived mesh nodes with triangle count: `🔷 Body (1,234 tris)`
+  - Derived material nodes with override indicator: `🎨 CarPaint 🔒` (read-only) or `🎨 CarPaint ✎` (overridden)
+  - Import status indicators: `✓` (imported), `⚠️` (needs reimport based on `isDirty` flag)
+  - New context menu items for model meta nodes:
+    - "Add to Scene" — Emit event to instantiate model in scene
+    - "Reimport" / "Reimport (Source Changed)" — Trigger reimport with current settings
+    - "Show in Explorer" — Show source file location
+    - "Delete" — Delete `.assetmeta` file (keeps source)
+  - New context menu items for derived materials:
+    - "Make Editable (Create Copy)" — Convert read-only imported material to editable copy
+    - "Show Override" — Navigate to override material
+  - `AssetMetaService` integration for scanning `.assetmeta` files from project directory
+  - Async `refresh()` method that scans project for `.assetmeta` files
+  - Backward compatibility: Falls back to legacy `IModelAsset` display when no `.assetmeta` files found
+  - New events: `modelMeta:selected`, `derivedMesh:selected`, `derivedMaterial:selected`
+  - New events: `modelMeta:addToScene`, `modelMeta:reimport`, `modelMeta:delete`
+  - `EditorLayout` and `AssetsPanel` updated to pass `AssetMetaService` dependency
+  - Application.ts creates `AssetMetaService` instance and wires it through
+
+- **Asset Metadata System Phase 2: Model Import Refactor** — GLTFImporter uses `.assetmeta`
+  - `AssetMetaService` — Read/write `.assetmeta` companion files
+    - `createModelMeta()`, `readMeta()`, `saveMeta()`, `updateMeta()`
+    - `hasMeta()`, `deleteMeta()`, `markDirty()`, `markClean()`
+  - `SourceHashService` — File hash computation for change detection
+    - Quick hash: `size:{bytes}:mtime:{timestamp}` (fast)
+    - Content hash: `sha256:{hex}` (reliable)
+    - `hasFileChanged()`, `isValidHash()`, `parseHash()`
+  - `ModelAssetMetaFactory` — Factory for creating `IModelAssetMeta` from GLTF results
+    - `createFromGLTFResult()` — Create new meta with generated UUIDs
+    - `updateMeshReferences()`, `updateMaterialReferences()` — Preserve UUIDs on reimport
+    - `createUpdatedContents()` — Update contents while preserving references
+  - `GLTFImporter` v2.0.0 — Refactored for `.assetmeta` workflow
+    - `GLTFImportOptions` — Optional `sourcePath`, `importSettings`, `skipMeta`
+    - `GLTFImportResult` — Now includes `assetMeta`, `meshRefs`, `materialRefs`
+    - `reimport()` — Reimport with existing settings, preserving UUIDs
+    - Source files stay in place (no copying to `sources/`)
+    - Mesh data loaded from `.glb` on demand (not stored separately)
+  - `ProjectService.getDirectoryHandleForPath()` — Get directory handle for source file location
+  - **32 new tests** (22 SourceHashService + 10 ModelAssetMetaFactory)
+
+- **Asset Metadata System Revamp Plan** — Unity-style `.assetmeta` companion files
+  - `ASSET_META_SYSTEM_PLAN.md` — Comprehensive plan for asset system overhaul
+  - Decided: Source files stay in place (no duplication)
+  - Decided: Imported materials read-only by default ("Make Editable" creates copy)
+  - Decided: Drag-drop imports move files to Assets/ folder
+
+- **Phase 1: IAssetMeta Interfaces** — Foundation for Unity-style asset metadata
+  - `IAssetMeta` — Base interface for all `.assetmeta` files
+    - `uuid` (stable across renames), `sourceHash` (change detection), `isDirty` (needs reimport)
+  - `IModelAssetMeta` — Model-specific import settings
+    - `IModelImportSettings` — Scale, coordinate conversion, mesh/material/animation options
+    - `ICoordinateConversionSettings` — Y-up to Z-up conversion
+    - `IMeshImportSettings` — Generate normals/tangents, weld vertices, optimize
+    - `IMaterialImportSettings` — Import materials, extract textures
+    - `IAnimationImportSettings` — Animation import options (future)
+    - `IModelMetaContents` — References to derived meshes/materials
+    - `IModelMetaNode` — Scene hierarchy preservation
+  - `ITextureAssetMeta` — Texture-specific import settings (future-ready)
+    - `ITextureImportSettings` — sRGB, mipmaps, wrap mode, filter mode, compression
+    - `ITextureProperties` — Width, height, format, channels
+    - Texture type presets: default, normalMap, sprite, cursor, lightmap, singleChannel, hdri
+  - `DefaultImportSettings.ts` — Default values for all import settings
+    - `DEFAULT_MODEL_IMPORT_SETTINGS`, `DEFAULT_TEXTURE_IMPORT_SETTINGS`
+    - `TEXTURE_TYPE_PRESETS` — Type-specific presets
+    - Factory functions: `createDefaultModelImportSettings()`, `createTextureImportSettings()`
+  - Type guards: `isAssetMeta()`, `isModelAssetMeta()`, `isTextureAssetMeta()`
+  - Derived asset refs: `IDerivedMeshRef`, `IDerivedMaterialRef`, `IDerivedTextureRef`
+  - Utilities: `getAssetMetaFilename()`, `getSourceFilename()`
+  - **128 new tests** across 3 test files (all passing)
+
+---
+
 ## [0.15.4] - 2026-03-04
 
 ### Added

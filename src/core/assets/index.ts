@@ -180,3 +180,75 @@ export {
   createDefaultMeshBounds,
   MESH_ASSET_VERSION,
 } from './interfaces';
+
+// Re-export asset meta types from interfaces (Unity-style .assetmeta files)
+export type {
+  IAssetMeta,
+  AssetMetaType,
+  IDerivedAssetRef,
+  IDerivedMeshRef,
+  IDerivedMaterialRef,
+  IDerivedTextureRef,
+  // Model asset meta
+  IModelAssetMeta,
+  IModelImportSettings,
+  ICoordinateConversionSettings,
+  IMeshImportSettings,
+  IMaterialImportSettings,
+  IAnimationImportSettings,
+  IModelMetaContents,
+  IModelMetaNode,
+  CoordinateUpAxis,
+  // Texture asset meta
+  ITextureAssetMeta,
+  ITextureImportSettings,
+  ITextureProperties,
+  TextureType,
+  AlphaSource,
+  WrapMode,
+  FilterMode,
+  MipMapFilter,
+  CompressionQuality,
+  MaxTextureSize,
+} from './interfaces';
+
+export {
+  isAssetMeta,
+  isDerivedAssetRef,
+  isDerivedMeshRef,
+  isDerivedMaterialRef,
+  getAssetMetaFilename,
+  getSourceFilename,
+  ASSET_META_VERSION,
+  // Model asset meta
+  isModelAssetMeta,
+  isModelMetaNode,
+  createDefaultModelMetaNode,
+  MODEL_ASSET_META_VERSION,
+  // Texture asset meta
+  isTextureAssetMeta,
+  TEXTURE_ASSET_META_VERSION,
+} from './interfaces';
+
+// Default Import Settings
+export {
+  DEFAULT_MODEL_IMPORT_SETTINGS,
+  DEFAULT_COORDINATE_SETTINGS,
+  DEFAULT_MESH_IMPORT_SETTINGS,
+  DEFAULT_MATERIAL_IMPORT_SETTINGS,
+  DEFAULT_ANIMATION_IMPORT_SETTINGS,
+  createDefaultModelImportSettings,
+  DEFAULT_TEXTURE_IMPORT_SETTINGS,
+  TEXTURE_TYPE_PRESETS,
+  createTextureImportSettings,
+  createDefaultTextureImportSettings,
+} from './DefaultImportSettings';
+
+// Asset Meta Services (Phase 2)
+export { AssetMetaService } from './AssetMetaService';
+export type { AssetMetaResult } from './AssetMetaService';
+
+export { SourceHashService } from './SourceHashService';
+export type { HashFormat, ParsedHash } from './SourceHashService';
+
+export { ModelAssetMetaFactory } from './ModelAssetMetaFactory';

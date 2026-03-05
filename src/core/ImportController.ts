@@ -330,7 +330,7 @@ export class ImportController {
       objectCount: result.objects.length,
       meshAssetCount: result.meshAssets.length,
       materialAssetCount: result.materialAssets.length,
-      modelAssetId: result.modelAsset.uuid,
+      assetMetaId: result.assetMeta?.uuid,
     });
 
     console.log(

@@ -27,6 +27,8 @@ import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import type { IShaderAsset } from '@core/assets/interfaces/IShaderAsset';
 import type { IModelAsset } from '@core/assets/interfaces/IModelAsset';
 import type { IAsset } from '@core/assets/interfaces/IAsset';
+import type { IModelAssetMeta } from '@core/assets/interfaces/IModelAssetMeta';
+import type { IDerivedMeshRef, IDerivedMaterialRef } from '@core/assets/interfaces/IAssetMeta';
 import type { ProjectService } from '@core/ProjectService';
 import type {
   ProjectOpenedEvent,
@@ -34,6 +36,7 @@ import type {
   ProjectRefreshedEvent,
   ISourceFile,
 } from '@core/interfaces/IProjectService';
+import type { AssetMetaService } from '@core/assets/AssetMetaService';
 import { BUILT_IN_SHADER_IDS } from '@core/assets/BuiltInShaders';
 import { TreeView, TreeNode, ContextMenuData } from '../components/TreeView';
 import { ContextMenu, ContextMenuItem } from '../components/ContextMenu';
@@ -52,6 +55,17 @@ export interface AssetBrowserTabOptions {
   shaderFactory: ShaderAssetFactory;
   /** Project service for project-based workflow (optional) */
   projectService?: ProjectService;
+  /** Asset meta service for reading .assetmeta files (optional) */
+  assetMetaService?: AssetMetaService;
+}
+
+/**
+ * Cached model asset meta with associated file info.
+ */
+export interface CachedModelMeta {
+  meta: IModelAssetMeta;
+  filename: string;
+  directory: string;
 }
 
 /**
@@ -123,6 +137,21 @@ const CATEGORY_IDS = {
 const SOURCE_FILE_PREFIX = 'source:';
 
 /**
+ * Prefix for model meta node IDs (used for .assetmeta model files).
+ */
+const MODEL_META_PREFIX = 'modelmeta:';
+
+/**
+ * Prefix for derived mesh node IDs.
+ */
+const DERIVED_MESH_PREFIX = 'derivedmesh:';
+
+/**
+ * Prefix for derived material node IDs.
+ */
+const DERIVED_MATERIAL_PREFIX = 'derivedmaterial:';
+
+/**
  * Asset Browser tab component.
  * NOT a plugin - standard UI component.
  */
@@ -133,12 +162,15 @@ export class AssetBrowserTab {
   private readonly materialFactory: MaterialAssetFactory;
   private readonly shaderFactory: ShaderAssetFactory;
   private readonly projectService?: ProjectService;
+  private readonly assetMetaService?: AssetMetaService;
   private readonly treeView: TreeView;
   private readonly noProjectMessage: HTMLDivElement;
   private readonly toolbar: HTMLDivElement;
   private readonly refreshButton: HTMLButtonElement;
   private contextMenu: ContextMenu | null = null;
   private isRefreshing = false;
+  /** Cached model metas from last scan */
+  private cachedModelMetas: CachedModelMeta[] = [];
   private expandedCategories = new Set<string>([
     SECTION_IDS.BUILT_IN,
     SECTION_IDS.PROJECT,
@@ -158,6 +190,7 @@ export class AssetBrowserTab {
     this.materialFactory = options.materialFactory;
     this.shaderFactory = options.shaderFactory;
     this.projectService = options.projectService;
+    this.assetMetaService = options.assetMetaService;
 
     // Create container
     this.container = document.createElement('div');
@@ -210,9 +243,97 @@ export class AssetBrowserTab {
   /**
    * Refresh the asset list from the registry.
    */
-  refresh(): void {
+  async refresh(): Promise<void> {
+    // Scan for .assetmeta files if we have the service and project is open
+    if (this.assetMetaService && this.projectService?.isProjectOpen) {
+      await this.scanForAssetMetas();
+    } else {
+      this.cachedModelMetas = [];
+    }
+
     const treeData = this.buildTreeData();
     this.treeView.setData(treeData);
+  }
+
+  /**
+   * Scan the project for .assetmeta files and cache them.
+   */
+  private async scanForAssetMetas(): Promise<void> {
+    if (!this.projectService || !this.assetMetaService) {
+      this.cachedModelMetas = [];
+      return;
+    }
+
+    const rootHandle = this.projectService.getProjectHandle();
+    if (!rootHandle) {
+      this.cachedModelMetas = [];
+      return;
+    }
+
+    const metas: CachedModelMeta[] = [];
+
+    // Scan the project directory recursively for .assetmeta files
+    await this.scanDirectoryForMetas(rootHandle, '', metas);
+
+    this.cachedModelMetas = metas;
+  }
+
+  /**
+   * Recursively scan a directory for .assetmeta files.
+   */
+  private async scanDirectoryForMetas(
+    dirHandle: FileSystemDirectoryHandle,
+    relativePath: string,
+    results: CachedModelMeta[]
+  ): Promise<void> {
+    if (!this.assetMetaService) {
+      return;
+    }
+
+    try {
+      for await (const [name, handle] of dirHandle.entries()) {
+        if (handle.kind === 'directory') {
+          // Skip hidden directories and common non-asset directories
+          if (name.startsWith('.') || name === 'node_modules') {
+            continue;
+          }
+
+          // Recurse into subdirectory
+          const subPath = relativePath ? `${relativePath}/${name}` : name;
+          await this.scanDirectoryForMetas(handle, subPath, results);
+        } else if (handle.kind === 'file' && name.endsWith('.assetmeta')) {
+          // Found an .assetmeta file - try to read it
+          const sourceFilename = name.replace('.assetmeta', '');
+
+          // Check if it's a model file
+          const ext = this.getFileExtension(sourceFilename);
+          if (['.glb', '.gltf'].includes(ext)) {
+            const result = await this.assetMetaService.readModelMeta(dirHandle, sourceFilename);
+            if (result.success && result.meta) {
+              results.push({
+                meta: result.meta,
+                filename: sourceFilename,
+                directory: relativePath,
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // Ignore permission errors and continue scanning
+      console.warn(`Failed to scan directory ${relativePath}:`, error);
+    }
+  }
+
+  /**
+   * Get the file extension from a filename.
+   */
+  private getFileExtension(filename: string): string {
+    const lastDot = filename.lastIndexOf('.');
+    if (lastDot === -1) {
+      return '';
+    }
+    return filename.substring(lastDot).toLowerCase();
   }
 
   /**
@@ -504,6 +625,7 @@ export class AssetBrowserTab {
 
   /**
    * Build the assets/ folder node mirroring actual disk structure.
+   * Shows models as expandable nodes with derived meshes/materials as children.
    */
   private buildAssetsFolderNode(
     userMaterials: IMaterialAsset[],
@@ -514,46 +636,38 @@ export class AssetBrowserTab {
       return [...assets].sort((a, b) => a.name.localeCompare(b.name));
     };
 
-    // materials/ subfolder
-    const materialNodes: TreeNode[] = sortByName(userMaterials).map((m) => ({
+    // Standalone materials (user-created, not from model imports)
+    // Filter out materials that are part of model imports
+    const importedMaterialUuids = new Set<string>();
+    for (const cached of this.cachedModelMetas) {
+      for (const matRef of cached.meta.contents.materials) {
+        importedMaterialUuids.add(matRef.uuid);
+      }
+    }
+    const standaloneMaterials = userMaterials.filter(m => !importedMaterialUuids.has(m.uuid));
+
+    const materialNodes: TreeNode[] = sortByName(standaloneMaterials).map((m) => ({
       id: m.uuid,
-      name: `${m.uuid.substring(0, 8)}...material.json`,
-      displayName: m.name,
+      name: m.name,
       type: 'material' as const,
       draggable: true,
       assetType: 'material',
     }));
 
-    // meshes/ subfolder - meshes are stored inside models, extract them
-    const meshNodes: TreeNode[] = [];
-    for (const model of userModels) {
-      for (const meshRef of model.contents.meshes) {
-        meshNodes.push({
-          id: meshRef.uuid,
-          name: `${meshRef.uuid.substring(0, 8)}...mesh.json`,
-          displayName: meshRef.name,
-          type: 'mesh' as const,
-          draggable: true,
-          assetType: 'mesh',
-        });
-      }
+    // Build model nodes: prefer cachedModelMetas, fallback to legacy IModelAsset
+    let modelNodes: TreeNode[];
+    if (this.cachedModelMetas.length > 0) {
+      // New Phase 3: hierarchical model nodes from .assetmeta files
+      modelNodes = this.buildModelMetaNodes();
+    } else {
+      // Legacy fallback: flat model nodes from IModelAsset in registry
+      modelNodes = this.buildLegacyModelNodes(userModels);
     }
-
-    // models/ subfolder
-    const modelNodes: TreeNode[] = sortByName(userModels).map((model) => ({
-      id: model.uuid,
-      name: `${model.uuid.substring(0, 8)}...model.json`,
-      displayName: model.name,
-      type: 'model' as const,
-      draggable: true,
-      assetType: 'model',
-    }));
 
     // shaders/ subfolder
     const shaderNodes: TreeNode[] = sortByName(userShaders).map((s) => ({
       id: s.uuid,
-      name: `${s.uuid.substring(0, 8)}...shader.json`,
-      displayName: s.name,
+      name: s.name,
       type: 'texture' as const,
     }));
 
@@ -569,13 +683,6 @@ export class AssetBrowserTab {
           type: 'group' as const,
           selectable: false,
           children: materialNodes,
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_ASSETS_MESHES,
-          name: 'meshes',
-          type: 'group' as const,
-          selectable: false,
-          children: meshNodes,
         },
         {
           id: CATEGORY_IDS.PROJECT_ASSETS_MODELS,
@@ -606,6 +713,107 @@ export class AssetBrowserTab {
           children: [], // Future: texture files
         },
       ],
+    };
+  }
+
+  /**
+   * Build legacy model nodes from IModelAsset (backward compatibility).
+   * Shows models with truncated UUID filenames.
+   */
+  private buildLegacyModelNodes(userModels: IModelAsset[]): TreeNode[] {
+    const sortByName = <T extends IAsset>(assets: T[]): T[] => {
+      return [...assets].sort((a, b) => a.name.localeCompare(b.name));
+    };
+
+    return sortByName(userModels).map((model) => ({
+      id: model.uuid,
+      name: `${model.uuid.substring(0, 8)}...model.json`,
+      displayName: model.name,
+      type: 'model' as const,
+      draggable: true,
+      assetType: 'model',
+    }));
+  }
+
+  /**
+   * Build tree nodes for model asset metas.
+   * Each model is an expandable node with meshes and materials as children.
+   */
+  private buildModelMetaNodes(): TreeNode[] {
+    const nodes: TreeNode[] = [];
+
+    // Sort by source filename
+    const sortedMetas = [...this.cachedModelMetas].sort((a, b) =>
+      a.filename.localeCompare(b.filename)
+    );
+
+    for (const cached of sortedMetas) {
+      const { meta, filename } = cached;
+
+      // Build children: meshes and materials
+      const children: TreeNode[] = [];
+
+      // Add mesh children
+      for (const meshRef of meta.contents.meshes) {
+        children.push(this.buildDerivedMeshNode(meshRef, meta.uuid));
+      }
+
+      // Add material children
+      for (const matRef of meta.contents.materials) {
+        children.push(this.buildDerivedMaterialNode(matRef, meta.uuid));
+      }
+
+      // Determine status indicator
+      const statusIndicator = meta.isDirty ? ' ⚠️' : ' ✓';
+
+      // Model node - expandable with derived assets
+      const nodeId = `${MODEL_META_PREFIX}${meta.uuid}`;
+
+      // Ensure this model is in the expanded set if it has children
+      // (so users can see the hierarchical structure)
+      if (children.length > 0 && !this.expandedCategories.has(nodeId)) {
+        // Don't auto-expand, let user control it
+      }
+
+      nodes.push({
+        id: nodeId,
+        name: `${filename}${statusIndicator}`,
+        type: 'model' as const,
+        draggable: true,
+        assetType: 'model',
+        children: children.length > 0 ? children : undefined,
+      });
+    }
+
+    return nodes;
+  }
+
+  /**
+   * Build a tree node for a derived mesh reference.
+   */
+  private buildDerivedMeshNode(meshRef: IDerivedMeshRef, parentMetaUuid: string): TreeNode {
+    const triangleInfo = `${meshRef.triangleCount.toLocaleString()} tris`;
+
+    return {
+      id: `${DERIVED_MESH_PREFIX}${parentMetaUuid}:${meshRef.uuid}`,
+      name: `🔷 ${meshRef.name} (${triangleInfo})`,
+      type: 'mesh' as const,
+      draggable: true,
+      assetType: 'mesh',
+    };
+  }
+
+  /**
+   * Build a tree node for a derived material reference.
+   */
+  private buildDerivedMaterialNode(matRef: IDerivedMaterialRef, parentMetaUuid: string): TreeNode {
+    const overrideIndicator = matRef.isOverridden ? ' ✎' : ' 🔒';
+
+    return {
+      id: `${DERIVED_MATERIAL_PREFIX}${parentMetaUuid}:${matRef.uuid}`,
+      name: `🎨 ${matRef.name}${overrideIndicator}`,
+      type: 'material' as const,
+      selectable: true,
     };
   }
 
@@ -744,6 +952,62 @@ private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
       return;
     }
 
+    // Handle model meta selection
+    if (this.isModelMetaId(id)) {
+      const metaUuid = this.getModelMetaUuidFromId(id);
+      if (metaUuid) {
+        const cached = this.getCachedModelMeta(metaUuid);
+        if (cached) {
+          this.eventBus.emit('modelMeta:selected', { meta: cached.meta, filename: cached.filename });
+        }
+      }
+      return;
+    }
+
+    // Handle derived mesh selection
+    if (this.isDerivedMeshId(id)) {
+      // Extract parent meta UUID and mesh UUID from the ID
+      // Format: derivedmesh:{parentMetaUuid}:{meshUuid}
+      const parts = id.substring(DERIVED_MESH_PREFIX.length).split(':');
+      if (parts.length >= 2) {
+        const [parentMetaUuid, meshUuid] = parts;
+        const cached = this.getCachedModelMeta(parentMetaUuid);
+        if (cached) {
+          const meshRef = cached.meta.contents.meshes.find(m => m.uuid === meshUuid);
+          if (meshRef) {
+            this.eventBus.emit('derivedMesh:selected', {
+              meshRef,
+              meta: cached.meta,
+              filename: cached.filename
+            });
+          }
+        }
+      }
+      return;
+    }
+
+    // Handle derived material selection
+    if (this.isDerivedMaterialId(id)) {
+      // Extract parent meta UUID and material UUID from the ID
+      // Format: derivedmaterial:{parentMetaUuid}:{materialUuid}
+      const parts = id.substring(DERIVED_MATERIAL_PREFIX.length).split(':');
+      if (parts.length >= 2) {
+        const [parentMetaUuid, materialUuid] = parts;
+        const cached = this.getCachedModelMeta(parentMetaUuid);
+        if (cached) {
+          const matRef = cached.meta.contents.materials.find(m => m.uuid === materialUuid);
+          if (matRef) {
+            this.eventBus.emit('derivedMaterial:selected', {
+              materialRef: matRef,
+              meta: cached.meta,
+              filename: cached.filename
+            });
+          }
+        }
+      }
+      return;
+    }
+
     const asset = this.assetRegistry.get(id);
     if (asset) {
       this.eventBus.emit<AssetSelectedEvent>('asset:selected', { asset });
@@ -771,7 +1035,6 @@ private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
       id === CATEGORY_IDS.BUILTIN_SHADERS ||
       id === CATEGORY_IDS.PROJECT_ASSETS ||
       id === CATEGORY_IDS.PROJECT_ASSETS_MATERIALS ||
-      id === CATEGORY_IDS.PROJECT_ASSETS_MESHES ||
       id === CATEGORY_IDS.PROJECT_ASSETS_MODELS ||
       id === CATEGORY_IDS.PROJECT_ASSETS_SCENES ||
       id === CATEGORY_IDS.PROJECT_ASSETS_SHADERS ||
@@ -788,6 +1051,44 @@ private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
    */
   private isSourceFileId(id: string): boolean {
     return id.startsWith(SOURCE_FILE_PREFIX);
+  }
+
+  /**
+   * Check if an ID is a model meta node.
+   */
+  private isModelMetaId(id: string): boolean {
+    return id.startsWith(MODEL_META_PREFIX);
+  }
+
+  /**
+   * Check if an ID is a derived mesh node.
+   */
+  private isDerivedMeshId(id: string): boolean {
+    return id.startsWith(DERIVED_MESH_PREFIX);
+  }
+
+  /**
+   * Check if an ID is a derived material node.
+   */
+  private isDerivedMaterialId(id: string): boolean {
+    return id.startsWith(DERIVED_MATERIAL_PREFIX);
+  }
+
+  /**
+   * Get the model meta UUID from a model meta node ID.
+   */
+  private getModelMetaUuidFromId(id: string): string | null {
+    if (!this.isModelMetaId(id)) {
+      return null;
+    }
+    return id.substring(MODEL_META_PREFIX.length);
+  }
+
+  /**
+   * Get the cached model meta by UUID.
+   */
+  private getCachedModelMeta(uuid: string): CachedModelMeta | null {
+    return this.cachedModelMetas.find(m => m.meta.uuid === uuid) ?? null;
   }
 
   /**
@@ -892,6 +1193,44 @@ private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
             y,
           });
           return;
+        }
+      }
+    }
+
+    // Handle context menu on model meta nodes
+    if (isProjectOpen && this.isModelMetaId(node.id)) {
+      const metaUuid = this.getModelMetaUuidFromId(node.id);
+      if (metaUuid) {
+        const cached = this.getCachedModelMeta(metaUuid);
+        if (cached) {
+          this.contextMenu = new ContextMenu();
+          this.contextMenu.show({
+            items: this.getModelMetaContextMenuItems(cached),
+            x,
+            y,
+          });
+          return;
+        }
+      }
+    }
+
+    // Handle context menu on derived material nodes
+    if (isProjectOpen && this.isDerivedMaterialId(node.id)) {
+      const parts = node.id.substring(DERIVED_MATERIAL_PREFIX.length).split(':');
+      if (parts.length >= 2) {
+        const [parentMetaUuid, materialUuid] = parts;
+        const cached = this.getCachedModelMeta(parentMetaUuid);
+        if (cached) {
+          const matRef = cached.meta.contents.materials.find(m => m.uuid === materialUuid);
+          if (matRef) {
+            this.contextMenu = new ContextMenu();
+            this.contextMenu.show({
+              items: this.getDerivedMaterialContextMenuItems(matRef, cached),
+              x,
+              y,
+            });
+            return;
+          }
         }
       }
     }
@@ -1048,6 +1387,138 @@ private async importSourceFile(sourceFile: ISourceFile): Promise<void> {
     format: sourceFile.format,
   });
 }
+
+  /**
+   * Get context menu items for model meta nodes.
+   */
+  private getModelMetaContextMenuItems(cached: CachedModelMeta): ContextMenuItem[] {
+    const items: ContextMenuItem[] = [];
+
+    // Add to scene
+    items.push({
+      label: 'Add to Scene',
+      action: () => this.addModelMetaToScene(cached),
+    });
+
+    // Reimport option
+    items.push({
+      label: cached.meta.isDirty ? 'Reimport (Source Changed)' : 'Reimport',
+      action: () => this.reimportModel(cached),
+    });
+
+    // Separator-like spacing
+    items.push({
+      label: 'Show in Explorer',
+      action: () => this.showModelInExplorer(cached),
+    });
+
+    // Delete
+    items.push({
+      label: 'Delete',
+      action: () => this.deleteModelMeta(cached),
+    });
+
+    return items;
+  }
+
+  /**
+   * Get context menu items for derived material nodes.
+   */
+  private getDerivedMaterialContextMenuItems(
+    matRef: IDerivedMaterialRef,
+    cached: CachedModelMeta
+  ): ContextMenuItem[] {
+    const items: ContextMenuItem[] = [];
+
+    if (matRef.isOverridden) {
+      // Already overridden - show the override
+      items.push({
+        label: 'Show Override',
+        action: () => {
+          if (matRef.overrideUuid) {
+            this.treeView.select(matRef.overrideUuid);
+          }
+        },
+      });
+    } else {
+      // Read-only - offer to make editable
+      items.push({
+        label: 'Make Editable (Create Copy)',
+        action: () => this.makeImportedMaterialEditable(matRef, cached),
+      });
+    }
+
+    return items;
+  }
+
+  /**
+   * Add a model from meta to the scene.
+   */
+  private addModelMetaToScene(cached: CachedModelMeta): void {
+    this.eventBus.emit('modelMeta:addToScene', {
+      meta: cached.meta,
+      filename: cached.filename,
+      directory: cached.directory,
+    });
+  }
+
+  /**
+   * Reimport a model using its current settings.
+   */
+  private reimportModel(cached: CachedModelMeta): void {
+    this.eventBus.emit('modelMeta:reimport', {
+      meta: cached.meta,
+      filename: cached.filename,
+      directory: cached.directory,
+    });
+  }
+
+  /**
+   * Show the model's source file in the system file explorer.
+   */
+  private showModelInExplorer(cached: CachedModelMeta): void {
+    // This would require native file system integration
+    // For now, just log the path
+    console.log(`Model source: ${cached.directory}/${cached.filename}`);
+    this.eventBus.emit('modelMeta:showInExplorer', {
+      meta: cached.meta,
+      filename: cached.filename,
+      directory: cached.directory,
+    });
+  }
+
+  /**
+   * Delete a model meta and optionally its source file.
+   */
+  private deleteModelMeta(cached: CachedModelMeta): void {
+    // Confirm deletion
+    const confirmed = confirm(
+      `Delete "${cached.filename}" and its .assetmeta file?\n\n` +
+      `This will remove the asset from the project but keep the source file.`
+    );
+
+    if (confirmed) {
+      this.eventBus.emit('modelMeta:delete', {
+        meta: cached.meta,
+        filename: cached.filename,
+        directory: cached.directory,
+      });
+    }
+  }
+
+  /**
+   * Make an imported material editable by creating a copy.
+   */
+  private makeImportedMaterialEditable(
+    matRef: IDerivedMaterialRef,
+    cached: CachedModelMeta
+  ): void {
+    this.eventBus.emit('derivedMaterial:makeEditable', {
+      materialRef: matRef,
+      meta: cached.meta,
+      filename: cached.filename,
+    });
+  }
 
   /**
    * Handle rename from tree view.

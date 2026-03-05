@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-04T15:38:00Z
-> **Version:** 0.15.4
-> **Status:** GLTF Importer Phase 8 Complete (Scene Serialization Updates)
+> **Last Updated:** 2026-03-05T15:52:00Z
+> **Version:** 0.15.5
+> **Status:** Asset Metadata System Revamp - Phase 3 Complete
 
 ---
 
@@ -212,7 +212,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1235 tests passing** (includes GLTF Importer Phase 8 serialization tests)
+- **1381 tests passing** (includes 128 Asset Meta interface tests + 32 new Phase 2 tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -231,6 +231,24 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 ---
 
 ## In Progress
+
+### Asset Metadata System Revamp
+
+Unity-style `.assetmeta` companion files. See [ASSET_META_SYSTEM_PLAN.md](./ASSET_META_SYSTEM_PLAN.md):
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Core Infrastructure (IAssetMeta interfaces) | ✅ Complete |
+| Phase 2 | Model Import Refactor (GLTFImporter uses .assetmeta) | ✅ Complete |
+| Phase 3 | Asset Browser Refactor (Hierarchical view) | ✅ Complete |
+| Phase 4 | Import Inspector (Import settings UI) | Not Started |
+| Phase 5 | Texture Support (Future) | Not Started |
+
+**Key Decisions:**
+- Source files stay in place (no duplication to `sources/`)
+- `.assetmeta` files visible in Asset Browser
+- Imported materials read-only; "Make Editable" creates copy
+- Drag-drop moves files to `Assets/` folder
 
 ### Asset System Implementation
 
@@ -291,9 +309,10 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow
-2. **GLTF Importer Phase 10: Polish & UX** - Error handling and undo/redo integration
-3. **Phase 6.10: Render Mode Dropdown** - Wireframe, shaded, textured views
+1. **Asset Metadata System Phase 4: Import Inspector** - Import settings UI + read-only materials
+2. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow
+3. **Asset Metadata System Phase 5: Texture Support** - .assetmeta for texture imports
+4. **Phase 6.10: Render Mode Dropdown** - Switch between render pipelines
 
 ---
 

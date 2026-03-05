@@ -48,7 +48,7 @@ describe('GLTFImporter', () => {
 
       expect(importer.id).toBe('gltf-importer');
       expect(importer.name).toBe('GLTF/GLB Importer');
-      expect(importer.version).toBe('1.0.0');
+      expect(importer.version).toBe('2.0.0');
       expect(importer.supportedExtensions).toEqual(['.gltf', '.glb']);
     });
   });

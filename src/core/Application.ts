@@ -39,6 +39,7 @@ import {
   ShaderAssetFactory,
   MaterialAssetFactory,
   FileSystemAssetStore,
+  AssetMetaService,
   BUILT_IN_SHADERS,
   BUILT_IN_MATERIALS,
 } from '@core/assets';
@@ -175,6 +176,7 @@ export class Application {
     const shaderFactory = new ShaderAssetFactory();
     const materialFactory = new MaterialAssetFactory();
     const assetStore = new FileSystemAssetStore(this.eventBus);
+    const assetMetaService = new AssetMetaService();
 
     // Initialize project service
     const projectService = new ProjectService({
@@ -282,6 +284,7 @@ export class Application {
       shaderFactory,
       projectService,
       shaderEditorService,
+      assetMetaService,
     });
     this.layout.initialize();
     console.log('UI layout initialized');
@@ -743,7 +746,7 @@ export class Application {
         this.commandHistory.execute(command);
       }
     } finally {
-      this.commandHistory.endBatch();
+      this.commandHistory.endBatch('Instantiate model');
     }
 
     console.log(`Instantiated model: ${model.name} (${model.contents.meshes.length} meshes)`);

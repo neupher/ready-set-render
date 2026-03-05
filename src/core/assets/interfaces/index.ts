@@ -94,3 +94,59 @@ export {
   createDefaultMeshBounds,
   MESH_ASSET_VERSION,
 } from './IMeshAsset';
+
+// Asset Meta (Unity-style .assetmeta files)
+export type {
+  IAssetMeta,
+  AssetMetaType,
+  IDerivedAssetRef,
+  IDerivedMeshRef,
+  IDerivedMaterialRef,
+  IDerivedTextureRef,
+} from './IAssetMeta';
+export {
+  isAssetMeta,
+  isDerivedAssetRef,
+  isDerivedMeshRef,
+  isDerivedMaterialRef,
+  getAssetMetaFilename,
+  getSourceFilename,
+  ASSET_META_VERSION,
+} from './IAssetMeta';
+
+// Model Asset Meta
+export type {
+  IModelAssetMeta,
+  IModelImportSettings,
+  ICoordinateConversionSettings,
+  IMeshImportSettings,
+  IMaterialImportSettings,
+  IAnimationImportSettings,
+  IModelMetaContents,
+  IModelMetaNode,
+  CoordinateUpAxis,
+} from './IModelAssetMeta';
+export {
+  isModelAssetMeta,
+  isModelMetaNode,
+  createDefaultModelMetaNode,
+  MODEL_ASSET_META_VERSION,
+} from './IModelAssetMeta';
+
+// Texture Asset Meta
+export type {
+  ITextureAssetMeta,
+  ITextureImportSettings,
+  ITextureProperties,
+  TextureType,
+  AlphaSource,
+  WrapMode,
+  FilterMode,
+  MipMapFilter,
+  CompressionQuality,
+  MaxTextureSize,
+} from './ITextureAssetMeta';
+export {
+  isTextureAssetMeta,
+  TEXTURE_ASSET_META_VERSION,
+} from './ITextureAssetMeta';

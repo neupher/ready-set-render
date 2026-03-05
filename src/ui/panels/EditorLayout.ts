@@ -25,6 +25,7 @@ import type { SettingsService } from '@core/SettingsService';
 import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { ShaderAssetFactory } from '@core/assets/ShaderAssetFactory';
+import type { AssetMetaService } from '@core/assets/AssetMetaService';
 import type { ProjectService } from '@core/ProjectService';
 import type { ShaderEditorService } from '@core/ShaderEditorService';
 import { PrimitiveRegistry } from '@plugins/primitives';
@@ -59,6 +60,8 @@ export interface EditorLayoutOptions {
   projectService?: ProjectService;
   /** Shader editor service for live shader editing (optional) */
   shaderEditorService?: ShaderEditorService;
+  /** Asset meta service for reading .assetmeta files (optional) */
+  assetMetaService?: AssetMetaService;
 }
 
 /**
@@ -77,6 +80,7 @@ export class EditorLayout {
   private readonly shaderFactory: ShaderAssetFactory | null;
   private readonly projectService: ProjectService | null;
   private readonly shaderEditorService: ShaderEditorService | null;
+  private readonly assetMetaService: AssetMetaService | null;
 
   private root: HTMLDivElement | null = null;
   private menuBar: TopMenuBar | null = null;
@@ -103,6 +107,7 @@ export class EditorLayout {
     this.shaderFactory = options.shaderFactory ?? null;
     this.projectService = options.projectService ?? null;
     this.shaderEditorService = options.shaderEditorService ?? null;
+    this.assetMetaService = options.assetMetaService ?? null;
   }
 
   /**
@@ -194,6 +199,7 @@ export class EditorLayout {
         materialFactory: this.materialFactory,
         shaderFactory: this.shaderFactory,
         projectService: this.projectService ?? undefined,
+        assetMetaService: this.assetMetaService ?? undefined,
       });
 
       this.assetsResizablePanel.setContent(this.assetsPanel.element);
