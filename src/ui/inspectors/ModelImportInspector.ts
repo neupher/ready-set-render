@@ -55,8 +55,6 @@ export class ModelImportInspector {
   private readonly container: HTMLDivElement;
   private readonly eventBus: EventBus;
   private readonly assetMetaService: AssetMetaService;
-  // Project service reserved for future use (e.g., project-relative paths)
-  private readonly _projectService: ProjectService;
 
   /** Currently displayed model meta */
   private currentMeta: IModelAssetMeta | null = null;
@@ -76,7 +74,6 @@ export class ModelImportInspector {
   constructor(options: ModelImportInspectorOptions) {
     this.eventBus = options.eventBus;
     this.assetMetaService = options.assetMetaService;
-    this._projectService = options.projectService;
 
     // Create container
     this.container = document.createElement('div');

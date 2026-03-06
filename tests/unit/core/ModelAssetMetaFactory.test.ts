@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ModelAssetMetaFactory } from '../../../src/core/assets/ModelAssetMetaFactory';
 import type { IGLTFImportResult } from '../../../src/plugins/importers/gltf/GLTFImportService';
-import type { IModelAssetMeta } from '../../../src/core/assets/interfaces/IModelAssetMeta';
 
 describe('ModelAssetMetaFactory', () => {
   let factory: ModelAssetMetaFactory;
@@ -211,7 +210,7 @@ describe('ModelAssetMetaFactory', () => {
       );
 
       // Add a new mesh
-      const newMeshes = [
+      const newMeshes: IGLTFImportResult['meshes'] = [
         ...gltfResult.meshes,
         {
           name: 'NewMesh',

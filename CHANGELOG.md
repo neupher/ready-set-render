@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.8] - 2026-03-06
+
+### Fixed
+
+- **Build errors** — Resolved all TypeScript compilation errors blocking deployment
+  - `SourceHashService.test.ts`: Removed unused `vi` import
+  - `ModelAssetMetaFactory.test.ts`: Removed unused `IModelAssetMeta` import; typed `newMeshes` array as `IGLTFImportResult['meshes']` to fix type mismatch
+  - `SceneGraphCommandContract.test.ts`: Changed `as Record<string, unknown>` casts to `as unknown as Record<string, unknown>` (5 instances)
+  - `PropertiesPanel.ts`: Removed write-only `_selectedModelMeta` field and its assignments
+  - `ModelImportInspector.ts`: Removed write-only `_projectService` field and its assignment
+
+---
+
 ## [0.15.7] - 2026-03-06
 
 ### Fixed

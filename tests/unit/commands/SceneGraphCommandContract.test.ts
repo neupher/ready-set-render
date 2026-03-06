@@ -86,23 +86,23 @@ describe('SceneGraph command contract', () => {
 
   describe('non-existent methods guard', () => {
     it('should NOT have getById (common mistake — use find instead)', () => {
-      expect((sceneGraph as Record<string, unknown>)['getById']).toBeUndefined();
+      expect((sceneGraph as unknown as Record<string, unknown>)['getById']).toBeUndefined();
     });
 
     it('should NOT have removeObject (common mistake — use remove instead)', () => {
-      expect((sceneGraph as Record<string, unknown>)['removeObject']).toBeUndefined();
+      expect((sceneGraph as unknown as Record<string, unknown>)['removeObject']).toBeUndefined();
     });
 
     it('should NOT have addObject (common mistake — use add instead)', () => {
-      expect((sceneGraph as Record<string, unknown>)['addObject']).toBeUndefined();
+      expect((sceneGraph as unknown as Record<string, unknown>)['addObject']).toBeUndefined();
     });
 
     it('should NOT have findById (common mistake — use find instead)', () => {
-      expect((sceneGraph as Record<string, unknown>)['findById']).toBeUndefined();
+      expect((sceneGraph as unknown as Record<string, unknown>)['findById']).toBeUndefined();
     });
 
     it('should NOT have get (common mistake — use find instead)', () => {
-      expect((sceneGraph as Record<string, unknown>)['get']).toBeUndefined();
+      expect((sceneGraph as unknown as Record<string, unknown>)['get']).toBeUndefined();
     });
   });
 });

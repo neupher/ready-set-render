@@ -115,8 +115,6 @@ export class PropertiesPanel {
   /** Model import inspector for displaying .assetmeta import settings */
   private modelImportInspector: ModelImportInspector | null = null;
 
-  /** Currently selected model meta (when viewing import settings) - reserved for future use */
-  private _selectedModelMeta: { meta: IModelAssetMeta; filename: string } | null = null;
 
   /** Cleanup function for compilation event listener */
   private compilationUnsubscribe: (() => void) | null = null;
@@ -347,8 +345,6 @@ export class PropertiesPanel {
 
   private handleSelectionChange(data: { id: string }): void {
     this.selectedObject = this.sceneGraph.find(data.id) ?? null;
-    // Clear model meta selection when an entity is selected
-      this._selectedModelMeta = null;
     this.renderDetails();
   }
 
@@ -389,8 +385,6 @@ export class PropertiesPanel {
   private async handleModelMetaSelected(data: ModelMetaSelectedEvent): Promise<void> {
     // Clear entity selection to show model meta inspector
     this.selectedObject = null;
-    this._selectedModelMeta = { meta: data.meta, filename: data.filename };
-
     // Get the directory handle for the source file
     if (this.modelImportInspector && this.projectService?.isProjectOpen) {
       const directoryHandle = await this.getDirectoryHandleForMeta(data.meta);
