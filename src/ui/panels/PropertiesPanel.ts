@@ -34,8 +34,19 @@ import { AssetBrowserTab } from '../tabs/AssetBrowserTab';
 import type { AssetSelectedEvent } from '../tabs/AssetBrowserTab';
 import { MonacoShaderEditor } from '../editors/MonacoShaderEditor';
 import { showUnsavedChangesDialog, showConfirmDialog } from '../components/ConfirmDialog';
+import { ModelImportInspector } from '../inspectors/ModelImportInspector';
 import type { ProjectService } from '@core/ProjectService';
 import type { ShaderEditorService, ShaderCompilationEvent } from '@core/ShaderEditorService';
+import type { AssetMetaService } from '@core/assets/AssetMetaService';
+import type { IModelAssetMeta } from '@core/assets/interfaces/IModelAssetMeta';
+
+/**
+ * Event emitted when a model meta is selected in the Asset Browser.
+ */
+export interface ModelMetaSelectedEvent {
+  meta: IModelAssetMeta;
+  filename: string;
+}
 
 export interface PropertiesPanelOptions {
   /** Event bus for communication */
@@ -52,6 +63,8 @@ export interface PropertiesPanelOptions {
   shaderEditorService?: ShaderEditorService;
   /** Project service for project-based workflow (optional) */
   projectService?: ProjectService;
+  /** Asset meta service for reading/writing .assetmeta files (optional) */
+  assetMetaService?: AssetMetaService;
 }
 
 /**
@@ -95,6 +108,15 @@ export class PropertiesPanel {
 
   /** Project service for project-based workflow */
   private projectService: ProjectService | null = null;
+
+  /** Asset meta service for reading/writing .assetmeta files */
+  private assetMetaService: AssetMetaService | null = null;
+
+  /** Model import inspector for displaying .assetmeta import settings */
+  private modelImportInspector: ModelImportInspector | null = null;
+
+  /** Currently selected model meta (when viewing import settings) - reserved for future use */
+  private _selectedModelMeta: { meta: IModelAssetMeta; filename: string } | null = null;
 
   /** Cleanup function for compilation event listener */
   private compilationUnsubscribe: (() => void) | null = null;
@@ -151,6 +173,16 @@ export class PropertiesPanel {
     this.shaderFactory = options.shaderFactory ?? null;
     this.materialFactory = options.materialFactory ?? null;
     this.projectService = options.projectService ?? null;
+    this.assetMetaService = options.assetMetaService ?? null;
+
+    // Create Model Import Inspector if dependencies are available
+    if (this.assetMetaService && this.projectService) {
+      this.modelImportInspector = new ModelImportInspector({
+        eventBus: this.eventBus,
+        assetMetaService: this.assetMetaService,
+        projectService: this.projectService,
+      });
+    }
 
     // Create Monaco shader editor (replaces textarea)
     this.monacoEditor = new MonacoShaderEditor();
@@ -306,10 +338,17 @@ export class PropertiesPanel {
         this.renderDetails();
       }
     });
+
+    // Handle model meta selection from Asset Browser
+    this.eventBus.on<ModelMetaSelectedEvent>('modelMeta:selected', (data) => {
+      this.handleModelMetaSelected(data);
+    });
   }
 
   private handleSelectionChange(data: { id: string }): void {
     this.selectedObject = this.sceneGraph.find(data.id) ?? null;
+    // Clear model meta selection when an entity is selected
+      this._selectedModelMeta = null;
     this.renderDetails();
   }
 
@@ -341,6 +380,109 @@ export class PropertiesPanel {
     if (this.selectedObject && this.selectedObject.id === data.object.id) {
       this.renderDetails();
     }
+  }
+
+  /**
+   * Handle model meta selection from Asset Browser.
+   * Shows the ModelImportInspector for the selected model.
+   */
+  private async handleModelMetaSelected(data: ModelMetaSelectedEvent): Promise<void> {
+    // Clear entity selection to show model meta inspector
+    this.selectedObject = null;
+    this._selectedModelMeta = { meta: data.meta, filename: data.filename };
+
+    // Get the directory handle for the source file
+    if (this.modelImportInspector && this.projectService?.isProjectOpen) {
+      const directoryHandle = await this.getDirectoryHandleForMeta(data.meta);
+      if (directoryHandle) {
+        this.modelImportInspector.setModelMeta(data.meta, data.filename, directoryHandle);
+        this.renderModelMetaDetails();
+        return;
+      }
+    }
+
+    // Fallback: show basic info without editable inspector
+    this.renderModelMetaFallback(data.meta, data.filename);
+  }
+
+  /**
+   * Get the directory handle containing the source file for a meta.
+   */
+  private async getDirectoryHandleForMeta(meta: IModelAssetMeta): Promise<FileSystemDirectoryHandle | null> {
+    if (!this.projectService?.isProjectOpen) {
+      return null;
+    }
+
+    const rootHandle = this.projectService.getProjectHandle();
+    if (!rootHandle) {
+      return null;
+    }
+
+    // Parse the source path to get the directory
+    const sourcePath = meta.sourcePath;
+    const pathParts = sourcePath.split('/');
+    pathParts.pop(); // Remove the filename
+
+    // Navigate to the directory
+    let currentHandle: FileSystemDirectoryHandle = rootHandle;
+    for (const part of pathParts) {
+      if (!part) continue;
+      try {
+        currentHandle = await currentHandle.getDirectoryHandle(part);
+      } catch {
+        return null;
+      }
+    }
+
+    return currentHandle;
+  }
+
+  /**
+   * Render the details tab with the ModelImportInspector.
+   */
+  private renderModelMetaDetails(): void {
+    this.detailsContent.innerHTML = '';
+
+    if (this.modelImportInspector) {
+      this.detailsContent.appendChild(this.modelImportInspector.element);
+    }
+  }
+
+  /**
+   * Render a basic fallback view for model meta when inspector is not available.
+   */
+  private renderModelMetaFallback(meta: IModelAssetMeta, filename: string): void {
+    this.detailsContent.innerHTML = '';
+
+    const container = document.createElement('div');
+    container.style.padding = 'var(--spacing-md)';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
+    `;
+    header.innerHTML = `<span style="font-size: 1.2em;">📦</span> <strong>${filename}</strong>`;
+    container.appendChild(header);
+
+    // Basic info
+    const info = document.createElement('div');
+    info.style.cssText = `
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+    `;
+    info.innerHTML = `
+      <div style="margin-bottom: 4px;">Meshes: ${meta.contents.meshes.length}</div>
+      <div style="margin-bottom: 4px;">Materials: ${meta.contents.materials.length}</div>
+      <div style="margin-bottom: 4px;">Last imported: ${new Date(meta.importedAt).toLocaleString()}</div>
+      ${meta.isDirty ? '<div style="color: var(--warning-text, #ffc107);">⚠️ Source file changed</div>' : ''}
+    `;
+    container.appendChild(info);
+
+    this.detailsContent.appendChild(container);
   }
 
   private switchTab(tab: 'details' | 'shader' | 'assets'): void {

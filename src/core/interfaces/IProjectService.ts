@@ -290,4 +290,12 @@ export interface IProjectService {
    * @returns The relative path to the copied file, or null if failed
    */
   copySourceFile(file: File, subfolder?: string): Promise<string | null>;
+
+  /**
+   * Get the root directory handle for the project.
+   * Returns null if no project is open.
+   *
+   * @returns The root FileSystemDirectoryHandle or null
+   */
+  getProjectHandle(): FileSystemDirectoryHandle | null;
 }

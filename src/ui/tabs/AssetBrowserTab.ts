@@ -300,7 +300,7 @@ export class AssetBrowserTab {
 
           // Recurse into subdirectory
           const subPath = relativePath ? `${relativePath}/${name}` : name;
-          await this.scanDirectoryForMetas(handle, subPath, results);
+          await this.scanDirectoryForMetas(handle as FileSystemDirectoryHandle, subPath, results);
         } else if (handle.kind === 'file' && name.endsWith('.assetmeta')) {
           // Found an .assetmeta file - try to read it
           const sourceFilename = name.replace('.assetmeta', '');
@@ -578,11 +578,8 @@ export class AssetBrowserTab {
       const assetsFolder = this.buildAssetsFolderNode(userMaterials, userShaders, userModels);
       projectChildren.push(assetsFolder);
 
-      // sources/ folder
-      const sourcesFolder = this.buildSourcesFolderNode();
-      if (sourcesFolder) {
-        projectChildren.push(sourcesFolder);
-      }
+      // Note: sources/ folder is NOT shown in the UI
+      // Source files (.glb, .gltf) are displayed under assets/models after import
     }
 
     // Build the tree structure
@@ -737,7 +734,7 @@ export class AssetBrowserTab {
 
   /**
    * Build tree nodes for model asset metas.
-   * Each model is an expandable node with meshes and materials as children.
+   * Each model is an expandable node with "Materials" and "Meshes" groups as children.
    */
   private buildModelMetaNodes(): TreeNode[] {
     const nodes: TreeNode[] = [];
@@ -750,30 +747,42 @@ export class AssetBrowserTab {
     for (const cached of sortedMetas) {
       const { meta, filename } = cached;
 
-      // Build children: meshes and materials
+      // Build children: Materials group and Meshes group
       const children: TreeNode[] = [];
 
-      // Add mesh children
-      for (const meshRef of meta.contents.meshes) {
-        children.push(this.buildDerivedMeshNode(meshRef, meta.uuid));
+      // Add Materials group if there are materials
+      if (meta.contents.materials.length > 0) {
+        const materialChildren: TreeNode[] = meta.contents.materials.map(matRef =>
+          this.buildDerivedMaterialNode(matRef, meta.uuid)
+        );
+        children.push({
+          id: `${MODEL_META_PREFIX}${meta.uuid}:materials`,
+          name: `Materials (${meta.contents.materials.length})`,
+          type: 'group' as const,
+          selectable: false,
+          children: materialChildren,
+        });
       }
 
-      // Add material children
-      for (const matRef of meta.contents.materials) {
-        children.push(this.buildDerivedMaterialNode(matRef, meta.uuid));
+      // Add Meshes group if there are meshes
+      if (meta.contents.meshes.length > 0) {
+        const meshChildren: TreeNode[] = meta.contents.meshes.map(meshRef =>
+          this.buildDerivedMeshNode(meshRef, meta.uuid)
+        );
+        children.push({
+          id: `${MODEL_META_PREFIX}${meta.uuid}:meshes`,
+          name: `Meshes (${meta.contents.meshes.length})`,
+          type: 'group' as const,
+          selectable: false,
+          children: meshChildren,
+        });
       }
 
       // Determine status indicator
       const statusIndicator = meta.isDirty ? ' ⚠️' : ' ✓';
 
-      // Model node - expandable with derived assets
+      // Model node - expandable with Materials and Meshes groups
       const nodeId = `${MODEL_META_PREFIX}${meta.uuid}`;
-
-      // Ensure this model is in the expanded set if it has children
-      // (so users can see the hierarchical structure)
-      if (children.length > 0 && !this.expandedCategories.has(nodeId)) {
-        // Don't auto-expand, let user control it
-      }
 
       nodes.push({
         id: nodeId,
@@ -818,74 +827,6 @@ export class AssetBrowserTab {
   }
 
   /**
-   * Build the sources/ folder node mirroring actual disk structure.
-   */
-  private buildSourcesFolderNode(): TreeNode | null {
-    if (!this.projectService) {
-      return null;
-    }
-
-    const sourceFiles = this.projectService.getSourceFiles();
-
-    // Group source files by type
-    const modelFiles = sourceFiles.filter((f) => f.type === 'model');
-    const textureFiles = sourceFiles.filter((f) => f.type === 'texture');
-    const otherFiles = sourceFiles.filter((f) => f.type === 'other');
-
-    // Build model source file nodes
-    const modelNodes = this.buildSourceFileNodes(modelFiles);
-    const textureNodes = this.buildSourceFileNodes(textureFiles);
-    const otherNodes = this.buildSourceFileNodes(otherFiles);
-
-    return {
-      id: CATEGORY_IDS.PROJECT_SOURCES,
-      name: 'sources',
-      type: 'group' as const,
-      selectable: false,
-      children: [
-        {
-          id: CATEGORY_IDS.PROJECT_SOURCES_MODELS,
-          name: 'models',
-          type: 'group' as const,
-          selectable: false,
-          children: modelNodes,
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_SOURCES_OTHER,
-          name: 'other',
-          type: 'group' as const,
-          selectable: false,
-          children: otherNodes,
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_SOURCES_TEXTURES,
-          name: 'textures',
-          type: 'group' as const,
-          selectable: false,
-          children: textureNodes,
-        },
-      ],
-    };
-  }
-
-/**
- * Build tree nodes for source files.
- */
-private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
-  // Sort by name
-  const sorted = [...files].sort((a, b) => a.name.localeCompare(b.name));
-
-  return sorted.map((file) => ({
-    id: `${SOURCE_FILE_PREFIX}${file.path}`,
-    name: file.isImported ? `${file.name} ✓` : file.name,
-    type: 'model' as const,
-    selectable: true,
-    // Store source file info for context menu
-    sourceFile: file,
-  }));
-}
-
-  /**
    * Update the visibility of the no-project message.
    */
   private updateNoProjectMessageVisibility(show: boolean): void {
@@ -920,6 +861,11 @@ private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
 
     // Listen for project refresh
     this.eventBus.on<ProjectRefreshedEvent>('project:refreshed', () => {
+      this.refresh();
+    });
+
+    // Listen for import completion to refresh and show newly imported models
+    this.eventBus.on('import:complete', () => {
       this.refresh();
     });
 
@@ -1017,7 +963,7 @@ private buildSourceFileNodes(files: ISourceFile[]): TreeNode[] {
   /**
    * Handle drag start for draggable assets.
    */
-  private handleDragStart(id: string, node: TreeNode, event: DragEvent): void {
+  private handleDragStart(id: string, _node: TreeNode, event: DragEvent): void {
     const asset = this.assetRegistry.get(id);
     if (asset) {
       this.eventBus.emit<AssetDragStartEvent>('asset:dragStart', { asset, event });

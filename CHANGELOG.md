@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.6] - 2026-03-06
+
+### Added
+
+- **Asset Metadata System Phase 4: Import Inspector** — Model import settings UI
+  - `ModelImportInspector` component for viewing/editing `.assetmeta` import settings
+  - Import settings UI: scale factor, coordinate conversion (Z-up), mesh options, material options
+  - Apply/Revert buttons with pending changes tracking
+  - Dirty warning when source file has changed (recommends reimport)
+  - Event emission on settings change (`modelMeta:settingsApplied`)
+  - `PropertiesPanel` integration: shows inspector when model meta is selected
+  - `getProjectHandle()` method added to `IProjectService` and `ProjectService`
+
+### Changed
+
+- **Asset Browser improvements**
+  - Removed `sources/` folder from tree view — source files are no longer displayed separately
+  - Model hierarchy restructured: each `.glb` now shows `Materials (n)` and `Meshes (n)` groups as children
+  - Added `import:complete` event listener to refresh Asset Browser after imports
+  - Removed unused `buildSourcesFolderNode()` and `buildSourceFileNodes()` methods
+
+---
+
 ## [0.15.5] - 2026-03-05
 
 ### Added

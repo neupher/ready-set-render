@@ -626,6 +626,19 @@ export class ProjectService implements IProjectService {
   }
 
   /**
+   * Get the root directory handle for the project.
+   * Returns null if no project is open.
+   *
+   * @returns The root FileSystemDirectoryHandle or null
+   */
+  getProjectHandle(): FileSystemDirectoryHandle | null {
+    if (!this.isProjectOpen) {
+      return null;
+    }
+    return this.rootHandle;
+  }
+
+  /**
    * Get a directory handle for a given relative path.
    * Creates intermediate directories if they don't exist.
    *

@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-05T15:52:00Z
-> **Version:** 0.15.5
-> **Status:** Asset Metadata System Revamp - Phase 3 Complete
+> **Last Updated:** 2026-03-06T11:56:00Z
+> **Version:** 0.15.6
+> **Status:** Asset Metadata System Revamp - Phase 4 Complete
 
 ---
 
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.4)
+## Current State (v0.15.6)
 
 ### What's Working
 
@@ -212,7 +212,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1381 tests passing** (includes 128 Asset Meta interface tests + 32 new Phase 2 tests)
+- **1406 tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests)
 - **85% coverage thresholds** enforced
 
 ### Architecture Highlights
@@ -241,7 +241,7 @@ Unity-style `.assetmeta` companion files. See [ASSET_META_SYSTEM_PLAN.md](./ASSE
 | Phase 1 | Core Infrastructure (IAssetMeta interfaces) | ✅ Complete |
 | Phase 2 | Model Import Refactor (GLTFImporter uses .assetmeta) | ✅ Complete |
 | Phase 3 | Asset Browser Refactor (Hierarchical view) | ✅ Complete |
-| Phase 4 | Import Inspector (Import settings UI) | Not Started |
+| Phase 4 | Import Inspector (Import settings UI) | ✅ Complete |
 | Phase 5 | Texture Support (Future) | Not Started |
 
 **Key Decisions:**
