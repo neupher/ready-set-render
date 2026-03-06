@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.7] - 2026-03-06
+
+### Fixed
+
+- **CreateEntityCommand tests** — Replaced non-existent `sceneGraph.getById()` calls with correct `sceneGraph.find()` method (lines 74, 110, 138)
+  - Fixed `TypeError: sceneGraph.getById is not a function` in execute, undo, and redo tests
+  - Fixed indentation on closing `describe` brace
+
+### Added
+
+- **SceneGraphCommandContract tests** — New contract test suite (`SceneGraphCommandContract.test.ts`)
+  - Validates all SceneGraph methods used by command classes (`add`, `remove`, `find`, `traverse`, `getRoot`)
+  - `find()` contract tests: existence check, not-found returns undefined, post-removal returns undefined
+  - Add/remove round-trip test (undo/redo pattern)
+  - Non-existent method guards: asserts `getById`, `removeObject`, `addObject`, `findById`, `get` do not exist
+
+---
+
 ## [0.15.6] - 2026-03-06
 
 ### Added

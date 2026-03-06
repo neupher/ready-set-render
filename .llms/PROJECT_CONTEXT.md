@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-06T11:56:00Z
-> **Version:** 0.15.6
+> **Last Updated:** 2026-03-06T17:05:00Z
+> **Version:** 0.15.7
 > **Status:** Asset Metadata System Revamp - Phase 4 Complete
 
 ---
@@ -32,7 +32,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.6)
+## Current State (v0.15.7)
 
 ### What's Working
 
@@ -212,8 +212,9 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1406 tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests)
+- **1406+ tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests + SceneGraph command contract tests)
 - **85% coverage thresholds** enforced
+- `SceneGraphCommandContract.test.ts`: API contract validation for command classes
 
 ### Architecture Highlights
 
@@ -309,10 +310,9 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **Asset Metadata System Phase 4: Import Inspector** - Import settings UI + read-only materials
-2. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow
-3. **Asset Metadata System Phase 5: Texture Support** - .assetmeta for texture imports
-4. **Phase 6.10: Render Mode Dropdown** - Switch between render pipelines
+1. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow
+2. **Asset Metadata System Phase 5: Texture Support** - .assetmeta for texture imports
+3. **Phase 6.10: Render Mode Dropdown** - Switch between render pipelines
 
 ---
 

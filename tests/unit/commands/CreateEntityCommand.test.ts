@@ -71,7 +71,7 @@ describe('CreateEntityCommand', () => {
 
       command.execute();
 
-      const found = sceneGraph.getById('test-id');
+      const found = sceneGraph.find('test-id');
       expect(found).toBe(entity);
     });
 
@@ -107,10 +107,10 @@ describe('CreateEntityCommand', () => {
       const command = new CreateEntityCommand(entity, sceneGraph, eventBus);
 
       command.execute();
-      expect(sceneGraph.getById('test-id')).toBe(entity);
+      expect(sceneGraph.find('test-id')).toBe(entity);
 
       command.undo();
-      expect(sceneGraph.getById('test-id')).toBeUndefined();
+      expect(sceneGraph.find('test-id')).toBeUndefined();
     });
 
     it('should emit selection:clear event', () => {
@@ -135,7 +135,7 @@ describe('CreateEntityCommand', () => {
       command.undo();
       command.execute();
 
-      const found = sceneGraph.getById('test-id');
+      const found = sceneGraph.find('test-id');
       expect(found).toBe(entity);
     });
   });
