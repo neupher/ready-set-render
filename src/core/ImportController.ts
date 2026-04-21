@@ -307,11 +307,6 @@ export class ImportController {
   private async importWithGLTF(file: File): Promise<ImportOperationResult> {
     console.log(`Importing GLTF file: ${file.name}`);
 
-    // Wire up project service for asset persistence
-    this.gltfImporter.setProjectService(
-      this.projectService.isProjectOpen ? this.projectService : null
-    );
-
     const result = await this.gltfImporter.import(file);
 
     // Log warnings

@@ -24,6 +24,11 @@ describe('LineRenderer', () => {
       gl: mockGL,
       canvas: mockCanvas,
       eventBus,
+      sceneGraph: {} as IPluginContext['sceneGraph'],
+      selectionManager: {} as IPluginContext['selectionManager'],
+      commandHistory: {} as IPluginContext['commandHistory'],
+      assetRegistry: {} as IPluginContext['assetRegistry'],
+      settingsService: {} as IPluginContext['settingsService'],
     };
   });
 

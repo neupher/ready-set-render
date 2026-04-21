@@ -19,12 +19,9 @@
  *
  * @example
  * ```typescript
- * const gridRenderer = new GridRenderer({
- *   gl,
- *   eventBus,
- *   settingsService,
- * });
- * gridRenderer.initialize();
+ * const gridRenderer = new GridRenderer();
+ * pluginManager.register(gridRenderer);
+ * await pluginManager.initializeAll();
  *
  * // In render loop:
  * gridRenderer.render(camera);
@@ -34,18 +31,7 @@
 import type { EventBus } from '@core/EventBus';
 import type { SettingsService, GridSettings } from '@core/SettingsService';
 import type { ICamera } from '@core/interfaces';
-
-/**
- * Options for GridRenderer constructor.
- */
-export interface GridRendererOptions {
-  /** WebGL2 rendering context */
-  gl: WebGL2RenderingContext;
-  /** Event bus for settings change notifications */
-  eventBus: EventBus;
-  /** Settings service for grid configuration */
-  settingsService: SettingsService;
-}
+import type { IPlugin, IPluginContext } from '@core/interfaces/IPlugin';
 
 /**
  * Vertex shader for grid rendering.
@@ -118,10 +104,14 @@ interface GridLineData {
  * Implements a procedural grid that regenerates when settings change.
  * Uses alpha blending for smooth line rendering with distance fade.
  */
-export class GridRenderer {
-  private readonly gl: WebGL2RenderingContext;
-  private readonly eventBus: EventBus;
-  private readonly settingsService: SettingsService;
+export class GridRenderer implements IPlugin {
+  readonly id = 'grid-renderer';
+  readonly name = 'Grid Renderer';
+  readonly version = '1.0.0';
+
+  private gl!: WebGL2RenderingContext;
+  private eventBus!: EventBus;
+  private settingsService!: SettingsService;
 
   // WebGL resources
   private program: WebGLProgram | null = null;
@@ -139,20 +129,18 @@ export class GridRenderer {
   private vertexCount = 0;
   private initialized = false;
 
-  constructor(options: GridRendererOptions) {
-    this.gl = options.gl;
-    this.eventBus = options.eventBus;
-    this.settingsService = options.settingsService;
-  }
-
   /**
    * Initialize the grid renderer.
    * Compiles shaders and creates initial grid geometry.
    */
-  initialize(): void {
+  async initialize(context: IPluginContext): Promise<void> {
     if (this.initialized) {
       return;
     }
+
+    this.gl = context.gl;
+    this.eventBus = context.eventBus;
+    this.settingsService = context.settingsService;
 
     // Compile shader program
     this.program = this.createProgram(GRID_VERTEX_SHADER, GRID_FRAGMENT_SHADER);
@@ -282,7 +270,7 @@ export class GridRenderer {
   /**
    * Dispose of GPU resources.
    */
-  dispose(): void {
+  async dispose(): Promise<void> {
     if (this.program) {
       this.gl.deleteProgram(this.program);
       this.program = null;

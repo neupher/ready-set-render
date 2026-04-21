@@ -1,8 +1,8 @@
 # Architecture Remediation Plan
 
-> **Last Updated:** 2026-04-21T13:50:00Z
-> **Version:** 0.1.0
-> **Status:** Not Started
+> **Last Updated:** 2026-04-21T15:42:00Z
+> **Version:** 0.1.1
+> **Status:** Phase 1 Complete
 > **Priority:** Highest — Execute before new feature work
 > **Source:** [Architecture Review.md](./Architecture%20Review.md)
 
@@ -39,9 +39,9 @@ This plan addresses the architectural drift identified in the Architecture Revie
 
 ---
 
-### Phase 1: Reconcile Runtime Composition with Plugin Architecture
+### Phase 1: Reconcile Runtime Composition with Plugin Architecture ✅ COMPLETE
 
-**Estimated Effort:** ~2–3 sessions
+**Completed:** 2026-04-21 (v0.16.0)
 **Risk Level:** High (touches Application.ts, the composition root)
 **Goal:** Application.ts delegates to PluginManager instead of hardcoding every subsystem.
 

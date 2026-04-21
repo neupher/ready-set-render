@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-04-21T14:13:00Z
-> **Version:** 0.15.10
-> **Status:** Architecture Remediation Plan Created
+> **Last Updated:** 2026-04-21T15:42:00Z
+> **Version:** 0.16.0
+> **Status:** Architecture Remediation Phase 1 Complete
 
 ---
 
@@ -34,11 +34,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.10)
+## Current State (v0.16.0)
 
 ### What's Working
 
-- **Core Engine**: EventBus, SceneGraph, PluginManager, WebGLContext, CommandHistory, SettingsService, ImportController
+- **Core Engine**: EventBus, SceneGraph, PluginManager (active), WebGLContext, CommandHistory, SettingsService, ImportController
 - **GLTF Scene Serialization** (Phase 8 - Complete)
   - `GroupEntity` implements `ISerializable` with `toJSON()`/`fromJSON()` methods
   - `EntitySerializer` registers factories for `MeshEntity` and `GroupEntity`
@@ -214,7 +214,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1423 tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests + SceneGraph command contract tests)
+- **1424 tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests + SceneGraph command contract tests)
 - **85% coverage thresholds** enforced
 - `SceneGraphCommandContract.test.ts`: API contract validation for command classes
 - Large test-only fixture available at `/c:/Git/ready-set-render/test_assets/studio_setup.glb` for importer, editor launch, and visual verification work
@@ -222,14 +222,16 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Architecture Highlights
 
-- **Application.ts** orchestrates all modules (clean 98-line index.ts)
+- **Application.ts** orchestrates all modules via PluginManager (clean 98-line index.ts)
+- **PluginManager** manages plugin lifecycle — register, initialize (topological order), dispose (reverse order)
+- **IPluginContext** rich service locator (11 fields) — plugins receive all shared services at initialization
 - **PropertyChangeHandler** centralizes all entity property changes
 - **MeshGPUCache** centralized GPU resource management
 - **ICloneable** enables polymorphic entity duplication
 - **PBRShaderProgram** encapsulates PBR shader with automatic material switching
 - **GizmoDragState** stores entity reference to avoid selection race conditions
 - **SettingsService** centralized settings with localStorage persistence and events
-- **GridRenderer** procedural grid with settings integration
+- **GridRenderer** IPlugin-based procedural grid with settings integration
 - **AssetRegistry** central registry for all assets with EventBus integration
 - **FileSystemAssetStore** File System Access API based persistence
 
@@ -243,7 +245,7 @@ Addresses architectural drift identified in [Architecture Review.md](./Architect
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| Phase 1 | Reconcile Runtime Composition with Plugin Architecture | Not Started |
+| Phase 1 | Reconcile Runtime Composition with Plugin Architecture | ✅ Complete |
 | Phase 2 | Repair Importer Abstractions | Not Started |
 | Phase 3 | Fix Importer and Renderer Correctness Risks | Not Started |
 | Phase 4 | Harden Asset Validation and Persistence Boundaries | Not Started |
@@ -333,9 +335,8 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **Architecture Remediation Phase 1: Plugin Architecture** — Reconcile Application.ts with PluginManager. See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)
-2. **Architecture Remediation Phase 2: Importer Abstractions** — Widen IImporter, make ImportController importer-agnostic
-3. **Architecture Remediation Phase 3: Correctness Fixes** — Multi-primitive meshes, fallback normals, renderer extraction
+1. **Architecture Remediation Phase 2: Importer Abstractions** — Widen IImporter, make ImportController importer-agnostic. See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)
+2. **Architecture Remediation Phase 3: Correctness Fixes** — Multi-primitive meshes, fallback normals, renderer extraction
 4. **Architecture Remediation Phases 4–7** — Asset validation, visual testing, UI decomposition, documentation
 5. **GLTF Importer Phase 9: Testing (Integration)** — Integration tests (overlaps with Remediation Phase 3/5)
 6. **Asset Metadata System Phase 5: Texture Support** — .assetmeta for texture imports

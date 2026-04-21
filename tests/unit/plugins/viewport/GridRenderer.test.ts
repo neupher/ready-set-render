@@ -8,13 +8,15 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { EventBus } from '@core/EventBus';
 import { SettingsService } from '@core/SettingsService';
 import { GridRenderer } from '@plugins/viewport/GridRenderer';
-import { createMockGL } from '../../../helpers/webgl-mock';
+import { createMockGL, createMockCanvas } from '../../../helpers/webgl-mock';
+import type { IPluginContext } from '@core/interfaces';
 
 describe('GridRenderer', () => {
   let gl: WebGL2RenderingContext;
   let eventBus: EventBus;
   let settingsService: SettingsService;
   let gridRenderer: GridRenderer;
+  let pluginContext: IPluginContext;
 
   // Mock localStorage
   const localStorageMock = (() => {
@@ -45,11 +47,18 @@ describe('GridRenderer', () => {
       storageKey: 'test-grid-settings',
     });
 
-    gridRenderer = new GridRenderer({
+    pluginContext = {
       gl,
+      canvas: createMockCanvas(gl),
       eventBus,
+      sceneGraph: {} as IPluginContext['sceneGraph'],
+      selectionManager: {} as IPluginContext['selectionManager'],
+      commandHistory: {} as IPluginContext['commandHistory'],
+      assetRegistry: {} as IPluginContext['assetRegistry'],
       settingsService,
-    });
+    };
+
+    gridRenderer = new GridRenderer();
   });
 
   afterEach(() => {
@@ -60,11 +69,17 @@ describe('GridRenderer', () => {
     it('should create a grid renderer instance', () => {
       expect(gridRenderer).toBeDefined();
     });
+
+    it('should have correct plugin metadata', () => {
+      expect(gridRenderer.id).toBe('grid-renderer');
+      expect(gridRenderer.name).toBe('Grid Renderer');
+      expect(gridRenderer.version).toBe('1.0.0');
+    });
   });
 
   describe('initialize', () => {
-    it('should compile shaders and create WebGL resources', () => {
-      gridRenderer.initialize();
+    it('should compile shaders and create WebGL resources', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Should have created a shader program
       expect(gl.createProgram).toHaveBeenCalled();
@@ -75,19 +90,19 @@ describe('GridRenderer', () => {
       expect(gl.createBuffer).toHaveBeenCalled();
     });
 
-    it('should not reinitialize if already initialized', () => {
-      gridRenderer.initialize();
+    it('should not reinitialize if already initialized', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       const callCount = (gl.createProgram as ReturnType<typeof vi.fn>).mock.calls.length;
 
-      gridRenderer.initialize();
+      await gridRenderer.initialize(pluginContext);
 
       // Should not have created another program
       expect((gl.createProgram as ReturnType<typeof vi.fn>).mock.calls.length).toBe(callCount);
     });
 
-    it('should generate initial grid geometry', () => {
-      gridRenderer.initialize();
+    it('should generate initial grid geometry', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Should have uploaded data to buffers
       expect(gl.bufferData).toHaveBeenCalled();
@@ -107,8 +122,8 @@ describe('GridRenderer', () => {
       expect(gl.useProgram).not.toHaveBeenCalled();
     });
 
-    it('should render when visible', () => {
-      gridRenderer.initialize();
+    it('should render when visible', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       const mockCamera = {
         getViewProjectionMatrix: vi.fn(() => new Float32Array(16)),
@@ -124,8 +139,8 @@ describe('GridRenderer', () => {
       expect(gl.drawArrays).toHaveBeenCalled();
     });
 
-    it('should not render when visibility is off', () => {
-      gridRenderer.initialize();
+    it('should not render when visibility is off', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Turn off visibility
       settingsService.set('grid', 'visible', false);
@@ -145,8 +160,8 @@ describe('GridRenderer', () => {
       expect(gl.drawArrays).not.toHaveBeenCalled();
     });
 
-    it('should enable blending for transparency', () => {
-      gridRenderer.initialize();
+    it('should enable blending for transparency', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       const mockCamera = {
         getViewProjectionMatrix: vi.fn(() => new Float32Array(16)),
@@ -158,8 +173,8 @@ describe('GridRenderer', () => {
       expect(gl.enable).toHaveBeenCalledWith(gl.BLEND);
     });
 
-    it('should disable depth writing during render', () => {
-      gridRenderer.initialize();
+    it('should disable depth writing during render', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       const mockCamera = {
         getViewProjectionMatrix: vi.fn(() => new Float32Array(16)),
@@ -171,8 +186,8 @@ describe('GridRenderer', () => {
       expect(gl.depthMask).toHaveBeenCalledWith(false);
     });
 
-    it('should restore depth writing after render', () => {
-      gridRenderer.initialize();
+    it('should restore depth writing after render', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       const mockCamera = {
         getViewProjectionMatrix: vi.fn(() => new Float32Array(16)),
@@ -188,24 +203,28 @@ describe('GridRenderer', () => {
   });
 
   describe('isVisible', () => {
-    it('should return true when grid is visible', () => {
+    it('should return true when grid is visible', async () => {
+      await gridRenderer.initialize(pluginContext);
       expect(gridRenderer.isVisible()).toBe(true);
     });
 
-    it('should return false when grid is hidden', () => {
+    it('should return false when grid is hidden', async () => {
+      await gridRenderer.initialize(pluginContext);
       settingsService.set('grid', 'visible', false);
       expect(gridRenderer.isVisible()).toBe(false);
     });
   });
 
   describe('toggleVisibility', () => {
-    it('should toggle from visible to hidden', () => {
+    it('should toggle from visible to hidden', async () => {
+      await gridRenderer.initialize(pluginContext);
       expect(gridRenderer.isVisible()).toBe(true);
       gridRenderer.toggleVisibility();
       expect(gridRenderer.isVisible()).toBe(false);
     });
 
-    it('should toggle from hidden to visible', () => {
+    it('should toggle from hidden to visible', async () => {
+      await gridRenderer.initialize(pluginContext);
       settingsService.set('grid', 'visible', false);
       expect(gridRenderer.isVisible()).toBe(false);
       gridRenderer.toggleVisibility();
@@ -214,8 +233,8 @@ describe('GridRenderer', () => {
   });
 
   describe('regenerateGrid', () => {
-    it('should regenerate geometry when called', () => {
-      gridRenderer.initialize();
+    it('should regenerate geometry when called', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Clear buffer data calls
       (gl.bufferData as ReturnType<typeof vi.fn>).mockClear();
@@ -228,8 +247,8 @@ describe('GridRenderer', () => {
   });
 
   describe('settings changes', () => {
-    it('should regenerate grid when size changes', () => {
-      gridRenderer.initialize();
+    it('should regenerate grid when size changes', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Clear buffer data calls
       (gl.bufferData as ReturnType<typeof vi.fn>).mockClear();
@@ -240,8 +259,8 @@ describe('GridRenderer', () => {
       expect(gl.bufferData).toHaveBeenCalled();
     });
 
-    it('should regenerate grid when subdivisions change', () => {
-      gridRenderer.initialize();
+    it('should regenerate grid when subdivisions change', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Clear buffer data calls
       (gl.bufferData as ReturnType<typeof vi.fn>).mockClear();
@@ -252,8 +271,8 @@ describe('GridRenderer', () => {
       expect(gl.bufferData).toHaveBeenCalled();
     });
 
-    it('should regenerate grid when colors change', () => {
-      gridRenderer.initialize();
+    it('should regenerate grid when colors change', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Clear buffer data calls
       (gl.bufferData as ReturnType<typeof vi.fn>).mockClear();
@@ -264,8 +283,8 @@ describe('GridRenderer', () => {
       expect(gl.bufferData).toHaveBeenCalled();
     });
 
-    it('should not regenerate grid when opacity changes', () => {
-      gridRenderer.initialize();
+    it('should not regenerate grid when opacity changes', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Clear buffer data calls
       (gl.bufferData as ReturnType<typeof vi.fn>).mockClear();
@@ -278,10 +297,10 @@ describe('GridRenderer', () => {
   });
 
   describe('dispose', () => {
-    it('should delete WebGL resources', () => {
-      gridRenderer.initialize();
+    it('should delete WebGL resources', async () => {
+      await gridRenderer.initialize(pluginContext);
 
-      gridRenderer.dispose();
+      await gridRenderer.dispose();
 
       // Should delete program, VAO, and buffers
       expect(gl.deleteProgram).toHaveBeenCalled();
@@ -289,18 +308,18 @@ describe('GridRenderer', () => {
       expect(gl.deleteBuffer).toHaveBeenCalled();
     });
 
-    it('should allow re-initialization after dispose', () => {
-      gridRenderer.initialize();
-      gridRenderer.dispose();
+    it('should allow re-initialization after dispose', async () => {
+      await gridRenderer.initialize(pluginContext);
+      await gridRenderer.dispose();
 
       // Should be able to initialize again
-      expect(() => gridRenderer.initialize()).not.toThrow();
+      await expect(gridRenderer.initialize(pluginContext)).resolves.not.toThrow();
     });
   });
 
   describe('grid geometry generation', () => {
-    it('should generate lines for both X and Y directions', () => {
-      gridRenderer.initialize();
+    it('should generate lines for both X and Y directions', async () => {
+      await gridRenderer.initialize(pluginContext);
 
       // Check that buffer data was uploaded with vertex positions
       const bufferDataCalls = (gl.bufferData as ReturnType<typeof vi.fn>).mock.calls;
@@ -309,21 +328,21 @@ describe('GridRenderer', () => {
       expect(bufferDataCalls.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('should include axis lines when enabled', () => {
+    it('should include axis lines when enabled', async () => {
       // Axis lines are enabled by default
       expect(settingsService.get('grid', 'showAxisLines')).toBe(true);
 
-      gridRenderer.initialize();
+      await gridRenderer.initialize(pluginContext);
 
       // Grid should include axis indicator lines
       // (This is tested implicitly by the buffer upload)
       expect(gl.bufferData).toHaveBeenCalled();
     });
 
-    it('should exclude axis lines when disabled', () => {
+    it('should exclude axis lines when disabled', async () => {
       settingsService.set('grid', 'showAxisLines', false);
 
-      gridRenderer.initialize();
+      await gridRenderer.initialize(pluginContext);
 
       // Grid should still render, just without axis lines
       expect(gl.bufferData).toHaveBeenCalled();

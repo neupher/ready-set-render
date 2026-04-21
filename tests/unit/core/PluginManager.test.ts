@@ -40,6 +40,11 @@ function createMockContext(): IPluginContext {
     eventBus: new EventBus(),
     canvas,
     gl: mockGL,
+    sceneGraph: {} as IPluginContext['sceneGraph'],
+    selectionManager: {} as IPluginContext['selectionManager'],
+    commandHistory: {} as IPluginContext['commandHistory'],
+    assetRegistry: {} as IPluginContext['assetRegistry'],
+    settingsService: {} as IPluginContext['settingsService'],
   };
 }
 

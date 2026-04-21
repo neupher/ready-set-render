@@ -56,10 +56,8 @@ import { MeshGPUCache } from '../shared/MeshGPUCache';
  * @example
  * ```typescript
  * const forwardRenderer = new ForwardRenderer();
- * forwardRenderer.setLightManager(lightManager);
- * forwardRenderer.setShaderEditorService(shaderEditorService);
  * pluginManager.register(forwardRenderer);
- * await pluginManager.initialize('forward-renderer');
+ * await pluginManager.initializeAll();
  *
  * // In render loop:
  * forwardRenderer.beginFrame(camera);
@@ -106,6 +104,9 @@ export class ForwardRenderer implements IRenderPipeline {
    */
   async initialize(context: IPluginContext): Promise<void> {
     this.gl = context.gl;
+    this.lightManager = context.lightManager ?? null;
+    this.shaderEditorService = context.shaderEditorService ?? null;
+    this.assetRegistry = context.assetRegistry ?? null;
 
     // Create GPU resource cache
     this.meshGPUCache = new MeshGPUCache(this.gl);
@@ -127,28 +128,6 @@ export class ForwardRenderer implements IRenderPipeline {
 
     this.gl = null;
     this.initialized = false;
-  }
-
-  /**
-   * Set the light manager for retrieving active lights.
-   */
-  setLightManager(lightManager: LightManager): void {
-    this.lightManager = lightManager;
-  }
-
-  /**
-   * Set the shader editor service for shader program access.
-   * Required for rendering - all shaders are managed by this service.
-   */
-  setShaderEditorService(service: ShaderEditorService): void {
-    this.shaderEditorService = service;
-  }
-
-  /**
-   * Set the asset registry for material/shader lookups.
-   */
-  setAssetRegistry(registry: AssetRegistry): void {
-    this.assetRegistry = registry;
   }
 
   /**

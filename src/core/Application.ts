@@ -29,6 +29,7 @@ import { SettingsService } from '@core/SettingsService';
 import { SceneController } from '@core/SceneController';
 import { ShaderEditorService } from '@core/ShaderEditorService';
 import { ImportController } from '@core/ImportController';
+import { PluginManager } from '@core/PluginManager';
 
 import { EditorLayout } from '@ui/panels/EditorLayout';
 import { SettingsWindow } from '@ui/windows/SettingsWindow';
@@ -59,6 +60,7 @@ import { setMeshAssetResolver } from '@plugins/primitives/MeshEntity';
 
 import type { RenderCameraAdapter } from '@core/RenderCameraAdapter';
 import type { IMeshAsset } from '@core/assets/interfaces/IMeshAsset';
+import type { IPluginContext } from '@core/interfaces/IPlugin';
 
 /**
  * Configuration options for the Application.
@@ -97,6 +99,7 @@ export class Application {
   private shortcutManager!: KeyboardShortcutManager;
   private primitiveRegistry!: PrimitiveRegistry;
   private settingsService!: SettingsService;
+  private pluginManager!: PluginManager;
 
   // Rendering
   private gl!: WebGL2RenderingContext;
@@ -159,6 +162,11 @@ export class Application {
     // Initialize core modules
     this.eventBus = new EventBus();
     this.sceneGraph = new SceneGraph(this.eventBus);
+    this.selectionManager = new SelectionManager(this.eventBus);
+    this.commandHistory = new CommandHistory({
+      eventBus: this.eventBus,
+      maxStackSize: 100,
+    });
     console.log('Core modules initialized');
 
     // Initialize primitive registry
@@ -216,42 +224,8 @@ export class Application {
     });
     console.log('Mesh asset resolver configured');
 
-    // Initialize GLTF importer
+    // Initialize GLTF import service (used by importer plugin)
     const gltfImportService = new GLTFImportService();
-    const gltfImporter = new GLTFImporter(gltfImportService, assetRegistry, materialFactory);
-
-    // Initialize import controller
-    const importController = new ImportController({
-      eventBus: this.eventBus,
-      sceneGraph: this.sceneGraph,
-      projectService,
-      gltfImporter,
-    });
-
-    // Setup import command handler
-    this.eventBus.on('command:import', async () => {
-      const result = await importController.handleImport();
-      if (!result.success && result.error) {
-        console.error('Import failed:', result.error);
-      }
-    });
-
-    // Setup source file import handler (from project sources folder)
-    this.eventBus.on('sourceFile:importRequested', async (data: { path: string; name: string; format: string }) => {
-      console.log(`Source file import requested: ${data.path}`);
-      const result = await importController.importFromProject(data.path);
-      if (!result.success && result.error) {
-        console.error('Source file import failed:', result.error);
-      } else {
-        // Refresh project to update source file import status
-        await projectService.rescanProject();
-      }
-    });
-    console.log('Import controller initialized');
-
-    // Setup viewport drop handler for drag-and-drop instantiation
-    this.setupViewportDropHandler(assetRegistry, gltfImporter);
-    console.log('Viewport drop handler initialized');
 
     // Create default Cube primitive for testing
     const defaultCube = this.primitiveRegistry.create('Cube');
@@ -301,15 +275,6 @@ export class Application {
     });
     console.log('Settings window initialized');
 
-    // Initialize line renderer (for wireframe mode)
-    this.lineRenderer = new LineRenderer();
-    await this.lineRenderer.initialize({
-      gl: this.gl,
-      eventBus: this.eventBus,
-      canvas: this.layout.getViewport()!.getCanvas(),
-    });
-    console.log('Line renderer initialized');
-
     // Initialize light manager
     this.lightManager = new LightManager({
       eventBus: this.eventBus,
@@ -317,17 +282,69 @@ export class Application {
     });
     console.log('Light manager initialized');
 
-    // Initialize forward renderer (for solid shaded mode)
-    this.forwardRenderer = new ForwardRenderer();
-    this.forwardRenderer.setLightManager(this.lightManager);
-    this.forwardRenderer.setShaderEditorService(shaderEditorService);
-    this.forwardRenderer.setAssetRegistry(assetRegistry);
-    await this.forwardRenderer.initialize({
-      gl: this.gl,
+    // Build plugin context with all shared services
+    const pluginContext: IPluginContext = {
       eventBus: this.eventBus,
-      canvas: this.layout.getViewport()!.getCanvas(),
+      canvas: this.gl.canvas as HTMLCanvasElement,
+      gl: this.gl,
+      sceneGraph: this.sceneGraph,
+      selectionManager: this.selectionManager,
+      commandHistory: this.commandHistory,
+      assetRegistry,
+      settingsService: this.settingsService,
+      lightManager: this.lightManager,
+      shaderEditorService,
+      projectService,
+    };
+
+    // Initialize plugin manager and register all plugins
+    this.pluginManager = new PluginManager(pluginContext);
+
+    this.forwardRenderer = new ForwardRenderer();
+    this.lineRenderer = new LineRenderer();
+    this.gridRenderer = new GridRenderer();
+    const gltfImporter = new GLTFImporter(gltfImportService, assetRegistry, materialFactory);
+
+    this.pluginManager.register(this.forwardRenderer);
+    this.pluginManager.register(this.lineRenderer);
+    this.pluginManager.register(this.gridRenderer);
+    this.pluginManager.register(gltfImporter);
+
+    await this.pluginManager.initializeAll();
+    console.log('Plugin manager initialized all plugins');
+
+    // Initialize import controller (uses the registered gltfImporter plugin)
+    const importController = new ImportController({
+      eventBus: this.eventBus,
+      sceneGraph: this.sceneGraph,
+      projectService,
+      gltfImporter,
     });
-    console.log('Forward renderer initialized');
+
+    // Setup import command handler
+    this.eventBus.on('command:import', async () => {
+      const result = await importController.handleImport();
+      if (!result.success && result.error) {
+        console.error('Import failed:', result.error);
+      }
+    });
+
+    // Setup source file import handler (from project sources folder)
+    this.eventBus.on('sourceFile:importRequested', async (data: { path: string; name: string; format: string }) => {
+      console.log(`Source file import requested: ${data.path}`);
+      const result = await importController.importFromProject(data.path);
+      if (!result.success && result.error) {
+        console.error('Source file import failed:', result.error);
+      } else {
+        // Refresh project to update source file import status
+        await projectService.rescanProject();
+      }
+    });
+    console.log('Import controller initialized');
+
+    // Setup viewport drop handler for drag-and-drop instantiation
+    this.setupViewportDropHandler(assetRegistry, gltfImporter);
+    console.log('Viewport drop handler initialized');
 
     // Create default directional light
     // Direction is now computed from rotation - default [50, -30, 180] gives nice sun angle
@@ -354,15 +371,6 @@ export class Application {
     this.viewportGizmoRenderer.initialize();
     console.log('Viewport gizmo renderer initialized');
 
-    // Initialize grid renderer
-    this.gridRenderer = new GridRenderer({
-      gl: this.gl,
-      eventBus: this.eventBus,
-      settingsService: this.settingsService,
-    });
-    this.gridRenderer.initialize();
-    console.log('Grid renderer initialized');
-
     // Initialize input manager
     const viewportCanvas = this.layout.getViewport()!.getCanvas();
     new InputManager(viewportCanvas, this.eventBus);
@@ -371,17 +379,6 @@ export class Application {
     // Initialize orbit controller
     this.orbitController = new OrbitController(this.cameraEntity, this.eventBus, viewportCanvas);
     console.log('Orbit controller initialized');
-
-    // Initialize selection manager
-    this.selectionManager = new SelectionManager(this.eventBus);
-    console.log('Selection manager initialized');
-
-    // Initialize command history
-    this.commandHistory = new CommandHistory({
-      eventBus: this.eventBus,
-      maxStackSize: 100,
-    });
-    console.log('Command history initialized');
 
     // Initialize scene controller
     this.sceneController = new SceneController({
@@ -540,9 +537,9 @@ export class Application {
   /**
    * Clean up all resources.
    */
-  dispose(): void {
+  async dispose(): Promise<void> {
     this.stopRenderLoop();
-    this.lineRenderer?.dispose?.();
+    await this.pluginManager?.disposeAll();
     this.orbitController?.dispose?.();
     this.isInitialized = false;
     console.log('Application disposed');

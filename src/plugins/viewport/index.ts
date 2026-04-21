@@ -5,4 +5,3 @@
  */
 
 export { GridRenderer } from './GridRenderer';
-export type { GridRendererOptions } from './GridRenderer';

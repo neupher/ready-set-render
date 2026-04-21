@@ -19,9 +19,6 @@
  * ```typescript
  * const importer = new GLTFImporter(importService, assetRegistry, materialFactory);
  *
- * // With project folder integration
- * importer.setProjectService(projectService);
- *
  * if (importer.canImport(file)) {
  *   const result = await importer.import(file, { sourcePath: 'Assets/Models/car.glb' });
  *   // Add root objects - children are already attached
@@ -133,21 +130,11 @@ export class GLTFImporter implements IImporter {
   }
 
   /**
-   * Set the project service for saving .assetmeta files to the project folder.
-   * When set, imported assets will have their .assetmeta saved to the project.
-   *
-   * @param projectService - The project service instance
-   */
-  setProjectService(projectService: ProjectService | null): void {
-    this.projectService = projectService;
-  }
-
-  /**
    * Initialize the importer plugin.
-   * Currently a no-op as the importer doesn't require async initialization.
+   * Reads optional services from the plugin context.
    */
-  async initialize(_context: IPluginContext): Promise<void> {
-    // No async initialization needed
+  async initialize(context: IPluginContext): Promise<void> {
+    this.projectService = context.projectService ?? null;
   }
 
   /**

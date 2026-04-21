@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.16.0] - 2026-04-21
+
+### Changed
+
+- **Architecture Remediation Phase 1: Reconcile Runtime Composition with Plugin Architecture**
+  - **IPluginContext enriched** — expanded from 3 fields (`eventBus`, `canvas`, `gl`) to 11 fields, adding `sceneGraph`, `selectionManager`, `commandHistory`, `assetRegistry`, `settingsService` (required) and `lightManager`, `shaderEditorService`, `projectService` (optional)
+  - **PluginManager wired into Application.ts** — PluginManager is now instantiated, registers 4 plugins (ForwardRenderer, LineRenderer, GridRenderer, GLTFImporter), and calls `initializeAll()` for lifecycle management
+  - **ForwardRenderer setter injection removed** — deleted `setLightManager()`, `setShaderEditorService()`, `setAssetRegistry()`; all dependencies now read from `IPluginContext` in `initialize()`
+  - **GLTFImporter setter injection removed** — deleted `setProjectService()`; `projectService` now read from `IPluginContext` in `initialize()`
+  - **GridRenderer converted to IPlugin** — implements `IPlugin` interface with `id`, `name`, `version`; constructor is now zero-arg; dependencies received via `initialize(context)` instead of constructor options
+  - **Application.ts dispose() now async** — uses `pluginManager.disposeAll()` for proper reverse-order plugin cleanup
+  - **ImportController simplified** — removed dynamic `setProjectService()` call; GLTFImporter handles project state internally
+
+### Removed
+
+- `GridRendererOptions` interface and its export from `plugins/viewport/index.ts`
+- `setLightManager()`, `setShaderEditorService()`, `setAssetRegistry()` from ForwardRenderer
+- `setProjectService()` from GLTFImporter and ImportController
+
+---
+
 ## [0.15.10] - 2026-04-21
 
 ### Added
