@@ -1,13 +1,33 @@
 # Architecture Review
 
-> **Last Updated:** 2026-04-21T13:18:21Z
-> **Status:** Active review document
+> **Last Updated:** 2026-04-21T13:53:00Z
+> **Status:** Active review document — Execution plan created
 
 ---
 
 ## Purpose
 
 This document tracks the current architectural review of the project and highlights the highest-value areas for improvement. New sessions should read this file alongside `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md` to understand the current technical risks, implementation drift, and recommended improvement order.
+
+---
+
+## Execution Plan
+
+A detailed phased execution plan has been created to address all findings in this review:
+
+**[ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)** — 7 phases, ~10–14 sessions
+
+| Phase | Addresses Finding | Status |
+|-------|-------------------|--------|
+| Phase 1 | #1 Runtime composition too centralized | Not Started |
+| Phase 2 | #2 Importer contract drift | Not Started |
+| Phase 3 | #3 GLTF correctness gaps, #4 Renderer responsibilities | Not Started |
+| Phase 4 | #5 Asset integrity boundaries | Not Started |
+| Phase 5 | #7 Visual editor verification | Not Started |
+| Phase 6 | #6 Asset browser oversized | Not Started |
+| Phase 7 | Documentation drift corrections | Not Started |
+
+This plan is the **highest priority** work item in the project. See [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md).
 
 ---
 
@@ -167,10 +187,20 @@ Known mismatches between docs and implementation:
 
 ## Session Note
 
-Any new session reviewing or extending architecture-sensitive areas should read this file before making changes in the following areas:
+Any new session reviewing or extending architecture-sensitive areas should read this file and the [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md) before making changes in the following areas:
 - renderer and pipeline work
 - importer work
 - asset system changes
 - project-folder workflow changes
 - major UI/editor refactors
 - visual test automation and screenshot review workflows
+
+---
+
+## Related Documents
+
+- [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md) — Execution plan for this review
+- [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) — Current project state
+- [GUIDELINES.md](./GUIDELINES.md) — Development rules
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — System design documentation
+- [TESTING.md](./TESTING.md) — Test requirements

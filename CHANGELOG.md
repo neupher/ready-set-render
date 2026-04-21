@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.10] - 2026-04-21
+
+### Added
+
+- **Architecture Remediation Plan** (`ARCHITECTURE_REMEDIATION_PLAN.md`)
+  - 7-phase execution plan addressing architectural drift from the Architecture Review
+  - Phases: Plugin Architecture, Importer Abstractions, Correctness Fixes, Asset Validation, Visual Testing, UI Decomposition, Documentation
+  - Estimated ~10–14 sessions, prioritized as highest-priority work
+
+### Changed
+
+- **PROJECT_CONTEXT.md** — Architecture Remediation added as highest-priority "In Progress" item; Next Steps reordered to prioritize it
+- **Architecture Review.md** — Linked to execution plan with phase-to-finding mapping table
+
+---
+
 ## [0.15.9] - 2026-04-21
 
 ### Added

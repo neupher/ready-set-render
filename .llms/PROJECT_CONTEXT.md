@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-04-21T13:18:21Z
-> **Version:** 0.15.9
-> **Status:** Asset Metadata System Revamp - Phase 4 Complete
+> **Last Updated:** 2026-04-21T14:13:00Z
+> **Version:** 0.15.10
+> **Status:** Architecture Remediation Plan Created
 
 ---
 
@@ -34,7 +34,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.9)
+## Current State (v0.15.10)
 
 ### What's Working
 
@@ -237,6 +237,25 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ## In Progress
 
+### Architecture Remediation (HIGHEST PRIORITY)
+
+Addresses architectural drift identified in [Architecture Review.md](./Architecture%20Review.md). See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md):
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| Phase 1 | Reconcile Runtime Composition with Plugin Architecture | Not Started |
+| Phase 2 | Repair Importer Abstractions | Not Started |
+| Phase 3 | Fix Importer and Renderer Correctness Risks | Not Started |
+| Phase 4 | Harden Asset Validation and Persistence Boundaries | Not Started |
+| Phase 5 | Visual Editor Verification Testing | Not Started |
+| Phase 6 | Split Oversized UI Modules (AssetBrowserTab) | Not Started |
+| Phase 7 | Update Documentation to Match Implementation | Not Started |
+
+**Key Decisions:**
+- Phase 1 must come first (changes composition root)
+- All phases must leave existing tests passing
+- This is refactoring, not rewriting — no user-visible behavior changes
+
 ### Asset Metadata System Revamp
 
 Unity-style `.assetmeta` companion files. See [ASSET_META_SYSTEM_PLAN.md](./ASSET_META_SYSTEM_PLAN.md):
@@ -314,9 +333,13 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow using representative fixtures including `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
-2. **Asset Metadata System Phase 5: Texture Support** - .assetmeta for texture imports
-3. **Phase 6.10: Render Mode Dropdown** - Switch between render pipelines
+1. **Architecture Remediation Phase 1: Plugin Architecture** — Reconcile Application.ts with PluginManager. See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)
+2. **Architecture Remediation Phase 2: Importer Abstractions** — Widen IImporter, make ImportController importer-agnostic
+3. **Architecture Remediation Phase 3: Correctness Fixes** — Multi-primitive meshes, fallback normals, renderer extraction
+4. **Architecture Remediation Phases 4–7** — Asset validation, visual testing, UI decomposition, documentation
+5. **GLTF Importer Phase 9: Testing (Integration)** — Integration tests (overlaps with Remediation Phase 3/5)
+6. **Asset Metadata System Phase 5: Texture Support** — .assetmeta for texture imports
+7. **Phase 6.10: Render Mode Dropdown** — Switch between render pipelines (unblocked by Remediation Phase 1)
 
 ---
 
