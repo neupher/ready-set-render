@@ -1,6 +1,6 @@
 # Testing Guidelines: WebGL Editor
 
-> **Last Updated:** 2026-01-21T17:11:00Z  
+> **Last Updated:** 2026-04-21T13:18:21Z
 > **Version:** 0.1.0
 
 ---
@@ -284,15 +284,15 @@ describe('Plugin Lifecycle', () => {
 describe('Render Pipeline Swap', () => {
   it('should hot-swap render pipelines without errors', async () => {
     const editor = await createTestEditor();
-    
+
     // Start with forward renderer
     editor.settings.set('renderer.pipeline', 'forward');
     await editor.render();
-    
+
     // Swap to deferred
     editor.settings.set('renderer.pipeline', 'deferred');
     await editor.render();
-    
+
     // Verify no errors and correct pipeline active
     expect(editor.getActivePipeline().type).toBe('deferred');
     expect(editor.getErrorLog()).toHaveLength(0);
@@ -322,7 +322,7 @@ describe('Viewport Rendering', () => {
   it('should render a cube correctly', async ({ page }) => {
     await page.goto('/editor');
     await page.click('[data-testid="add-cube"]');
-    
+
     const canvas = page.locator('canvas');
     await expect(canvas).toHaveScreenshot('cube-render.png', {
       maxDiffPixels: 100,
@@ -330,6 +330,13 @@ describe('Viewport Rendering', () => {
   });
 });
 ```
+
+Recommended future visual verification flow:
+
+- Launch the editor in a browser-driven test
+- Load realistic fixtures, including `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+- Capture screenshots and save/cache them as review artifacts
+- Use those cached images for developer review and LLM-assisted verification of rendering and UI behavior
 
 ---
 
@@ -351,14 +358,14 @@ When tests fail, follow this process:
 3. **If test needs modification:**
     ```
     ⛔ STOP - DO NOT MODIFY THE TEST
-    
+
     1. Notify the project owner with:
        - Which test needs modification
        - Why it needs to change
        - What the new expected behavior should be
-    
+
     2. Wait for approval
-    
+
     3. Only then modify the test
     ```
 
@@ -452,12 +459,23 @@ Use sparingly and document why.
 
 ### Model Fixtures
 
-Place test models in `tests/fixtures/models/`:
+Place small test models in `tests/fixtures/models/`:
 
 - `cube.obj` - Simple cube for basic import tests
 - `cube-with-normals.obj` - Cube with explicit normals
 - `simple.gltf` - Minimal glTF scene
 - `complex.gltf` - Scene with multiple meshes
+
+Large test-only model fixture:
+
+- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` - Extensive GLB fixture for importer validation, editor launch testing, and screenshot-based visual review
+
+Fixture rule:
+
+- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` is for tests and manual validation only
+- It must not be imported into `src/`, `public/`, or other production-facing asset paths
+- It must not be bundled into the deployed application or included in GitHub Pages output
+- Use it for integration, E2E, and screenshot-capture workflows where realistic scene complexity is needed
 
 ### Texture Fixtures
 
@@ -491,11 +509,11 @@ describe('Matrix Operations', () => {
 ```typescript
 it('should render 1000 objects in under 16ms', async () => {
   const scene = createSceneWith1000Objects();
-  
+
   const start = performance.now();
   await renderer.render(scene);
   const elapsed = performance.now() - start;
-  
+
   expect(elapsed).toBeLessThan(16);
 });
 ```

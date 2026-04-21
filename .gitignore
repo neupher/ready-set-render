@@ -40,3 +40,6 @@ public/monaco-editor/
 .cache/
 .temp/
 tmp/
+
+# Large test-only fixtures
+/test_assets/studio_setup.glb

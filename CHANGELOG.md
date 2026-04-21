@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.15.9] - 2026-04-21
+
+### Added
+
+- **Architecture review tracking**
+  - Added `/c:/Git/ready-set-render/.llms/Architecture Review.md` to capture current architectural risks, implementation drift, and recommended improvement order
+  - Added session guidance in `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md` so new sessions review the architecture document before making architecture-sensitive changes
+
+### Changed
+
+- **Testing documentation**
+  - Documented screenshot-driven editor launch testing as a recommended future verification workflow in `/c:/Git/ready-set-render/.llms/TESTING.md`
+  - Added large test-only fixture guidance for `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+  - Clarified that `/c:/Git/ready-set-render/test_assets/studio_setup.glb` must not be bundled into deployed application assets
+
+- **Contributor documentation**
+  - Updated `/c:/Git/ready-set-render/README.md` to document the `test_assets/` directory and the deployment constraint for the large GLB fixture
+  - Added `/c:/Git/ready-set-render/.gitignore` rule for `/test_assets/studio_setup.glb` so the large test-only fixture is not accidentally committed or bundled into normal workflows
+
+---
+
 ## [0.15.8] - 2026-03-06
 
 ### Fixed

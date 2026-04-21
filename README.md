@@ -36,6 +36,7 @@ ready-set-render/
 │   ├── ui/                # UI system
 │   └── utils/             # Shared utilities
 ├── tests/                 # Test suites
+├── test_assets/           # Large test-only fixtures, excluded from deployed app assets
 ├── public/                # Static assets
 └── .llms/                 # AI context and guidelines
 ```
@@ -70,6 +71,11 @@ npm test              # Run tests once
 npm run test:watch    # Watch mode
 npm run test:coverage # Generate coverage report
 ```
+
+Large test fixture:
+
+- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` is available for importer, integration, and visual verification work
+- This asset is test-only and must not be bundled into the deployed application or copied into production-facing runtime assets
 
 ## 🚀 Deployment
 

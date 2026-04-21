@@ -1,7 +1,7 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-03-06T17:14:00Z
-> **Version:** 0.15.8
+> **Last Updated:** 2026-04-21T13:18:21Z
+> **Version:** 0.15.9
 > **Status:** Asset Metadata System Revamp - Phase 4 Complete
 
 ---
@@ -9,6 +9,8 @@
 ## Quick Summary
 
 A modular, extensible WebGL2-based 3D editor designed for learning and implementing real-time and ray-tracing rendering techniques. The project emphasizes clean architecture, plugin-based extensibility, and professional-grade UI similar to Unity or Substance Painter.
+
+**Session startup note:** New sessions should also review `/c:/Git/ready-set-render/.llms/Architecture Review.md` before making architecture-sensitive changes. That file tracks current architectural risks, implementation drift, and recommended improvement order.
 
 ---
 
@@ -32,7 +34,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.15.8)
+## Current State (v0.15.9)
 
 ### What's Working
 
@@ -215,6 +217,8 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 - **1423 tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests + SceneGraph command contract tests)
 - **85% coverage thresholds** enforced
 - `SceneGraphCommandContract.test.ts`: API contract validation for command classes
+- Large test-only fixture available at `/c:/Git/ready-set-render/test_assets/studio_setup.glb` for importer, editor launch, and visual verification work
+- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` must remain a test asset only and must not be bundled into the deployed application or copied into production-facing runtime assets
 
 ### Architecture Highlights
 
@@ -310,7 +314,7 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow
+1. **GLTF Importer Phase 9: Testing (Integration)** - Integration tests for full import workflow using representative fixtures including `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
 2. **Asset Metadata System Phase 5: Texture Support** - .assetmeta for texture imports
 3. **Phase 6.10: Render Mode Dropdown** - Switch between render pipelines
 
