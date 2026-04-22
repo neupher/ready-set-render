@@ -18,6 +18,7 @@
  */
 
 import type { IModelAsset, IModelNode, ModelFormat } from './interfaces/IModelAsset';
+import type { IModelAssetMeta, IModelMetaNode } from './interfaces/IModelAssetMeta';
 import type { IMeshAsset } from './interfaces/IMeshAsset';
 import type { IMaterialAsset } from './interfaces/IMaterialAsset';
 import { MODEL_ASSET_VERSION } from './interfaces/IModelAsset';
@@ -67,6 +68,73 @@ export interface IModelCreateOptions {
  * Factory for creating model assets.
  */
 export class ModelAssetFactory {
+  /**
+   * Create a model asset from an existing on-disk `.assetmeta` file.
+   *
+   * Used when loading a project that already contains imported source files —
+   * the meta file holds all the data needed to reconstitute an `IModelAsset`
+   * without re-parsing the source file.
+   *
+   * The returned asset preserves the meta's UUID so scene references stay valid.
+   *
+   * @param meta - The deserialized `.assetmeta` contents
+   * @param sourceFilename - Original source filename (e.g., 'car.glb')
+   * @returns An `IModelAsset` synthesized from the meta
+   */
+  fromMeta(meta: IModelAssetMeta, sourceFilename: string): IModelAsset {
+    const format = this.getFormatFromFilename(sourceFilename);
+    const baseName = this.getBaseNameFromFilename(sourceFilename);
+
+    return {
+      uuid: meta.uuid,
+      name: baseName,
+      type: 'model',
+      version: MODEL_ASSET_VERSION,
+      created: meta.importedAt,
+      modified: meta.importedAt,
+      isBuiltIn: false,
+      source: {
+        filename: sourceFilename,
+        format,
+        importedAt: meta.importedAt,
+      },
+      contents: {
+        meshes: meta.contents.meshes.map((mesh) => ({
+          uuid: mesh.uuid,
+          name: mesh.name,
+          vertexCount: mesh.vertexCount,
+          triangleCount: mesh.triangleCount,
+        })),
+        materials: meta.contents.materials.map((mat) => ({
+          uuid: mat.uuid,
+          name: mat.name,
+        })),
+        textures: [],
+      },
+      hierarchy: meta.hierarchy.map((node) => this.metaNodeToModelNode(node)),
+      description: meta.description,
+    };
+  }
+
+  /**
+   * Convert an `IModelMetaNode` (from `.assetmeta`) to an `IModelNode`
+   * (runtime model asset). The shapes are structurally identical today, but
+   * keeping the conversion explicit guards against drift.
+   */
+  private metaNodeToModelNode(node: IModelMetaNode): IModelNode {
+    return {
+      name: node.name,
+      meshIndex: node.meshIndex,
+      materialIndices: node.materialIndices ? [...node.materialIndices] : undefined,
+      transform: {
+        position: [...node.transform.position],
+        rotation: [...node.transform.rotation],
+        scale: [...node.transform.scale],
+      },
+      children: node.children.map((child) => this.metaNodeToModelNode(child)),
+    };
+  }
+
   /**
    * Create a new model asset from imported data.
    *

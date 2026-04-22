@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-04-21T15:42:00Z
-> **Version:** 0.16.0
-> **Status:** Architecture Remediation Phase 1 Complete
+> **Last Updated:** 2026-04-22T14:30:00Z
+> **Version:** 0.16.1
+> **Status:** Architecture Remediation Phase 2 Complete + Asset Workflow Fixes
 
 ---
 
@@ -214,7 +214,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1424 tests passing** (includes 128 Asset Meta interface tests + Phase 4 inspector tests + SceneGraph command contract tests)
+- **1441 tests passing** (1424 prior + 14 new + 5 rewritten Asset Browser tests)
 - **85% coverage thresholds** enforced
 - `SceneGraphCommandContract.test.ts`: API contract validation for command classes
 - Large test-only fixture available at `/c:/Git/ready-set-render/test_assets/studio_setup.glb` for importer, editor launch, and visual verification work
@@ -246,7 +246,7 @@ Addresses architectural drift identified in [Architecture Review.md](./Architect
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1 | Reconcile Runtime Composition with Plugin Architecture | ✅ Complete |
-| Phase 2 | Repair Importer Abstractions | Not Started |
+| Phase 2 | Repair Importer Abstractions | ✅ Complete |
 | Phase 3 | Fix Importer and Renderer Correctness Risks | Not Started |
 | Phase 4 | Harden Asset Validation and Persistence Boundaries | Not Started |
 | Phase 5 | Visual Editor Verification Testing | Not Started |
@@ -335,12 +335,11 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **Architecture Remediation Phase 2: Importer Abstractions** — Widen IImporter, make ImportController importer-agnostic. See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)
-2. **Architecture Remediation Phase 3: Correctness Fixes** — Multi-primitive meshes, fallback normals, renderer extraction
-4. **Architecture Remediation Phases 4–7** — Asset validation, visual testing, UI decomposition, documentation
-5. **GLTF Importer Phase 9: Testing (Integration)** — Integration tests (overlaps with Remediation Phase 3/5)
-6. **Asset Metadata System Phase 5: Texture Support** — .assetmeta for texture imports
-7. **Phase 6.10: Render Mode Dropdown** — Switch between render pipelines (unblocked by Remediation Phase 1)
+1. **Architecture Remediation Phase 3: Correctness Fixes** — Multi-primitive meshes, fallback normals, MeshGPUCache shader-aware keying, ForwardRenderer extraction. See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)
+2. **Architecture Remediation Phases 4–7** — Asset validation, visual testing, UI decomposition (AssetBrowserTab is now ~1,820 lines after Phase 2 + asset-workflow work — likely a Phase 6 candidate), documentation
+3. **GLTF Importer Phase 9: Testing (Integration)** — Integration tests (overlaps with Remediation Phase 3/5)
+4. **Asset Metadata System Phase 5: Texture Support** — .assetmeta for texture imports
+5. **Phase 6.10: Render Mode Dropdown** — Switch between render pipelines
 
 ---
 

@@ -292,6 +292,24 @@ export interface IProjectService {
   copySourceFile(file: File, subfolder?: string): Promise<string | null>;
 
   /**
+   * Delete a source file (and its companion `.assetmeta`, if present) from
+   * the project folder.
+   *
+   * @param relativePath - Project-relative path (e.g. `sources/models/car.glb`)
+   * @returns True if the source file was deleted
+   */
+  deleteSourceFile(relativePath: string): Promise<boolean>;
+
+  /**
+   * Duplicate a source file in place. The duplicate is placed in the same
+   * directory under a unique name (`<base>_copy<ext>` etc).
+   *
+   * @param relativePath - Project-relative path of the source to duplicate
+   * @returns The new file's project-relative path, or null on failure
+   */
+  duplicateSourceFile(relativePath: string): Promise<string | null>;
+
+  /**
    * Get the root directory handle for the project.
    * Returns null if no project is open.
    *

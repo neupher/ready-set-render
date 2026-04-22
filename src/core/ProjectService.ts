@@ -54,6 +54,9 @@ import type {
 } from './interfaces/IProjectService';
 import type { IAsset, AssetType } from './assets/interfaces';
 import type { IModelAsset } from './assets/interfaces/IModelAsset';
+import type { IModelAssetMeta } from './assets/interfaces/IModelAssetMeta';
+import { AssetMetaService } from './assets/AssetMetaService';
+import { ModelAssetFactory } from './assets/ModelAssetFactory';
 
 /**
  * Supported source file extensions and their types.
@@ -97,6 +100,15 @@ const PROJECT_FILE = 'project.json';
 const LAST_PROJECT_KEY = 'rsr:lastProject';
 
 /**
+ * Minimal interface ProjectService uses to ask an importer to load a
+ * source-backed model from its `.assetmeta`. Decouples ProjectService from
+ * `GLTFImporter`'s concrete implementation and avoids a circular dependency.
+ */
+export interface IModelMetaLoader {
+  loadFromMeta(file: File, meta: IModelAssetMeta): Promise<unknown>;
+}
+
+/**
  * Options for creating a ProjectService.
  */
 export interface ProjectServiceOptions {
@@ -115,10 +127,15 @@ export class ProjectService implements IProjectService {
   private readonly eventBus: EventBus;
   private readonly assetRegistry: AssetRegistry;
   private readonly assetStore: FileSystemAssetStore;
+  private readonly assetMetaService: AssetMetaService;
+  private readonly modelAssetFactory: ModelAssetFactory;
 
   private _projectMetadata: IProjectMetadata | undefined;
   private rootHandle: FileSystemDirectoryHandle | null = null;
   private metadataHandle: FileSystemDirectoryHandle | null = null;
+
+  /** Optional loader for source-backed model metas (set by Application). */
+  private modelMetaLoader: IModelMetaLoader | null = null;
 
   /**
    * Cached source files from the last scan.
@@ -129,6 +146,22 @@ export class ProjectService implements IProjectService {
     this.eventBus = options.eventBus;
     this.assetRegistry = options.assetRegistry;
     this.assetStore = options.assetStore;
+    this.assetMetaService = new AssetMetaService();
+    this.modelAssetFactory = new ModelAssetFactory();
+  }
+
+  /**
+   * Wire the model meta loader (typically the GLTFImporter plugin).
+   *
+   * Called by `Application` after the importer plugin has been constructed
+   * but before the first project is opened. When a loader is registered,
+   * `scanForModelMetas()` will additionally register the derived mesh and
+   * material assets in the registry; without it, only the top-level
+   * `IModelAsset` is registered (sufficient for tree display but not for
+   * instantiation).
+   */
+  setModelMetaLoader(loader: IModelMetaLoader): void {
+    this.modelMetaLoader = loader;
   }
 
   /**
@@ -217,6 +250,11 @@ export class ProjectService implements IProjectService {
       // Scan for assets and register them
       const assets = await this.scanForAssets();
 
+      // Scan source-backed model metas (.glb/.gltf + .assetmeta) and register
+      // synthesized IModelAsset entries so they're visible to the registry on
+      // first open, not only after a fresh import.
+      const modelAssets = await this.scanForModelMetas();
+
       // Scan for source files
       const sourceFiles = await this.scanSourceFiles();
 
@@ -227,16 +265,19 @@ export class ProjectService implements IProjectService {
       this.eventBus.emit<ProjectOpenedEvent>('project:opened', {
         projectName: this._projectMetadata.name,
         projectPath: this.rootHandle.name,
-        assetsDiscovered: assets.length,
+        assetsDiscovered: assets.length + modelAssets.length,
         isNew,
       });
 
-      console.log(`Project opened: ${assets.length} assets, ${sourceFiles.length} source files`);
+      console.log(
+        `Project opened: ${assets.length} assets + ${modelAssets.length} models, ` +
+        `${sourceFiles.length} source files`
+      );
 
       return {
         success: true,
         projectName: this._projectMetadata.name,
-        assetsDiscovered: assets.length,
+        assetsDiscovered: assets.length + modelAssets.length,
         isNew,
       };
     } catch (error) {
@@ -340,6 +381,117 @@ export class ProjectService implements IProjectService {
   }
 
   /**
+   * Scan the project for `.assetmeta` companion files and register the
+   * resulting `IModelAsset`s in the asset registry.
+   *
+   * Walks the **entire** project tree (skipping the metadata folder and any
+   * dot-prefixed directories) so that `.assetmeta` files in `assets/`,
+   * `sources/`, or any other custom folder are all discovered. This matches
+   * `AssetBrowserTab.scanDirectoryForMetas` so the registry and the tree
+   * never disagree about which models exist.
+   *
+   * If a `modelMetaLoader` has been registered, this also asks the loader to
+   * register the derived mesh and material assets (eager load) so that
+   * downstream consumers (instantiation, drag-drop, scene serialization) can
+   * resolve every UUID without needing a fresh import.
+   *
+   * Idempotent — re-running for the same metas replaces existing registrations
+   * (the underlying loader/factory handle UUID collisions).
+   *
+   * @returns The list of registered `IModelAsset`s
+   */
+  async scanForModelMetas(): Promise<IModelAsset[]> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      return [];
+    }
+
+    const discovered: IModelAsset[] = [];
+
+    try {
+      // Walk the whole project root, not just `sources/`, so model metas in
+      // `assets/` (or any other folder) are also picked up.
+      await this.walkForModelMetas(this.rootHandle, '', discovered);
+    } catch (error) {
+      console.error('Failed to scan for model metas:', error);
+    }
+
+    return discovered;
+  }
+
+  /**
+   * Recursively walk a source directory looking for `.assetmeta` files
+   * paired with `.glb` / `.gltf` source files. Found metas are registered
+   * as `IModelAsset`s (and, if a loader is wired, their derived mesh /
+   * material assets too).
+   */
+  private async walkForModelMetas(
+    dirHandle: FileSystemDirectoryHandle,
+    relativePath: string,
+    results: IModelAsset[]
+  ): Promise<void> {
+    try {
+      for await (const [name, handle] of dirHandle.entries()) {
+        if (handle.kind === 'directory') {
+          // Skip hidden and metadata folders
+          if (name.startsWith('.') || name === METADATA_FOLDER) {
+            continue;
+          }
+          const subPath = relativePath ? `${relativePath}/${name}` : name;
+          await this.walkForModelMetas(
+            handle as FileSystemDirectoryHandle,
+            subPath,
+            results
+          );
+          continue;
+        }
+
+        if (handle.kind !== 'file' || !name.endsWith('.assetmeta')) {
+          continue;
+        }
+
+        const sourceFilename = name.replace('.assetmeta', '');
+        const ext = '.' + (sourceFilename.split('.').pop()?.toLowerCase() ?? '');
+        if (ext !== '.glb' && ext !== '.gltf') {
+          continue;
+        }
+
+        const result = await this.assetMetaService.readModelMeta(dirHandle, sourceFilename);
+        if (!result.success || !result.meta) {
+          console.warn(`Failed to read .assetmeta for ${sourceFilename}: ${result.error}`);
+          continue;
+        }
+
+        const meta = result.meta;
+        const sourcePath = relativePath ? `${relativePath}/${sourceFilename}` : sourceFilename;
+
+        // Synthesize and register the IModelAsset (replace any existing one)
+        const modelAsset = this.modelAssetFactory.fromMeta(meta, sourceFilename);
+        if (this.assetRegistry.get(modelAsset.uuid)) {
+          this.assetRegistry.unregister(modelAsset.uuid);
+        }
+        this.assetRegistry.register(modelAsset);
+        results.push(modelAsset);
+
+        // If a loader is wired, eagerly register the derived assets too
+        if (this.modelMetaLoader) {
+          try {
+            const file = await this.readSourceFile(sourcePath);
+            if (file) {
+              await this.modelMetaLoader.loadFromMeta(file, meta);
+            } else {
+              console.warn(`Source file missing for meta: ${sourcePath}`);
+            }
+          } catch (error) {
+            console.error(`Failed to load derived assets for ${sourcePath}:`, error);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to walk directory ${relativePath}:`, error);
+    }
+  }
+
+  /**
    * Scan the project folder for source files (e.g., .glb, .gltf).
    * Source files are the original files that can be imported into the editor.
    */
@@ -402,6 +554,149 @@ export class ProjectService implements IProjectService {
   }
 
   /**
+   * Delete a source file from the project folder.
+   *
+   * Also removes the companion `.assetmeta` file (if present) so the model
+   * disappears entirely from the Asset Browser. Best-effort: a missing
+   * `.assetmeta` is not treated as an error.
+   *
+   * @param relativePath - Project-relative path (e.g. `sources/models/car.glb`)
+   * @returns True if the source file was deleted (the meta companion is best-effort)
+   */
+  async deleteSourceFile(relativePath: string): Promise<boolean> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      console.warn('Cannot delete source file: no project is open');
+      return false;
+    }
+
+    const parts = relativePath.split('/');
+    const fileName = parts.pop();
+    if (!fileName) {
+      console.error('Invalid source file path:', relativePath);
+      return false;
+    }
+
+    let dirHandle: FileSystemDirectoryHandle = this.rootHandle;
+    try {
+      for (const part of parts) {
+        dirHandle = await dirHandle.getDirectoryHandle(part);
+      }
+    } catch (error) {
+      console.error('Failed to navigate to source folder:', relativePath, error);
+      return false;
+    }
+
+    // Best-effort delete the companion .assetmeta first, then the source file
+    try {
+      await this.assetMetaService.deleteMeta(dirHandle, fileName);
+    } catch (error) {
+      // Not fatal — the meta may not exist
+      console.debug(`No .assetmeta to delete for ${fileName}:`, error);
+    }
+
+    try {
+      await dirHandle.removeEntry(fileName);
+      console.log(`Deleted source file: ${relativePath}`);
+      await this.updateProjectModifiedTime();
+      return true;
+    } catch (error) {
+      console.error('Failed to delete source file:', relativePath, error);
+      return false;
+    }
+  }
+
+  /**
+   * Duplicate a source file in place under a unique filename.
+   *
+   * The duplicate is placed in the same directory as the source. A `_copy`
+   * (or `_copy_N`) suffix is appended before the extension. The companion
+   * `.assetmeta` is **not** copied — callers that want a fully-imported
+   * duplicate should re-run the importer on the new file (which generates
+   * fresh UUIDs and writes a new `.assetmeta`).
+   *
+   * @param relativePath - Project-relative path of the source to duplicate
+   * @returns The new file's project-relative path, or null on failure
+   */
+  async duplicateSourceFile(relativePath: string): Promise<string | null> {
+    if (!this.isProjectOpen || !this.rootHandle) {
+      console.warn('Cannot duplicate source file: no project is open');
+      return null;
+    }
+
+    const file = await this.readSourceFile(relativePath);
+    if (!file) {
+      console.warn('Cannot duplicate: source file not found:', relativePath);
+      return null;
+    }
+
+    const parts = relativePath.split('/');
+    const originalFileName = parts.pop();
+    if (!originalFileName) {
+      return null;
+    }
+    const directory = parts.join('/');
+
+    // Navigate to the destination directory
+    let dirHandle: FileSystemDirectoryHandle = this.rootHandle;
+    try {
+      for (const part of parts) {
+        dirHandle = await dirHandle.getDirectoryHandle(part);
+      }
+    } catch (error) {
+      console.error('Failed to navigate to source folder:', relativePath, error);
+      return null;
+    }
+
+    // Find a unique filename: car.glb → car_copy.glb → car_copy_1.glb → ...
+    const dotIndex = originalFileName.lastIndexOf('.');
+    const baseName = dotIndex > 0 ? originalFileName.slice(0, dotIndex) : originalFileName;
+    const ext = dotIndex > 0 ? originalFileName.slice(dotIndex) : '';
+
+    const candidates = (function* (): Generator<string> {
+      yield `${baseName}_copy${ext}`;
+      for (let i = 1; i < 100; i++) {
+        yield `${baseName}_copy_${i}${ext}`;
+      }
+    })();
+
+    let uniqueName: string | null = null;
+    for (const candidate of candidates) {
+      try {
+        await dirHandle.getFileHandle(candidate);
+        // File exists; try the next candidate
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+          uniqueName = candidate;
+          break;
+        }
+        // Other errors propagate
+        console.error('Failed to probe destination filename:', candidate, error);
+        return null;
+      }
+    }
+
+    if (!uniqueName) {
+      console.error('Failed to find a unique duplicate name within 100 attempts');
+      return null;
+    }
+
+    try {
+      const fileHandle = await dirHandle.getFileHandle(uniqueName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+
+      const newRelativePath = directory ? `${directory}/${uniqueName}` : uniqueName;
+      console.log(`Duplicated source file: ${relativePath} → ${newRelativePath}`);
+      await this.updateProjectModifiedTime();
+      return newRelativePath;
+    } catch (error) {
+      console.error('Failed to write duplicate source file:', error);
+      return null;
+    }
+  }
+
+  /**
    * Read a source file from the project folder.
    */
   async readSourceFile(relativePath: string): Promise<File | null> {
@@ -455,16 +750,22 @@ export class ProjectService implements IProjectService {
     // Rescan assets
     const assets = await this.scanForAssets();
 
+    // Rescan source-backed model metas
+    const modelAssets = await this.scanForModelMetas();
+
     // Rescan source files
     const sourceFiles = await this.scanSourceFiles();
 
     // Emit refresh event
     this.eventBus.emit<ProjectRefreshedEvent>('project:refreshed', {
-      assetsDiscovered: assets.length,
+      assetsDiscovered: assets.length + modelAssets.length,
       sourceFilesDiscovered: sourceFiles.length,
     });
 
-    console.log(`Project rescanned: ${assets.length} assets, ${sourceFiles.length} source files`);
+    console.log(
+      `Project rescanned: ${assets.length} assets + ${modelAssets.length} models, ` +
+      `${sourceFiles.length} source files`
+    );
   }
 
   /**

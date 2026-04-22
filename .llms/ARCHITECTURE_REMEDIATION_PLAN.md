@@ -1,8 +1,8 @@
 # Architecture Remediation Plan
 
-> **Last Updated:** 2026-04-21T15:42:00Z
-> **Version:** 0.1.1
-> **Status:** Phase 1 Complete
+> **Last Updated:** 2026-04-22T14:30:00Z
+> **Version:** 0.1.2
+> **Status:** Phase 1 + Phase 2 Complete
 > **Priority:** Highest — Execute before new feature work
 > **Source:** [Architecture Review.md](./Architecture%20Review.md)
 
@@ -107,9 +107,9 @@ Replace the manual plugin construction with PluginManager registration:
 
 ---
 
-### Phase 2: Repair Importer Abstractions
+### Phase 2: Repair Importer Abstractions ✅ COMPLETE
 
-**Estimated Effort:** ~1–2 sessions
+**Completed:** 2026-04-22 (v0.16.1)
 **Risk Level:** Medium (interface changes, but single consumer)
 **Goal:** IImporter and ImportController support multiple importers without code changes.
 

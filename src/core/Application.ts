@@ -313,13 +313,18 @@ export class Application {
     await this.pluginManager.initializeAll();
     console.log('Plugin manager initialized all plugins');
 
-    // Initialize import controller (uses the registered gltfImporter plugin)
+    // Wire the GLTFImporter as the project's model-meta loader so that
+    // opening a project re-creates IModelAsset / IMeshAsset / IMaterialAsset
+    // entries for every `.assetmeta` discovered in `sources/`.
+    projectService.setModelMetaLoader(gltfImporter);
+
+    // Initialize import controller (importer-agnostic; importers are registered below)
     const importController = new ImportController({
       eventBus: this.eventBus,
       sceneGraph: this.sceneGraph,
       projectService,
-      gltfImporter,
     });
+    importController.registerImporter(gltfImporter);
 
     // Setup import command handler
     this.eventBus.on('command:import', async () => {
@@ -345,6 +350,16 @@ export class Application {
     // Setup viewport drop handler for drag-and-drop instantiation
     this.setupViewportDropHandler(assetRegistry, gltfImporter);
     console.log('Viewport drop handler initialized');
+
+    // Setup asset commands (modelMeta:addToScene/reimport/delete + asset:duplicateRequested)
+    this.setupAssetCommands(
+      assetRegistry,
+      projectService,
+      gltfImporter,
+      materialFactory,
+      shaderFactory
+    );
+    console.log('Asset commands controller initialized');
 
     // Create default directional light
     // Direction is now computed from rotation - default [50, -30, 180] gives nice sun angle
@@ -704,6 +719,163 @@ export class Application {
       const { MeshEntity } = await import('@plugins/primitives/MeshEntity');
       const { CreateEntityCommand } = await import('@core/commands');
       this.instantiateModel(data.modelUuid, assetRegistry, gltfImporter, MeshEntity, CreateEntityCommand);
+    });
+  }
+
+  /**
+   * Subscribe handlers for the Asset Browser's source-backed asset actions:
+   * - `modelMeta:addToScene` — instantiate the model in the scene
+   * - `modelMeta:reimport` — re-parse the source `.glb` and update derived assets
+   * - `modelMeta:delete`   — remove the source file + companion `.assetmeta` from disk
+   * - `asset:duplicateRequested` — copy the asset on disk (model) or in-memory (material/shader)
+   *
+   * Each handler emits `project:refreshed` (typically via `rescanProject()`)
+   * so the Asset Browser, which already listens to that event, refreshes its
+   * tree.
+   */
+  private setupAssetCommands(
+    assetRegistry: AssetRegistry,
+    projectService: ProjectService,
+    gltfImporter: GLTFImporter,
+    materialFactory: MaterialAssetFactory,
+    shaderFactory: ShaderAssetFactory
+  ): void {
+    type ModelMetaPayload = {
+      meta: import('@core/assets/interfaces/IModelAssetMeta').IModelAssetMeta;
+      filename: string;
+      directory: string;
+    };
+
+    const sourcePathOf = (p: ModelMetaPayload): string =>
+      p.directory ? `${p.directory}/${p.filename}` : p.filename;
+
+    // Add to Scene — reuse the existing model:instantiate path
+    this.eventBus.on('modelMeta:addToScene', async (data: ModelMetaPayload) => {
+      const { MeshEntity } = await import('@plugins/primitives/MeshEntity');
+      const { CreateEntityCommand } = await import('@core/commands');
+      this.instantiateModel(
+        data.meta.uuid,
+        assetRegistry,
+        gltfImporter,
+        MeshEntity,
+        CreateEntityCommand
+      );
+    });
+
+    // Reimport — read the source file, run reimport (preserves UUIDs), refresh project
+    this.eventBus.on('modelMeta:reimport', async (data: ModelMetaPayload) => {
+      const path = sourcePathOf(data);
+      try {
+        const file = await projectService.readSourceFile(path);
+        if (!file) {
+          console.error(`Reimport failed: source file not found at ${path}`);
+          return;
+        }
+        await gltfImporter.reimport(file, data.meta);
+        await projectService.rescanProject();
+        console.log(`Reimported model: ${path}`);
+      } catch (error) {
+        console.error('Reimport failed:', error);
+      }
+    });
+
+    // Delete — unregister derived assets, delete source + .assetmeta from disk, refresh
+    this.eventBus.on('modelMeta:delete', async (data: ModelMetaPayload) => {
+      const path = sourcePathOf(data);
+      try {
+        // Unregister the model and all its derived assets from the registry
+        const idsToUnregister = [
+          data.meta.uuid,
+          ...data.meta.contents.meshes.map(m => m.uuid),
+          ...data.meta.contents.materials.map(m => m.uuid),
+        ];
+        for (const id of idsToUnregister) {
+          if (assetRegistry.get(id)) {
+            assetRegistry.unregister(id);
+          }
+        }
+
+        // Delete from disk (source file + .assetmeta companion)
+        const deleted = await projectService.deleteSourceFile(path);
+        if (!deleted) {
+          console.warn(`Delete returned false for ${path}; tree will still refresh.`);
+        }
+
+        // Refresh tree
+        await projectService.rescanProject();
+        console.log(`Deleted model: ${path}`);
+      } catch (error) {
+        console.error('Delete failed:', error);
+      }
+    });
+
+    // Duplicate — generic dispatcher routed by `kind`
+    this.eventBus.on('asset:duplicateRequested', async (data: {
+      kind: 'modelMeta' | 'material' | 'shader';
+      id: string;
+      sourcePath?: string;
+    }) => {
+      try {
+        if (data.kind === 'modelMeta') {
+          if (!data.sourcePath) {
+            console.error('Duplicate model requires sourcePath');
+            return;
+          }
+          const newPath = await projectService.duplicateSourceFile(data.sourcePath);
+          if (!newPath) {
+            console.error('Duplicate failed: could not copy source file');
+            return;
+          }
+          // Run the importer on the new file — generates fresh UUIDs and writes .assetmeta
+          const file = await projectService.readSourceFile(newPath);
+          if (file) {
+            await gltfImporter.import(file, { sourcePath: newPath });
+          }
+          await projectService.rescanProject();
+          console.log(`Duplicated model: ${data.sourcePath} → ${newPath}`);
+          return;
+        }
+
+        if (data.kind === 'material') {
+          const original = assetRegistry.get(data.id);
+          if (!original || original.type !== 'material') {
+            console.warn(`Duplicate material: source not found (${data.id})`);
+            return;
+          }
+          const copy = materialFactory.duplicate(
+            original as import('@core/assets/interfaces/IMaterialAsset').IMaterialAsset,
+            `${original.name} (Copy)`
+          );
+          assetRegistry.register(copy);
+          if (projectService.isProjectOpen) {
+            await projectService.saveAsset(copy);
+          }
+          console.log(`Duplicated material: ${original.name} → ${copy.name}`);
+          return;
+        }
+
+        if (data.kind === 'shader') {
+          const original = assetRegistry.get(data.id);
+          if (!original || original.type !== 'shader') {
+            console.warn(`Duplicate shader: source not found (${data.id})`);
+            return;
+          }
+          const copy = shaderFactory.duplicate(
+            original as import('@core/assets/interfaces/IShaderAsset').IShaderAsset,
+            `${original.name} (Copy)`
+          );
+          assetRegistry.register(copy);
+          if (projectService.isProjectOpen) {
+            await projectService.saveAsset(copy);
+          }
+          console.log(`Duplicated shader: ${original.name} → ${copy.name}`);
+          return;
+        }
+
+        console.warn(`Unknown duplicate kind: ${(data as { kind: string }).kind}`);
+      } catch (error) {
+        console.error('Duplicate failed:', error);
+      }
     });
   }
 

@@ -2,10 +2,10 @@
  * ImportController - Handles 3D model import workflow
  *
  * Manages the import process for 3D models:
- * 1. Shows file picker dialog for .glb/.gltf files
+ * 1. Shows file picker dialog (accepting all extensions registered importers support)
  * 2. Validates project is open (or prompts user to open one)
- * 3. Runs the appropriate importer
- * 4. Adds imported objects to the scene
+ * 3. Routes the file to the first registered importer that can handle it
+ * 4. Adds imported entities to the scene and emits `import:complete`
  *
  * Triggered by:
  * - File menu → Import
@@ -17,8 +17,11 @@
  *   eventBus,
  *   sceneGraph,
  *   projectService,
- *   gltfImporter,
  * });
+ *
+ * // Register one or more importers (typically after pluginManager.initializeAll())
+ * importController.registerImporter(gltfImporter);
+ * importController.registerImporter(objImporter);
  *
  * // Handle import command
  * eventBus.on('command:import', () => importController.handleImport());
@@ -28,7 +31,7 @@
 import type { EventBus } from '@core/EventBus';
 import type { SceneGraph } from '@core/SceneGraph';
 import type { ProjectService } from '@core/ProjectService';
-import type { GLTFImporter } from '@plugins/importers/gltf/GLTFImporter';
+import type { IImporter, ImportOptions, ImportResult } from '@core/interfaces';
 
 /**
  * Result of an import operation.
@@ -38,7 +41,7 @@ export interface ImportOperationResult {
   success: boolean;
   /** Error message if import failed */
   error?: string;
-  /** Number of objects imported */
+  /** Number of entities imported */
   objectCount?: number;
   /** Number of mesh assets created */
   meshAssetCount?: number;
@@ -54,12 +57,10 @@ export interface ImportOperationResult {
 export interface ImportControllerOptions {
   /** Event bus for inter-module communication */
   eventBus: EventBus;
-  /** Scene graph for adding imported objects */
+  /** Scene graph for adding imported entities */
   sceneGraph: SceneGraph;
   /** Project service for checking project state */
   projectService: ProjectService;
-  /** GLTF importer plugin */
-  gltfImporter: GLTFImporter;
 }
 
 /**
@@ -75,18 +76,33 @@ interface FilePickerOptions {
 
 /**
  * Controller for handling 3D model import operations.
+ *
+ * Importer-agnostic: importers are registered via {@link registerImporter} and
+ * routed to by file extension via their {@link IImporter.canImport} method.
+ * Adding a new importer requires zero changes to this class.
  */
 export class ImportController {
   private readonly eventBus: EventBus;
   private readonly sceneGraph: SceneGraph;
   private readonly projectService: ProjectService;
-  private readonly gltfImporter: GLTFImporter;
+  private readonly importers: IImporter[] = [];
 
   constructor(options: ImportControllerOptions) {
     this.eventBus = options.eventBus;
     this.sceneGraph = options.sceneGraph;
     this.projectService = options.projectService;
-    this.gltfImporter = options.gltfImporter;
+  }
+
+  /**
+   * Register an importer with the controller.
+   *
+   * Importers are matched against incoming files in registration order;
+   * the first importer whose `canImport()` returns true wins.
+   *
+   * @param importer - The importer plugin to register
+   */
+  registerImporter(importer: IImporter): void {
+    this.importers.push(importer);
   }
 
   /**
@@ -113,15 +129,16 @@ export class ImportController {
         }
       }
 
-      // Determine which importer to use
-      if (this.gltfImporter.canImport(file)) {
-        return await this.importWithGLTF(file);
+      // Find a matching importer and run it
+      const importer = this.findImporter(file);
+      if (!importer) {
+        return {
+          success: false,
+          error: `Unsupported file format: ${file.name}`,
+        };
       }
 
-      return {
-        success: false,
-        error: `Unsupported file format: ${file.name}`,
-      };
+      return await this.runImporter(importer, file);
     } catch (error) {
       // Handle user cancellation (AbortError)
       if (error instanceof Error && error.name === 'AbortError') {
@@ -146,14 +163,15 @@ export class ImportController {
    */
   async importFile(file: File): Promise<ImportOperationResult> {
     try {
-      if (this.gltfImporter.canImport(file)) {
-        return await this.importWithGLTF(file);
+      const importer = this.findImporter(file);
+      if (!importer) {
+        return {
+          success: false,
+          error: `Unsupported file format: ${file.name}`,
+        };
       }
 
-      return {
-        success: false,
-        error: `Unsupported file format: ${file.name}`,
-      };
+      return await this.runImporter(importer, file);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Import failed:', errorMessage);
@@ -192,15 +210,17 @@ export class ImportController {
 
       console.log(`Importing from project source: ${sourcePath}`);
 
-      // Use the standard import flow
-      if (this.gltfImporter.canImport(file)) {
-        return await this.importWithGLTF(file);
+      const importer = this.findImporter(file);
+      if (!importer) {
+        return {
+          success: false,
+          error: `Unsupported file format: ${file.name}`,
+        };
       }
 
-      return {
-        success: false,
-        error: `Unsupported file format: ${file.name}`,
-      };
+      // Pass the project-relative path so importers that persist companion
+      // metadata write it next to the actual source file.
+      return await this.runImporter(importer, file, { sourcePath });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Import from project failed:', errorMessage);
@@ -212,7 +232,43 @@ export class ImportController {
   }
 
   /**
-   * Show the file picker dialog for 3D model files.
+   * Find the first registered importer that can handle the given file.
+   *
+   * @param file - The file to match
+   * @returns The matching importer, or null if none can handle the file
+   */
+  private findImporter(file: File): IImporter | null {
+    return this.importers.find(importer => importer.canImport(file)) ?? null;
+  }
+
+  /**
+   * Build the file picker `accept` map from all registered importers.
+   * Each importer contributes one entry with its display name and extensions.
+   */
+  private buildFilePickerTypes(): FilePickerOptions['types'] {
+    return this.importers.map(importer => ({
+      description: `${importer.name} (${importer.supportedExtensions.join(', ')})`,
+      accept: {
+        'application/octet-stream': [...importer.supportedExtensions],
+      },
+    }));
+  }
+
+  /**
+   * Build the comma-separated accept list for the fallback file picker.
+   */
+  private buildFallbackAcceptList(): string {
+    const exts = new Set<string>();
+    for (const importer of this.importers) {
+      for (const ext of importer.supportedExtensions) {
+        exts.add(ext);
+      }
+    }
+    return Array.from(exts).join(',');
+  }
+
+  /**
+   * Show the file picker dialog for files supported by registered importers.
    *
    * @returns The selected file or null if cancelled
    */
@@ -223,16 +279,14 @@ export class ImportController {
       return this.showFallbackFilePicker();
     }
 
+    const types = this.buildFilePickerTypes();
+    if (types.length === 0) {
+      console.warn('No importers registered; cannot show file picker.');
+      return null;
+    }
+
     const options: FilePickerOptions = {
-      types: [
-        {
-          description: 'glTF Models (.glb, .gltf)',
-          accept: {
-            'model/gltf-binary': ['.glb'],
-            'model/gltf+json': ['.gltf'],
-          },
-        },
-      ],
+      types,
       multiple: false,
     };
 
@@ -251,7 +305,7 @@ export class ImportController {
     return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = '.glb,.gltf';
+      input.accept = this.buildFallbackAcceptList();
 
       input.onchange = () => {
         const file = input.files?.[0] ?? null;
@@ -302,44 +356,55 @@ export class ImportController {
   }
 
   /**
-   * Import a file using the GLTF importer.
+   * Run an importer against a file and integrate the result into the scene.
+   *
+   * Adds entities to the scene graph, emits `import:complete`, and computes
+   * an `ImportOperationResult` with per-asset-type counts derived from the
+   * importer's returned `assets` array.
    */
-  private async importWithGLTF(file: File): Promise<ImportOperationResult> {
-    console.log(`Importing GLTF file: ${file.name}`);
+  private async runImporter(
+    importer: IImporter,
+    file: File,
+    options?: ImportOptions
+  ): Promise<ImportOperationResult> {
+    console.log(`Importing ${file.name} with ${importer.name}`);
 
-    const result = await this.gltfImporter.import(file);
+    const result: ImportResult = await importer.import(file, options);
 
     // Log warnings
     if (result.warnings.length > 0) {
       console.warn('Import warnings:', result.warnings);
     }
 
-    // Add objects to scene
-    for (const obj of result.objects) {
-      this.sceneGraph.add(obj);
+    // Add entities to scene
+    for (const entity of result.entities) {
+      this.sceneGraph.add(entity);
     }
+
+    const meshAssetCount = result.assets.filter(a => a.type === 'mesh').length;
+    const materialAssetCount = result.assets.filter(a => a.type === 'material').length;
 
     // Emit import complete event
     this.eventBus.emit('import:complete', {
       filename: file.name,
-      objectCount: result.objects.length,
-      meshAssetCount: result.meshAssets.length,
-      materialAssetCount: result.materialAssets.length,
-      assetMetaId: result.assetMeta?.uuid,
+      objectCount: result.entities.length,
+      meshAssetCount,
+      materialAssetCount,
+      assetMetaId: result.primaryAssetId,
     });
 
     console.log(
-      `Import complete: ${result.objects.length} objects, ` +
-      `${result.meshAssets.length} mesh assets, ` +
-      `${result.materialAssets.length} material assets` +
+      `Import complete: ${result.entities.length} objects, ` +
+      `${meshAssetCount} mesh assets, ` +
+      `${materialAssetCount} material assets` +
       (this.projectService.isProjectOpen ? ' (saved to project)' : '')
     );
 
     return {
       success: true,
-      objectCount: result.objects.length,
-      meshAssetCount: result.meshAssets.length,
-      materialAssetCount: result.materialAssets.length,
+      objectCount: result.entities.length,
+      meshAssetCount,
+      materialAssetCount,
       warnings: result.warnings,
     };
   }

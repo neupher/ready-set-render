@@ -522,4 +522,146 @@ describe('ModelAssetFactory', () => {
       expect((contents.materials as unknown[]).length).toBe(2);
     });
   });
+
+  describe('fromMeta', () => {
+    /**
+     * Build a minimal IModelAssetMeta with two meshes, two materials, and
+     * a one-level hierarchy. Used by all fromMeta tests.
+     */
+    function createMockMeta(): import('../../../src/core/assets/interfaces/IModelAssetMeta').IModelAssetMeta {
+      return {
+        version: 1,
+        uuid: 'model-uuid-from-meta',
+        type: 'model',
+        importedAt: '2026-03-04T12:00:00.000Z',
+        sourceHash: 'size:1234:mtime:1709553600000',
+        isDirty: false,
+        sourcePath: 'sources/models/car.glb',
+        importSettings: {
+          scaleFactor: 1.0,
+          convertCoordinates: { sourceUp: 'Y', convertToZUp: true },
+          meshes: {
+            generateNormals: true,
+            normalAngleThreshold: 60,
+            generateTangents: true,
+            weldVertices: false,
+            weldThreshold: 0.0001,
+            optimizeMesh: true,
+          },
+          materials: {
+            importMaterials: true,
+            namePrefix: '',
+            extractTextures: true,
+          },
+          animations: {
+            importAnimations: true,
+            animationNamePrefix: '',
+            sampleRate: 30,
+          },
+        },
+        contents: {
+          meshes: [
+            { uuid: 'mesh-uuid-1', name: 'Body', sourceIndex: 0, vertexCount: 3, triangleCount: 1 },
+            { uuid: 'mesh-uuid-2', name: 'Wheels', sourceIndex: 1, vertexCount: 4, triangleCount: 2 },
+          ],
+          materials: [
+            { uuid: 'material-uuid-1', name: 'CarPaint', sourceIndex: 0, isOverridden: false },
+            { uuid: 'material-uuid-2', name: 'Rubber', sourceIndex: 1, isOverridden: false },
+          ],
+        },
+        hierarchy: [
+          {
+            name: 'Root',
+            meshIndex: 0,
+            materialIndices: [0],
+            transform: {
+              position: [1, 2, 3],
+              rotation: [0, 0, 0],
+              scale: [1, 1, 1],
+            },
+            children: [
+              {
+                name: 'Wheel',
+                meshIndex: 1,
+                materialIndices: [1],
+                transform: {
+                  position: [0, 0, 0],
+                  rotation: [0, 0, 0],
+                  scale: [1, 1, 1],
+                },
+                children: [],
+              },
+            ],
+          },
+        ],
+      };
+    }
+
+    it('preserves the meta UUID on the synthesized model', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'car.glb');
+      expect(model.uuid).toBe('model-uuid-from-meta');
+    });
+
+    it('derives the model name from the source filename', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'cool_car.glb');
+      expect(model.name).toBe('cool_car');
+    });
+
+    it('copies derived mesh references with vertex/triangle counts', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'car.glb');
+      expect(model.contents.meshes).toHaveLength(2);
+      expect(model.contents.meshes[0]).toMatchObject({
+        uuid: 'mesh-uuid-1',
+        name: 'Body',
+        vertexCount: 3,
+        triangleCount: 1,
+      });
+    });
+
+    it('copies derived material references', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'car.glb');
+      expect(model.contents.materials).toHaveLength(2);
+      expect(model.contents.materials[1]).toMatchObject({
+        uuid: 'material-uuid-2',
+        name: 'Rubber',
+      });
+    });
+
+    it('converts the meta hierarchy to model nodes recursively', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'car.glb');
+      expect(model.hierarchy).toHaveLength(1);
+      expect(model.hierarchy[0].name).toBe('Root');
+      expect(model.hierarchy[0].meshIndex).toBe(0);
+      expect(model.hierarchy[0].transform.position).toEqual([1, 2, 3]);
+      expect(model.hierarchy[0].children).toHaveLength(1);
+      expect(model.hierarchy[0].children[0].name).toBe('Wheel');
+    });
+
+    it('produces independent transform arrays (no aliasing with the meta)', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'car.glb');
+      // Mutate the model's transform; the meta must remain unchanged.
+      model.hierarchy[0].transform.position[0] = 999;
+      expect(meta.hierarchy[0].transform.position[0]).toBe(1);
+    });
+
+    it('marks the asset as not built-in', () => {
+      const meta = createMockMeta();
+      const model = factory.fromMeta(meta, 'car.glb');
+      expect(model.isBuiltIn).toBe(false);
+    });
+
+    it('infers the format from the filename extension', () => {
+      const meta = createMockMeta();
+      const glbModel = factory.fromMeta(meta, 'car.glb');
+      const gltfModel = factory.fromMeta(meta, 'car.gltf');
+      expect(glbModel.source.format).toBe('glb');
+      expect(gltfModel.source.format).toBe('gltf');
+    });
+  });
 });

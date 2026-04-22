@@ -27,12 +27,14 @@
  * ```
  */
 
-import type { IImporter, ImportResult, ISceneObject } from '@core/interfaces';
+import type { IImporter, ImportOptions, ImportResult } from '@core/interfaces';
+import type { IEntity } from '@core/interfaces/IEntity';
 import type { IPluginContext } from '@core/interfaces/IPlugin';
 import type { AssetRegistry } from '@core/assets/AssetRegistry';
 import type { MaterialAssetFactory } from '@core/assets/MaterialAssetFactory';
 import type { IMaterialAsset } from '@core/assets/interfaces/IMaterialAsset';
 import type { IMeshAsset } from '@core/assets/interfaces/IMeshAsset';
+import type { IModelAsset } from '@core/assets/interfaces/IModelAsset';
 import type { IAssetReference } from '@core/assets/interfaces/IAssetReference';
 import type { ProjectService } from '@core/ProjectService';
 import type { IModelAssetMeta, IModelImportSettings } from '@core/assets/interfaces/IModelAssetMeta';
@@ -43,6 +45,7 @@ import { BUILT_IN_SHADER_IDS } from '@core/assets/BuiltInShaders';
 import { AssetMetaService } from '@core/assets/AssetMetaService';
 import { SourceHashService } from '@core/assets/SourceHashService';
 import { ModelAssetMetaFactory } from '@core/assets/ModelAssetMetaFactory';
+import { ModelAssetFactory } from '@core/assets/ModelAssetFactory';
 import {
   GLTFImportService,
   type IGLTFMeshData,
@@ -52,41 +55,18 @@ import {
 
 /**
  * Options for importing a GLTF file.
+ *
+ * Extends the standard `ImportOptions` with GLTF-specific overrides.
+ * GLTF-specific `importSettings` are also accepted via the inherited
+ * `settings` field, but the typed property is preferred for type safety.
  */
-export interface GLTFImportOptions {
+export interface GLTFImportOptions extends ImportOptions {
   /**
-   * Relative path where the source file is located (or will be placed).
-   * Example: "Assets/Models/car.glb"
-   * If not provided, file will be treated as external (no .assetmeta created).
-   */
-  sourcePath?: string;
-
-  /**
-   * Custom import settings to override defaults.
+   * Custom GLTF import settings to override defaults.
+   * Equivalent to passing `settings: { ...importSettings }` via the
+   * generic `ImportOptions.settings` field.
    */
   importSettings?: Partial<IModelImportSettings>;
-
-  /**
-   * Whether to skip creating .assetmeta file (useful for preview imports).
-   * Default: false
-   */
-  skipMeta?: boolean;
-}
-
-/**
- * Extended import result that includes asset metadata information.
- */
-export interface GLTFImportResult extends ImportResult {
-  /** The mesh assets created during import (in-memory only, not saved separately) */
-  meshAssets: IMeshAsset[];
-  /** The material assets created during import (in-memory only, read-only from .glb) */
-  materialAssets: IMaterialAsset[];
-  /** The model asset metadata (if .assetmeta was created) */
-  assetMeta?: IModelAssetMeta;
-  /** Mesh references for scene entity binding */
-  meshRefs: IDerivedMeshRef[];
-  /** Material references for scene entity binding */
-  materialRefs: IDerivedMaterialRef[];
 }
 
 /**
@@ -107,6 +87,7 @@ export class GLTFImporter implements IImporter {
   private readonly assetMetaService: AssetMetaService;
   private readonly sourceHashService: SourceHashService;
   private readonly modelMetaFactory: ModelAssetMetaFactory;
+  private readonly modelAssetFactory: ModelAssetFactory;
   private projectService: ProjectService | null = null;
 
   /**
@@ -127,6 +108,7 @@ export class GLTFImporter implements IImporter {
     this.assetMetaService = new AssetMetaService();
     this.sourceHashService = new SourceHashService();
     this.modelMetaFactory = new ModelAssetMetaFactory();
+    this.modelAssetFactory = new ModelAssetFactory();
   }
 
   /**
@@ -169,9 +151,9 @@ export class GLTFImporter implements IImporter {
    *
    * @param file - The file to import
    * @param options - Import options (sourcePath, settings, etc.)
-   * @returns Import result with scene objects and warnings
+   * @returns Standard ImportResult with entities, assets, primaryAssetId, warnings
    */
-  async import(file: File, options: GLTFImportOptions = {}): Promise<GLTFImportResult> {
+  async import(file: File, options: GLTFImportOptions = {}): Promise<ImportResult> {
     // Parse the GLTF file
     const gltfResult = await this.importService.import(file);
 
@@ -181,13 +163,19 @@ export class GLTFImporter implements IImporter {
     // Determine the source path
     const sourcePath = options.sourcePath || file.name;
 
+    // Resolve GLTF-specific import settings: prefer typed `importSettings`,
+    // fall back to the generic `settings` field for cross-importer callers.
+    const importSettings =
+      options.importSettings ??
+      (options.settings as Partial<IModelImportSettings> | undefined);
+
     // Create the asset meta (this generates UUIDs for meshes/materials)
     const assetMeta = this.modelMetaFactory.createFromGLTFResult(
       gltfResult,
       file.name,
       sourcePath,
       sourceHash,
-      options.importSettings
+      importSettings
     );
 
     // Create mesh assets using UUIDs from the meta
@@ -210,27 +198,96 @@ export class GLTFImporter implements IImporter {
       this.assetRegistry.register(material);
     }
 
+    // Synthesize an IModelAsset and register it so downstream consumers
+    // (instantiation, drag-and-drop, scene serialization) can look up the
+    // model by its UUID. Idempotent — a previously registered model with the
+    // same UUID is replaced.
+    const modelAsset = this.modelAssetFactory.fromMeta(assetMeta, file.name);
+    if (this.assetRegistry.get(modelAsset.uuid)) {
+      this.assetRegistry.unregister(modelAsset.uuid);
+    }
+    this.assetRegistry.register(modelAsset);
+
     // Save .assetmeta to project folder if available
     if (!options.skipMeta && this.projectService?.isProjectOpen) {
       await this.saveAssetMeta(file.name, sourcePath, assetMeta);
     }
 
     // Create scene objects from hierarchy
-    const objects = this.createSceneObjects(
+    const entities = this.createSceneObjects(
       gltfResult.hierarchy,
       meshAssets,
       materialAssets
     );
 
     return {
-      objects,
+      entities,
+      assets: [modelAsset, ...meshAssets, ...materialAssets],
+      primaryAssetId: assetMeta.uuid,
       warnings: gltfResult.warnings,
-      meshAssets,
-      materialAssets,
-      assetMeta,
-      meshRefs: assetMeta.contents.meshes,
-      materialRefs: assetMeta.contents.materials,
     };
+  }
+
+  /**
+   * Load a previously-imported `.glb`/`.gltf` using its existing `.assetmeta`.
+   *
+   * Used when reopening a project: the source file and meta both already
+   * exist on disk; we just need to repopulate the in-memory `AssetRegistry`
+   * (model + derived meshes/materials) with the UUIDs preserved from the meta.
+   *
+   * Does not write the `.assetmeta`; does not touch the source file. Idempotent
+   * — re-running for the same UUIDs replaces the existing registry entries.
+   *
+   * @param file - The source file (read by the caller from project sources)
+   * @param existingMeta - The deserialized companion `.assetmeta` contents
+   * @returns The registered mesh, material, and model assets
+   */
+  async loadFromMeta(
+    file: File,
+    existingMeta: IModelAssetMeta
+  ): Promise<{
+    meshAssets: IMeshAsset[];
+    materialAssets: IMaterialAsset[];
+    modelAsset: IModelAsset;
+  }> {
+    // Parse the source file
+    const gltfResult = await this.importService.import(file);
+
+    // Create mesh assets with UUIDs preserved from the meta
+    const meshAssets = this.createMeshAssets(
+      gltfResult.meshes,
+      existingMeta.contents.meshes
+    );
+
+    // Create material assets with UUIDs preserved from the meta
+    const materialAssets = this.createMaterialAssets(
+      gltfResult.materials,
+      existingMeta.contents.materials
+    );
+
+    // Replace any existing registrations for these UUIDs (idempotent reload)
+    for (const mesh of meshAssets) {
+      if (this.assetRegistry.get(mesh.uuid)) {
+        this.assetRegistry.unregister(mesh.uuid);
+      }
+      this.assetRegistry.register(mesh);
+    }
+    for (const material of materialAssets) {
+      if (this.assetRegistry.get(material.uuid)) {
+        this.assetRegistry.unregister(material.uuid);
+      }
+      this.assetRegistry.register(material);
+    }
+
+    // Synthesize and register the IModelAsset (no parse-of-source needed —
+    // the meta carries the same data)
+    const modelAsset = this.modelAssetFactory.fromMeta(existingMeta, file.name);
+    if (this.assetRegistry.get(modelAsset.uuid)) {
+      this.assetRegistry.unregister(modelAsset.uuid);
+    }
+    this.assetRegistry.register(modelAsset);
+
+    return { meshAssets, materialAssets, modelAsset };
   }
 
   /**
@@ -239,12 +296,12 @@ export class GLTFImporter implements IImporter {
    *
    * @param file - The source file to reimport
    * @param existingMeta - The existing asset meta to update
-   * @returns Import result with updated data
+   * @returns Standard ImportResult with entities, assets, primaryAssetId, warnings
    */
   async reimport(
     file: File,
     existingMeta: IModelAssetMeta
-  ): Promise<GLTFImportResult> {
+  ): Promise<ImportResult> {
     // Parse the GLTF file with existing settings
     const gltfResult = await this.importService.import(file);
 
@@ -296,26 +353,30 @@ export class GLTFImporter implements IImporter {
       this.assetRegistry.register(material);
     }
 
+    // Replace the IModelAsset registration with the updated metadata
+    const modelAsset = this.modelAssetFactory.fromMeta(updatedMeta, file.name);
+    if (this.assetRegistry.get(modelAsset.uuid)) {
+      this.assetRegistry.unregister(modelAsset.uuid);
+    }
+    this.assetRegistry.register(modelAsset);
+
     // Save updated .assetmeta
     if (this.projectService?.isProjectOpen) {
       await this.saveAssetMeta(file.name, existingMeta.sourcePath, updatedMeta);
     }
 
     // Create scene objects
-    const objects = this.createSceneObjects(
+    const entities = this.createSceneObjects(
       gltfResult.hierarchy,
       meshAssets,
       materialAssets
     );
 
     return {
-      objects,
+      entities,
+      assets: [modelAsset, ...meshAssets, ...materialAssets],
+      primaryAssetId: updatedMeta.uuid,
       warnings: gltfResult.warnings,
-      meshAssets,
-      materialAssets,
-      assetMeta: updatedMeta,
-      meshRefs: updatedMeta.contents.meshes,
-      materialRefs: updatedMeta.contents.materials,
     };
   }
 
@@ -427,28 +488,28 @@ export class GLTFImporter implements IImporter {
   }
 
   /**
-   * Create scene objects from GLTF hierarchy, preserving parent-child relationships.
-   * Returns only root-level objects; children are attached to their parents.
+   * Create scene entities from GLTF hierarchy, preserving parent-child relationships.
+   * Returns only root-level entities; children are attached to their parents.
    */
   private createSceneObjects(
     hierarchy: IGLTFNodeData[],
     meshAssets: IMeshAsset[],
     materialAssets: IMaterialAsset[]
-  ): ISceneObject[] {
-    const rootObjects: ISceneObject[] = [];
+  ): IEntity[] {
+    const rootEntities: IEntity[] = [];
 
     for (const node of hierarchy) {
-      const sceneObject = this.createNodeWithHierarchy(
+      const entity = this.createNodeWithHierarchy(
         node,
         meshAssets,
         materialAssets
       );
-      if (sceneObject) {
-        rootObjects.push(sceneObject);
+      if (entity) {
+        rootEntities.push(entity);
       }
     }
 
-    return rootObjects;
+    return rootEntities;
   }
 
   /**
@@ -465,31 +526,31 @@ export class GLTFImporter implements IImporter {
     node: IGLTFNodeData,
     meshAssets: IMeshAsset[],
     materialAssets: IMaterialAsset[]
-  ): ISceneObject | null {
-    let sceneObject: ISceneObject;
+  ): IEntity | null {
+    let entity: IEntity;
 
     // Create appropriate object type based on whether node has a mesh
     if (node.meshIndex !== undefined) {
       const meshAsset = meshAssets[node.meshIndex];
       if (meshAsset) {
-        const entity = new MeshEntity(undefined, node.name);
+        const meshEntity = new MeshEntity(undefined, node.name);
 
         // Set mesh asset reference
-        entity.meshAssetRef = {
+        meshEntity.meshAssetRef = {
           uuid: meshAsset.uuid,
           type: 'mesh',
         } as IAssetReference;
 
         // Apply local transform (relative to parent)
-        entity.transform.position = [...node.transform.position];
-        entity.transform.rotation = [...node.transform.rotation];
-        entity.transform.scale = [...node.transform.scale];
+        meshEntity.transform.position = [...node.transform.position];
+        meshEntity.transform.rotation = [...node.transform.rotation];
+        meshEntity.transform.scale = [...node.transform.scale];
 
         // Apply material if available
         if (node.materialIndices && node.materialIndices.length > 0) {
           const materialAsset = materialAssets[node.materialIndices[0]];
           if (materialAsset) {
-            const materialComponent = entity.getComponent('material');
+            const materialComponent = meshEntity.getComponent('material');
             if (materialComponent) {
               (materialComponent as { materialAssetRef?: IAssetReference }).materialAssetRef = {
                 uuid: materialAsset.uuid,
@@ -499,13 +560,14 @@ export class GLTFImporter implements IImporter {
           }
         }
 
-        sceneObject = entity;
+        entity = meshEntity;
       } else {
         // Mesh asset not found, create empty group
-        sceneObject = new GroupEntity(node.name);
-        sceneObject.transform.position = [...node.transform.position];
-        sceneObject.transform.rotation = [...node.transform.rotation];
-        sceneObject.transform.scale = [...node.transform.scale];
+        const group = new GroupEntity(node.name);
+        group.transform.position = [...node.transform.position];
+        group.transform.rotation = [...node.transform.rotation];
+        group.transform.scale = [...node.transform.scale];
+        entity = group;
       }
     } else {
       // No mesh - create a group node if it has children
@@ -514,26 +576,27 @@ export class GLTFImporter implements IImporter {
         return null;
       }
 
-      sceneObject = new GroupEntity(node.name);
-      sceneObject.transform.position = [...node.transform.position];
-      sceneObject.transform.rotation = [...node.transform.rotation];
-      sceneObject.transform.scale = [...node.transform.scale];
+      const group = new GroupEntity(node.name);
+      group.transform.position = [...node.transform.position];
+      group.transform.rotation = [...node.transform.rotation];
+      group.transform.scale = [...node.transform.scale];
+      entity = group;
     }
 
     // Recursively create and attach children
     for (const childNode of node.children) {
-      const childObject = this.createNodeWithHierarchy(
+      const childEntity = this.createNodeWithHierarchy(
         childNode,
         meshAssets,
         materialAssets
       );
-      if (childObject) {
+      if (childEntity) {
         // Set up parent-child relationship
-        childObject.parent = sceneObject;
-        sceneObject.children.push(childObject);
+        childEntity.parent = entity;
+        entity.children.push(childEntity);
       }
     }
 
-    return sceneObject;
+    return entity;
   }
 }

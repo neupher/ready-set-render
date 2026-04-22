@@ -6,15 +6,49 @@
  */
 
 import type { IPlugin } from './IPlugin';
-import type { ISceneObject } from './ISceneObject';
+import type { IEntity } from './IEntity';
+import type { IAsset } from '../assets/interfaces/IAsset';
 
 /**
- * Import result containing the imported object(s) and any warnings.
+ * Options accepted by an importer's `import()` method.
+ *
+ * Importers may interpret these fields in their own way:
+ * - `sourcePath` is the project-relative path of the file (when known) and is
+ *   used by importers that persist companion metadata next to the source.
+ * - `settings` carries importer-specific overrides (e.g. GLTF import settings).
+ * - `skipMeta` lets callers request a transient import that does not write
+ *   any companion files (useful for previews).
+ */
+export interface ImportOptions {
+  /** Project-relative path of the source file (e.g. `Assets/Models/car.glb`). */
+  sourcePath?: string;
+  /** Importer-specific override settings. */
+  settings?: Record<string, unknown>;
+  /** Skip writing any persistent metadata (e.g. `.assetmeta`) for this import. */
+  skipMeta?: boolean;
+}
+
+/**
+ * Standard import result shape returned by every importer.
+ *
+ * - `entities` are scene-ready objects the caller should add to the scene graph.
+ * - `assets` are the asset registry entries created during the import (meshes,
+ *   materials, etc.). The caller is responsible for nothing else — assets are
+ *   already registered in the AssetRegistry by the importer.
+ * - `primaryAssetId` is an opaque UUID that identifies the "primary" asset
+ *   produced by the import (e.g. the model `.assetmeta` UUID for GLTF imports).
+ *   Downstream consumers may surface this in events/UI; importers that have no
+ *   such concept may omit it.
+ * - `warnings` are non-fatal issues encountered during the import.
  */
 export interface ImportResult {
-  /** The imported scene object(s) */
-  objects: ISceneObject[];
-  /** Any warnings encountered during import */
+  /** Entities created from the import (ready to add to the scene graph). */
+  entities: IEntity[];
+  /** Assets registered with the AssetRegistry during the import. */
+  assets: IAsset[];
+  /** Optional UUID identifying the primary asset created by this import. */
+  primaryAssetId?: string;
+  /** Non-fatal issues encountered during the import. */
   warnings: string[];
 }
 
@@ -25,6 +59,9 @@ export interface ImportResult {
  * @example
  * ```typescript
  * class OBJImporter implements IImporter {
+ *   readonly id = 'obj-importer';
+ *   readonly name = 'OBJ Importer';
+ *   readonly version = '1.0.0';
  *   readonly supportedExtensions = ['.obj', '.mtl'];
  *
  *   canImport(file: File): boolean {
@@ -33,8 +70,8 @@ export interface ImportResult {
  *     );
  *   }
  *
- *   async import(file: File): Promise<ImportResult> {
- *     // Parse OBJ file and return scene objects
+ *   async import(file: File, options?: ImportOptions): Promise<ImportResult> {
+ *     // Parse OBJ file, register assets, return entities + assets
  *   }
  * }
  * ```
@@ -52,11 +89,16 @@ export interface IImporter extends IPlugin {
   canImport(file: File): boolean;
 
   /**
-   * Import a file and return scene objects.
+   * Import a file and return the resulting entities and assets.
+   *
+   * Implementations must register any produced assets with the AssetRegistry
+   * before returning. The caller is responsible for adding `entities` to the
+   * scene graph.
    *
    * @param file - The file to import
+   * @param options - Optional import options (sourcePath, settings, skipMeta)
    * @returns Promise resolving to the import result
    * @throws Error if import fails
    */
-  import(file: File): Promise<ImportResult>;
+  import(file: File, options?: ImportOptions): Promise<ImportResult>;
 }

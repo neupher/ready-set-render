@@ -242,87 +242,264 @@ export class AssetBrowserTab {
 
   /**
    * Refresh the asset list from the registry.
+   *
+   * Walks the project root once, building the tree directly from the actual
+   * on-disk folder structure. Populates `cachedModelMetas` as a side effect
+   * so downstream lookups (e.g. `findCachedMeta`) keep working.
    */
   async refresh(): Promise<void> {
-    // Scan for .assetmeta files if we have the service and project is open
+    // Eagerly drop the meta cache so a re-render that happens before the
+    // async disk walk completes does not display stale data.
+    this.cachedModelMetas = [];
+
+    let projectChildren: TreeNode[] = [];
+
     if (this.assetMetaService && this.projectService?.isProjectOpen) {
-      await this.scanForAssetMetas();
-    } else {
-      this.cachedModelMetas = [];
+      const rootHandle = this.projectService.getProjectHandle();
+      if (rootHandle) {
+        const result = await this.walkProjectFolder(rootHandle);
+        this.cachedModelMetas = result.metas;
+        projectChildren = result.children;
+      }
     }
 
-    const treeData = this.buildTreeData();
+    const treeData = this.buildTreeData(projectChildren);
     this.treeView.setData(treeData);
   }
 
   /**
-   * Scan the project for .assetmeta files and cache them.
+   * Walk the project root recursively and build tree nodes that mirror the
+   * actual on-disk folder structure.
+   *
+   * Skips dot-prefixed directories (`.ready-set-render`) and the special
+   * `node_modules` folder. For each `.assetmeta` file found, also collects
+   * a `CachedModelMeta` entry so `findCachedMeta` keeps working.
    */
-  private async scanForAssetMetas(): Promise<void> {
-    if (!this.projectService || !this.assetMetaService) {
-      this.cachedModelMetas = [];
-      return;
-    }
-
-    const rootHandle = this.projectService.getProjectHandle();
-    if (!rootHandle) {
-      this.cachedModelMetas = [];
-      return;
-    }
-
+  private async walkProjectFolder(
+    rootHandle: FileSystemDirectoryHandle
+  ): Promise<{ children: TreeNode[]; metas: CachedModelMeta[] }> {
     const metas: CachedModelMeta[] = [];
-
-    // Scan the project directory recursively for .assetmeta files
-    await this.scanDirectoryForMetas(rootHandle, '', metas);
-
-    this.cachedModelMetas = metas;
+    const children = await this.walkDirectory(rootHandle, '', metas);
+    return { children, metas };
   }
 
   /**
-   * Recursively scan a directory for .assetmeta files.
+   * Recursively walk a directory, producing tree nodes for each subdirectory
+   * and recognised file. Returns the child nodes for the directory.
    */
-  private async scanDirectoryForMetas(
+  private async walkDirectory(
     dirHandle: FileSystemDirectoryHandle,
     relativePath: string,
-    results: CachedModelMeta[]
-  ): Promise<void> {
-    if (!this.assetMetaService) {
-      return;
-    }
+    metas: CachedModelMeta[]
+  ): Promise<TreeNode[]> {
+    const dirNodes: TreeNode[] = [];
+    const fileNodes: TreeNode[] = [];
+
+    // Pass 1: collect directory and file entries (we need to know which
+    // `.assetmeta` companions exist before deciding whether to render
+    // a `.glb` as an unimported source node).
+    const directories: { name: string; handle: FileSystemDirectoryHandle }[] = [];
+    const files: string[] = [];
+    const fileNamesSet = new Set<string>();
 
     try {
       for await (const [name, handle] of dirHandle.entries()) {
         if (handle.kind === 'directory') {
-          // Skip hidden directories and common non-asset directories
+          // Skip hidden / metadata / convention folders
           if (name.startsWith('.') || name === 'node_modules') {
             continue;
           }
-
-          // Recurse into subdirectory
-          const subPath = relativePath ? `${relativePath}/${name}` : name;
-          await this.scanDirectoryForMetas(handle as FileSystemDirectoryHandle, subPath, results);
-        } else if (handle.kind === 'file' && name.endsWith('.assetmeta')) {
-          // Found an .assetmeta file - try to read it
-          const sourceFilename = name.replace('.assetmeta', '');
-
-          // Check if it's a model file
-          const ext = this.getFileExtension(sourceFilename);
-          if (['.glb', '.gltf'].includes(ext)) {
-            const result = await this.assetMetaService.readModelMeta(dirHandle, sourceFilename);
-            if (result.success && result.meta) {
-              results.push({
-                meta: result.meta,
-                filename: sourceFilename,
-                directory: relativePath,
-              });
-            }
-          }
+          directories.push({ name, handle: handle as FileSystemDirectoryHandle });
+        } else if (handle.kind === 'file') {
+          files.push(name);
+          fileNamesSet.add(name);
         }
       }
     } catch (error) {
-      // Ignore permission errors and continue scanning
-      console.warn(`Failed to scan directory ${relativePath}:`, error);
+      console.warn(`Failed to read directory ${relativePath || '<root>'}:`, error);
+      return [];
     }
+
+    // Pass 2: build child directory nodes recursively
+    for (const dir of directories.sort((a, b) => a.name.localeCompare(b.name))) {
+      const subPath = relativePath ? `${relativePath}/${dir.name}` : dir.name;
+      const grandchildren = await this.walkDirectory(dir.handle, subPath, metas);
+      dirNodes.push({
+        id: `__folder__${subPath}`,
+        name: dir.name,
+        type: 'group',
+        selectable: false,
+        children: grandchildren,
+      });
+    }
+
+    // Pass 3: build file nodes, skipping `.glb`/`.gltf` source files that
+    // already have a sibling `.assetmeta` (those are represented by the
+    // model node built from the meta).
+    for (const filename of files.sort((a, b) => a.localeCompare(b))) {
+      const fileNode = await this.buildFileNode(
+        filename,
+        relativePath,
+        dirHandle,
+        fileNamesSet,
+        metas
+      );
+      if (fileNode) {
+        fileNodes.push(fileNode);
+      }
+    }
+
+    // Directories first, then files (folder-mirror display convention)
+    return [...dirNodes, ...fileNodes];
+  }
+
+  /**
+   * Build a tree node for a single file based on its extension.
+   *
+   * - `.assetmeta` → expandable model node with derived meshes/materials.
+   * - `.material.json` / `.shader.json` / `.scene.json` → asset node (looked
+   *   up in the registry by UUID extracted from the filename).
+   * - `.glb` / `.gltf` without a sibling `.assetmeta` → unimported source.
+   * - Anything else → null (silently skipped).
+   */
+  private async buildFileNode(
+    filename: string,
+    dirPath: string,
+    dirHandle: FileSystemDirectoryHandle,
+    siblingFileNames: Set<string>,
+    metas: CachedModelMeta[]
+  ): Promise<TreeNode | null> {
+    if (filename.endsWith('.assetmeta')) {
+      return this.buildModelMetaNode(filename, dirPath, dirHandle, metas);
+    }
+
+    if (filename.endsWith('.material.json')) {
+      const uuid = filename.replace('.material.json', '');
+      const asset = this.assetRegistry.get(uuid) as IMaterialAsset | undefined;
+      if (!asset) return null;
+      return {
+        id: asset.uuid,
+        name: asset.name,
+        type: 'material',
+        draggable: true,
+        assetType: 'material',
+      };
+    }
+
+    if (filename.endsWith('.shader.json')) {
+      const uuid = filename.replace('.shader.json', '');
+      const asset = this.assetRegistry.get(uuid) as IShaderAsset | undefined;
+      if (!asset) return null;
+      return {
+        id: asset.uuid,
+        name: asset.name,
+        type: 'texture', // Tree icon convention used elsewhere for shaders
+      };
+    }
+
+    if (filename.endsWith('.scene.json')) {
+      const uuid = filename.replace('.scene.json', '');
+      const asset = this.assetRegistry.get(uuid);
+      if (!asset) return null;
+      return {
+        id: asset.uuid,
+        name: asset.name,
+        type: 'group',
+      };
+    }
+
+    // Source files: only show if there is no sibling `.assetmeta` (otherwise
+    // the model meta node represents both the source and the import).
+    const lower = filename.toLowerCase();
+    if (lower.endsWith('.glb') || lower.endsWith('.gltf')) {
+      if (siblingFileNames.has(`${filename}.assetmeta`)) {
+        return null;
+      }
+      const fullPath = dirPath ? `${dirPath}/${filename}` : filename;
+      return {
+        id: `${SOURCE_FILE_PREFIX}${fullPath}`,
+        name: `${filename} (not imported)`,
+        type: 'mesh',
+        draggable: false,
+      };
+    }
+
+    // Unrecognised file types are skipped for now.
+    return null;
+  }
+
+  /**
+   * Read an `.assetmeta` file and build the corresponding model tree node
+   * with derived materials/meshes children. Also pushes a `CachedModelMeta`
+   * entry into the supplied accumulator so other code paths can resolve
+   * the meta by UUID.
+   */
+  private async buildModelMetaNode(
+    metaFilename: string,
+    dirPath: string,
+    dirHandle: FileSystemDirectoryHandle,
+    metas: CachedModelMeta[]
+  ): Promise<TreeNode | null> {
+    if (!this.assetMetaService) {
+      return null;
+    }
+
+    const sourceFilename = metaFilename.replace('.assetmeta', '');
+    const ext = this.getFileExtension(sourceFilename);
+    if (!['.glb', '.gltf'].includes(ext)) {
+      return null;
+    }
+
+    const result = await this.assetMetaService.readModelMeta(dirHandle, sourceFilename);
+    if (!result.success || !result.meta) {
+      return null;
+    }
+
+    const cached: CachedModelMeta = {
+      meta: result.meta,
+      filename: sourceFilename,
+      directory: dirPath,
+    };
+    metas.push(cached);
+
+    const meta = cached.meta;
+    const children: TreeNode[] = [];
+
+    if (meta.contents.materials.length > 0) {
+      children.push({
+        id: `${MODEL_META_PREFIX}${meta.uuid}:materials`,
+        name: `Materials (${meta.contents.materials.length})`,
+        type: 'group',
+        selectable: false,
+        children: meta.contents.materials.map((matRef) =>
+          this.buildDerivedMaterialNode(matRef, meta.uuid)
+        ),
+      });
+    }
+
+    if (meta.contents.meshes.length > 0) {
+      children.push({
+        id: `${MODEL_META_PREFIX}${meta.uuid}:meshes`,
+        name: `Meshes (${meta.contents.meshes.length})`,
+        type: 'group',
+        selectable: false,
+        children: meta.contents.meshes.map((meshRef) =>
+          this.buildDerivedMeshNode(meshRef, meta.uuid)
+        ),
+      });
+    }
+
+    const statusIndicator = meta.isDirty ? ' ⚠️' : ' ✓';
+
+    return {
+      id: `${MODEL_META_PREFIX}${meta.uuid}`,
+      name: `${sourceFilename}${statusIndicator}`,
+      type: 'model',
+      draggable: true,
+      assetType: 'model',
+      dragId: meta.uuid,
+      children: children.length > 0 ? children : undefined,
+    };
   }
 
   /**
@@ -486,6 +663,12 @@ export class AssetBrowserTab {
 
   /**
    * Handle refresh button click.
+   *
+   * Forces a full re-read from disk:
+   * - Clears the in-app `.assetmeta` cache immediately.
+   * - Tells the project service to clear the registry's user assets and
+   *   re-scan all disk-backed assets and source files.
+   * - Logs a concise summary so the user can confirm the rescan ran.
    */
   private async handleRefreshClick(): Promise<void> {
     if (this.isRefreshing || !this.projectService?.isProjectOpen) {
@@ -496,7 +679,20 @@ export class AssetBrowserTab {
     this.updateRefreshButtonState();
 
     try {
+      // Eagerly clear the meta cache so the tree shows an empty state until
+      // the rescan repopulates from disk. Provides immediate visual feedback.
+      const beforeCount = this.cachedModelMetas.length;
+      this.cachedModelMetas = [];
+      this.treeView.setData(this.buildTreeData());
+
       await this.projectService.rescanProject();
+
+      // The rescan emits 'project:refreshed' which our setupEvents listener
+      // handles by calling refresh() — that does the disk walk and re-render.
+      const afterCount = this.cachedModelMetas.length;
+      console.log(
+        `Asset Browser refreshed: ${beforeCount} → ${afterCount} model meta(s) on disk`
+      );
     } catch (error) {
       console.error('Failed to refresh project:', error);
     } finally {
@@ -529,27 +725,24 @@ export class AssetBrowserTab {
   }
 
   /**
-   * Build tree data from the asset registry.
-   * Shows Built-in section and Project folder structure mirroring actual disk layout.
+   * Build top-level tree data: Built-in section + Project section.
+   *
+   * The Project section's children are computed from the actual on-disk
+   * folder structure (passed in by `refresh()` after walking the project
+   * root), so the tree mirrors what's really on disk.
    */
-  private buildTreeData(): TreeNode[] {
+  private buildTreeData(projectChildren: TreeNode[] = []): TreeNode[] {
     const materials = this.assetRegistry.getByType<IMaterialAsset>('material');
     const shaders = this.assetRegistry.getByType<IShaderAsset>('shader');
-    const models = this.assetRegistry.getByType<IModelAsset>('model');
 
-    // Separate built-in from user assets
+    // Built-in assets are not on disk; render from registry.
     const builtInMaterials = materials.filter((m) => m.isBuiltIn);
     const builtInShaders = shaders.filter((s) => s.isBuiltIn);
-    const userMaterials = materials.filter((m) => !m.isBuiltIn);
-    const userShaders = shaders.filter((s) => !s.isBuiltIn);
-    const userModels = models;
 
-    // Sort alphabetically
     const sortByName = <T extends IAsset>(assets: T[]): T[] => {
       return [...assets].sort((a, b) => a.name.localeCompare(b.name));
     };
 
-    // Build Built-in section nodes
     const builtInMaterialNodes: TreeNode[] = sortByName(builtInMaterials).map((m) => ({
       id: m.uuid,
       name: m.name,
@@ -565,236 +758,40 @@ export class AssetBrowserTab {
     const isProjectOpen = this.projectService?.isProjectOpen ?? false;
     const projectName = this.projectService?.projectName ?? 'Project';
 
-    // Update no-project message visibility
     this.updateNoProjectMessageVisibility(!isProjectOpen);
-
-    // Update toolbar visibility
     this.updateToolbarVisibility();
 
-    // Build project folder structure (mirrors actual disk layout)
-    const projectChildren: TreeNode[] = [];
-    if (isProjectOpen) {
-      // assets/ folder
-      const assetsFolder = this.buildAssetsFolderNode(userMaterials, userShaders, userModels);
-      projectChildren.push(assetsFolder);
-
-      // Note: sources/ folder is NOT shown in the UI
-      // Source files (.glb, .gltf) are displayed under assets/models after import
-    }
-
-    // Build the tree structure
-    const tree: TreeNode[] = [
-      // Built-in Section (always visible)
+    return [
       {
         id: SECTION_IDS.BUILT_IN,
         name: 'Built-in',
-        type: 'group' as const,
+        type: 'group',
         selectable: false,
         children: [
           {
             id: CATEGORY_IDS.BUILTIN_MATERIALS,
             name: 'Materials',
-            type: 'group' as const,
+            type: 'group',
             selectable: false,
             children: builtInMaterialNodes,
           },
           {
             id: CATEGORY_IDS.BUILTIN_SHADERS,
             name: 'Shaders',
-            type: 'group' as const,
+            type: 'group',
             selectable: false,
             children: builtInShaderNodes,
           },
         ],
       },
-      // Project Section - mirrors actual folder structure
       {
         id: SECTION_IDS.PROJECT,
         name: isProjectOpen ? projectName : 'Project',
-        type: 'group' as const,
+        type: 'group',
         selectable: false,
         children: projectChildren,
       },
     ];
-
-    return tree;
-  }
-
-  /**
-   * Build the assets/ folder node mirroring actual disk structure.
-   * Shows models as expandable nodes with derived meshes/materials as children.
-   */
-  private buildAssetsFolderNode(
-    userMaterials: IMaterialAsset[],
-    userShaders: IShaderAsset[],
-    userModels: IModelAsset[]
-  ): TreeNode {
-    const sortByName = <T extends IAsset>(assets: T[]): T[] => {
-      return [...assets].sort((a, b) => a.name.localeCompare(b.name));
-    };
-
-    // Standalone materials (user-created, not from model imports)
-    // Filter out materials that are part of model imports
-    const importedMaterialUuids = new Set<string>();
-    for (const cached of this.cachedModelMetas) {
-      for (const matRef of cached.meta.contents.materials) {
-        importedMaterialUuids.add(matRef.uuid);
-      }
-    }
-    const standaloneMaterials = userMaterials.filter(m => !importedMaterialUuids.has(m.uuid));
-
-    const materialNodes: TreeNode[] = sortByName(standaloneMaterials).map((m) => ({
-      id: m.uuid,
-      name: m.name,
-      type: 'material' as const,
-      draggable: true,
-      assetType: 'material',
-    }));
-
-    // Build model nodes: prefer cachedModelMetas, fallback to legacy IModelAsset
-    let modelNodes: TreeNode[];
-    if (this.cachedModelMetas.length > 0) {
-      // New Phase 3: hierarchical model nodes from .assetmeta files
-      modelNodes = this.buildModelMetaNodes();
-    } else {
-      // Legacy fallback: flat model nodes from IModelAsset in registry
-      modelNodes = this.buildLegacyModelNodes(userModels);
-    }
-
-    // shaders/ subfolder
-    const shaderNodes: TreeNode[] = sortByName(userShaders).map((s) => ({
-      id: s.uuid,
-      name: s.name,
-      type: 'texture' as const,
-    }));
-
-    return {
-      id: CATEGORY_IDS.PROJECT_ASSETS,
-      name: 'assets',
-      type: 'group' as const,
-      selectable: false,
-      children: [
-        {
-          id: CATEGORY_IDS.PROJECT_ASSETS_MATERIALS,
-          name: 'materials',
-          type: 'group' as const,
-          selectable: false,
-          children: materialNodes,
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_ASSETS_MODELS,
-          name: 'models',
-          type: 'group' as const,
-          selectable: false,
-          children: modelNodes,
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_ASSETS_SCENES,
-          name: 'scenes',
-          type: 'group' as const,
-          selectable: false,
-          children: [], // Future: scene files
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_ASSETS_SHADERS,
-          name: 'shaders',
-          type: 'group' as const,
-          selectable: false,
-          children: shaderNodes,
-        },
-        {
-          id: CATEGORY_IDS.PROJECT_ASSETS_TEXTURES,
-          name: 'textures',
-          type: 'group' as const,
-          selectable: false,
-          children: [], // Future: texture files
-        },
-      ],
-    };
-  }
-
-  /**
-   * Build legacy model nodes from IModelAsset (backward compatibility).
-   * Shows models with truncated UUID filenames.
-   */
-  private buildLegacyModelNodes(userModels: IModelAsset[]): TreeNode[] {
-    const sortByName = <T extends IAsset>(assets: T[]): T[] => {
-      return [...assets].sort((a, b) => a.name.localeCompare(b.name));
-    };
-
-    return sortByName(userModels).map((model) => ({
-      id: model.uuid,
-      name: `${model.uuid.substring(0, 8)}...model.json`,
-      displayName: model.name,
-      type: 'model' as const,
-      draggable: true,
-      assetType: 'model',
-    }));
-  }
-
-  /**
-   * Build tree nodes for model asset metas.
-   * Each model is an expandable node with "Materials" and "Meshes" groups as children.
-   */
-  private buildModelMetaNodes(): TreeNode[] {
-    const nodes: TreeNode[] = [];
-
-    // Sort by source filename
-    const sortedMetas = [...this.cachedModelMetas].sort((a, b) =>
-      a.filename.localeCompare(b.filename)
-    );
-
-    for (const cached of sortedMetas) {
-      const { meta, filename } = cached;
-
-      // Build children: Materials group and Meshes group
-      const children: TreeNode[] = [];
-
-      // Add Materials group if there are materials
-      if (meta.contents.materials.length > 0) {
-        const materialChildren: TreeNode[] = meta.contents.materials.map(matRef =>
-          this.buildDerivedMaterialNode(matRef, meta.uuid)
-        );
-        children.push({
-          id: `${MODEL_META_PREFIX}${meta.uuid}:materials`,
-          name: `Materials (${meta.contents.materials.length})`,
-          type: 'group' as const,
-          selectable: false,
-          children: materialChildren,
-        });
-      }
-
-      // Add Meshes group if there are meshes
-      if (meta.contents.meshes.length > 0) {
-        const meshChildren: TreeNode[] = meta.contents.meshes.map(meshRef =>
-          this.buildDerivedMeshNode(meshRef, meta.uuid)
-        );
-        children.push({
-          id: `${MODEL_META_PREFIX}${meta.uuid}:meshes`,
-          name: `Meshes (${meta.contents.meshes.length})`,
-          type: 'group' as const,
-          selectable: false,
-          children: meshChildren,
-        });
-      }
-
-      // Determine status indicator
-      const statusIndicator = meta.isDirty ? ' ⚠️' : ' ✓';
-
-      // Model node - expandable with Materials and Meshes groups
-      const nodeId = `${MODEL_META_PREFIX}${meta.uuid}`;
-
-      nodes.push({
-        id: nodeId,
-        name: `${filename}${statusIndicator}`,
-        type: 'model' as const,
-        draggable: true,
-        assetType: 'model',
-        children: children.length > 0 ? children : undefined,
-      });
-    }
-
-    return nodes;
   }
 
   /**
@@ -809,6 +806,7 @@ export class AssetBrowserTab {
       type: 'mesh' as const,
       draggable: true,
       assetType: 'mesh',
+      dragId: meshRef.uuid,
     };
   }
 
@@ -1352,6 +1350,12 @@ private async importSourceFile(sourceFile: ISourceFile): Promise<void> {
       action: () => this.reimportModel(cached),
     });
 
+    // Duplicate
+    items.push({
+      label: 'Duplicate',
+      action: () => this.duplicateModelMeta(cached),
+    });
+
     // Separator-like spacing
     items.push({
       label: 'Show in Explorer',
@@ -1450,6 +1454,23 @@ private async importSourceFile(sourceFile: ISourceFile): Promise<void> {
         directory: cached.directory,
       });
     }
+  }
+
+  /**
+   * Duplicate a source-backed model in place. The handler in the application
+   * controller copies the `.glb` to a unique name, runs the importer on it
+   * (generating fresh UUIDs and a new `.assetmeta`), and refreshes the tree.
+   */
+  private duplicateModelMeta(cached: CachedModelMeta): void {
+    const sourcePath = cached.directory
+      ? `${cached.directory}/${cached.filename}`
+      : cached.filename;
+
+    this.eventBus.emit('asset:duplicateRequested', {
+      kind: 'modelMeta',
+      id: cached.meta.uuid,
+      sourcePath,
+    });
   }
 
   /**
@@ -1562,33 +1583,26 @@ private async importSourceFile(sourceFile: ISourceFile): Promise<void> {
   }
 
   /**
-   * Duplicate a material.
+   * Duplicate a material via the centralized dispatcher.
+   * The handler in `Application.setupAssetCommands` performs the in-memory
+   * copy via `materialFactory.duplicate` AND saves the result to disk.
    */
   private duplicateMaterial(source: IMaterialAsset): void {
-    const baseName = `${source.name} Copy`;
-    const existingMaterials = this.assetRegistry.getByType<IMaterialAsset>('material');
-    const name = this.generateUniqueName(baseName, existingMaterials);
-
-    const duplicate = this.materialFactory.duplicate(source, name);
-    this.assetRegistry.register(duplicate);
-
-    this.refresh();
-    this.treeView.select(duplicate.uuid);
+    this.eventBus.emit('asset:duplicateRequested', {
+      kind: 'material',
+      id: source.uuid,
+    });
   }
 
   /**
-   * Duplicate a shader.
+   * Duplicate a shader via the centralized dispatcher.
+   * See {@link duplicateMaterial} for the rationale.
    */
   private duplicateShader(source: IShaderAsset): void {
-    const baseName = source.isBuiltIn ? source.name : `${source.name} Copy`;
-    const existingShaders = this.assetRegistry.getByType<IShaderAsset>('shader');
-    const name = this.generateUniqueName(baseName, existingShaders);
-
-    const duplicate = this.shaderFactory.duplicate(source, name);
-    this.assetRegistry.register(duplicate);
-
-    this.refresh();
-    this.treeView.select(duplicate.uuid);
+    this.eventBus.emit('asset:duplicateRequested', {
+      kind: 'shader',
+      id: source.uuid,
+    });
   }
 
   /**

@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.16.1] - 2026-04-22
+
+### Added
+
+- **Architecture Remediation Phase 2: Importer Abstractions**
+  - `IImporter.import()` signature widened from `(file) → { objects, warnings }` to `(file, options?) → { entities, assets, primaryAssetId?, warnings }` so the public contract matches what real importers actually return
+  - New `ImportOptions { sourcePath?, settings?, skipMeta? }` interface for cross-importer option passing
+  - `ImportController` is now importer-agnostic: `registerImporter(importer)` registry + `findImporter(file)` dispatch by `canImport`. Adding a new importer (OBJ, FBX, …) requires zero edits to the controller
+  - File picker and fallback `accept` list are computed from the union of all registered importers' `supportedExtensions`
+  - `GLTFImporter` conformed to the widened interface; `GLTFImportOptions extends ImportOptions`; `GLTFImportResult` removed from public surface
+- **Asset workflow handlers** wired in `Application.setupAssetCommands(...)`:
+  - `modelMeta:addToScene` — instantiates the model via the existing batched `CreateEntityCommand` flow
+  - `modelMeta:reimport` — reads the source `.glb`, runs `gltfImporter.reimport(file, meta)`, refreshes the project
+  - `modelMeta:delete` — unregisters all derived assets, deletes the source file + companion `.assetmeta`, refreshes
+  - `asset:duplicateRequested` — generic dispatcher routing by `kind`: `modelMeta` (disk-copy + import), `material` / `shader` (factory `duplicate` + registry register + save)
+- **`Duplicate` context menu** for source-backed models in the Asset Browser; existing material / shader Duplicate menus now route through the same dispatcher (so duplicates are saved to disk, not just to memory)
+- **`ProjectService.scanForModelMetas()`** — walks the entire project on `openProject()` / `rescanProject()` and registers an `IModelAsset` (synthesized via the new `ModelAssetFactory.fromMeta()`) for every `.assetmeta` discovered. When wired with a `modelMetaLoader` (the GLTFImporter), also eagerly registers derived mesh / material assets so instantiation works on first open of an existing project
+- **`GLTFImporter.loadFromMeta(file, existingMeta)`** — registers derived assets with UUIDs preserved from the meta, without touching disk; used by `ProjectService` during open/rescan
+- **`GLTFImporter.import()` and `reimport()`** now also register a synthesized `IModelAsset` in the `AssetRegistry` (closes the gap where models were never registry-resident)
+- **`ProjectService.deleteSourceFile(path)`** — deletes the source file and its companion `.assetmeta` from disk
+- **`ProjectService.duplicateSourceFile(path)`** — duplicates a source file in place under a unique `_copy[_N]` suffix
+- **`TreeNode.dragId` field** — drag payload (`application/x-asset-uuid`) uses `dragId ?? id` so synthetic prefixed tree IDs stop leaking into asset registry lookups at drop sites
+
+### Changed
+
+- **Asset Browser Project view now mirrors the actual on-disk folder structure.** Replaced the hardcoded `assets > materials/models/scenes/shaders/textures` skeleton with a single recursive disk walk that builds tree nodes per actual directory and file. File-type → node mapping:
+  - `*.assetmeta` (with sibling `.glb`/`.gltf`) → expandable model node with derived materials/meshes children
+  - `*.material.json` / `*.shader.json` / `*.scene.json` → asset node looked up in registry by UUID prefix
+  - `*.glb` / `*.gltf` without sibling `.assetmeta` → "(not imported)" source-file node
+  - Other files → skipped silently
+  - `.ready-set-render` and dot-folders skipped during walk
+- **Refresh button** (`🔄`) now eagerly clears the in-memory `.assetmeta` cache and re-renders before the disk walk; logs `Asset Browser refreshed: N → M model meta(s) on disk` for visible feedback
+- `cachedModelMetas` is now populated as a side effect of the unified disk walk (single source of truth — no more drift between the AssetBrowserTab scan and the ProjectService scan)
+- `MaterialAssetFactory` / `ShaderAssetFactory` `duplicate()` calls in `AssetBrowserTab` now go through `asset:duplicateRequested` so duplicates are persisted to disk via `projectService.saveAsset()`
+
+### Fixed
+
+- **Drag-and-drop a model or mesh from the Asset Browser onto the viewport now works** when opening a project that already contains imported `.glb`s. Two compounding bugs:
+  1. `TreeNode.id` for model-meta nodes is a synthetic prefixed string (`modelmeta:<uuid>`) but `TreeView` was putting it directly on the drag payload — drop site couldn't resolve it. Fixed via the new `dragId` field.
+  2. Opening an existing project never registered `IModelAsset` / `IMeshAsset` / `IMaterialAsset` entries in the registry, so `instantiateModel` / `instantiateMesh` always bailed silently. Fixed by wiring `GLTFImporter` as the `ProjectService.modelMetaLoader` and eagerly registering on open/rescan
+- **`Add to Scene`, `Reimport`, `Delete` context-menu actions** now actually do something (their `modelMeta:*` events had no subscribers; added in `Application.setupAssetCommands`)
+- **Tree no longer shows ghost models after a delete on disk.** Even when the in-app delete handler succeeds, the previous Project view was a hardcoded skeleton populated from `cachedModelMetas` that wasn't always invalidated. The new disk-walk-driven Project view shows whatever the OS reports right now
+
+### Removed
+
+- `buildAssetsFolderNode`, `buildModelMetaNodes`, `buildLegacyModelNodes`, `scanForAssetMetas`, `scanDirectoryForMetas` from `AssetBrowserTab` — superseded by the unified disk walk (`walkProjectFolder` / `walkDirectory` / `buildFileNode` / `buildModelMetaNode`)
+- Public export of `GLTFImportResult` from `src/plugins/importers/gltf/index.ts` (now an internal type; replaced by `ImportResult` and `GLTFImportOptions`)
+- `meshRefs` and `materialRefs` from `GLTFImporter`'s public return shape (no external consumers — verified via codebase search; internal helpers continue to use `assetMeta.contents.*`)
+
+### Tests
+
+- Added 14 new tests across `ModelAssetFactory.test.ts`, `GLTFImporter.test.ts`, `ProjectService.test.ts`, `ImportController.test.ts`
+- Rewrote 5 obsolete `AssetBrowserTab.test.ts` cases that asserted the old hardcoded folder skeleton; new cases verify the disk-mirror behavior with a `mockDirHandle()` helper
+- **1441 tests passing** (was 1424 at start of session)
+
+---
+
 ## [0.16.0] - 2026-04-21
 
 ### Changed

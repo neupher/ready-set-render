@@ -13,4 +13,4 @@ export type {
 } from './GLTFImportService';
 
 export { GLTFImporter } from './GLTFImporter';
-export type { GLTFImportResult } from './GLTFImporter';
+export type { GLTFImportOptions } from './GLTFImporter';

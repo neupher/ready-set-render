@@ -29,6 +29,13 @@ export interface TreeNode {
   draggable?: boolean;
   /** Asset type for drag-and-drop (e.g., 'model', 'mesh', 'material') */
   assetType?: string;
+  /**
+   * Optional UUID to use as the drag payload (`application/x-asset-uuid`).
+   * Defaults to `id`. Set this when `id` is a synthetic prefixed string
+   * (used for tree-internal disambiguation) but the drop target needs the
+   * real asset UUID.
+   */
+  dragId?: string;
 }
 
 export interface ContextMenuData {
@@ -284,9 +291,10 @@ export class TreeView {
         if (this.onDragStart) {
           this.onDragStart(node.id, node, e);
         }
-        // Set default drag data
+        // Set default drag data — use dragId when set so prefixed tree-only IDs
+        // don't leak into asset registry lookups at the drop site.
         if (e.dataTransfer) {
-          e.dataTransfer.setData('application/x-asset-uuid', node.id);
+          e.dataTransfer.setData('application/x-asset-uuid', node.dragId ?? node.id);
           if (node.assetType) {
             e.dataTransfer.setData('application/x-asset-type', node.assetType);
           }

@@ -9,14 +9,14 @@ import { ImportController } from '@core/ImportController';
 import type { EventBus } from '@core/EventBus';
 import type { SceneGraph } from '@core/SceneGraph';
 import type { ProjectService } from '@core/ProjectService';
-import type { GLTFImporter, GLTFImportResult } from '@plugins/importers/gltf/GLTFImporter';
+import type { IImporter, ImportResult } from '@core/interfaces';
 
 describe('ImportController', () => {
   // Mock dependencies
   let mockEventBus: EventBus;
   let mockSceneGraph: SceneGraph;
   let mockProjectService: ProjectService;
-  let mockGltfImporter: GLTFImporter;
+  let mockImporter: IImporter;
 
   // Track event handlers for cleanup
   let eventHandlers: Map<string, ((...args: unknown[]) => void)[]>;
@@ -62,25 +62,36 @@ describe('ImportController', () => {
       isProjectOpen: false,
     } as unknown as ProjectService;
 
-    // Create mock GLTF importer
-    mockGltfImporter = {
-      canImport: vi.fn().mockReturnValue(true),
+    // Create a generic mock importer that handles .glb files by default
+    mockImporter = {
+      id: 'mock-importer',
+      name: 'Mock Importer',
+      version: '1.0.0',
+      supportedExtensions: ['.glb', '.gltf'],
+      canImport: vi.fn((file: File) =>
+        file.name.toLowerCase().endsWith('.glb') ||
+        file.name.toLowerCase().endsWith('.gltf')
+      ),
       import: vi.fn(),
-      setProjectService: vi.fn(),
-    } as unknown as GLTFImporter;
+      initialize: vi.fn(),
+      dispose: vi.fn(),
+    } as unknown as IImporter;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  function createController(): ImportController {
-    return new ImportController({
+  function createController(opts?: { register?: boolean }): ImportController {
+    const controller = new ImportController({
       eventBus: mockEventBus,
       sceneGraph: mockSceneGraph,
       projectService: mockProjectService,
-      gltfImporter: mockGltfImporter,
     });
+    if (opts?.register !== false) {
+      controller.registerImporter(mockImporter);
+    }
+    return controller;
   }
 
   describe('constructor', () => {
@@ -90,19 +101,60 @@ describe('ImportController', () => {
     });
   });
 
-  describe('importFile', () => {
-    it('should import a valid GLTF file', async () => {
-      const mockResult: GLTFImportResult = {
-        objects: [{ id: 'test-entity' } as never],
+  describe('registerImporter', () => {
+    it('should route a file to the first matching importer', async () => {
+      const objImporter: IImporter = {
+        id: 'obj',
+        name: 'OBJ',
+        version: '1.0.0',
+        supportedExtensions: ['.obj'],
+        canImport: vi.fn((file: File) => file.name.endsWith('.obj')),
+        import: vi.fn().mockResolvedValue({
+          entities: [],
+          assets: [],
+          warnings: [],
+        } as ImportResult),
+        initialize: vi.fn(),
+        dispose: vi.fn(),
+      } as unknown as IImporter;
+
+      vi.mocked(mockImporter.import).mockResolvedValue({
+        entities: [],
+        assets: [],
         warnings: [],
-        meshAssets: [{ uuid: 'mesh-1' } as never],
-        materialAssets: [],
-        meshRefs: [{ uuid: 'mesh-1', name: 'Mesh1', sourceIndex: 0, vertexCount: 100, triangleCount: 50 }],
-        materialRefs: [],
-        assetMeta: { uuid: 'model-1', type: 'model' } as never,
+      } as ImportResult);
+
+      const controller = new ImportController({
+        eventBus: mockEventBus,
+        sceneGraph: mockSceneGraph,
+        projectService: mockProjectService,
+      });
+      controller.registerImporter(mockImporter);
+      controller.registerImporter(objImporter);
+
+      // .obj file → routed to obj importer, NOT mock importer
+      await controller.importFile(new File([], 'thing.obj'));
+      expect(objImporter.import).toHaveBeenCalledTimes(1);
+      expect(mockImporter.import).not.toHaveBeenCalled();
+
+      // .glb file → routed to mock importer
+      await controller.importFile(new File([], 'thing.glb'));
+      expect(mockImporter.import).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('importFile', () => {
+    it('should import a valid file using the matching importer', async () => {
+      const mockResult: ImportResult = {
+        entities: [{ id: 'test-entity' } as never],
+        assets: [
+          { uuid: 'mesh-1', type: 'mesh' } as never,
+        ],
+        primaryAssetId: 'model-1',
+        warnings: [],
       };
 
-      vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
+      vi.mocked(mockImporter.import).mockResolvedValue(mockResult);
 
       const controller = createController();
       const file = new File([], 'test.glb');
@@ -112,12 +164,12 @@ describe('ImportController', () => {
       expect(result.success).toBe(true);
       expect(result.objectCount).toBe(1);
       expect(result.meshAssetCount).toBe(1);
-      expect(mockGltfImporter.import).toHaveBeenCalledWith(file);
+      expect(mockImporter.import).toHaveBeenCalledWith(file, undefined);
       expect(mockSceneGraph.add).toHaveBeenCalled();
     });
 
-    it('should return error for unsupported file format', async () => {
-      vi.mocked(mockGltfImporter.canImport).mockReturnValue(false);
+    it('should return error when no importer can handle the file', async () => {
+      vi.mocked(mockImporter.canImport).mockReturnValue(false);
 
       const controller = createController();
       const file = new File([], 'test.obj');
@@ -126,11 +178,21 @@ describe('ImportController', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Unsupported file format');
-      expect(mockGltfImporter.import).not.toHaveBeenCalled();
+      expect(mockImporter.import).not.toHaveBeenCalled();
+    });
+
+    it('should return error when no importers are registered', async () => {
+      const controller = createController({ register: false });
+      const file = new File([], 'test.glb');
+
+      const result = await controller.importFile(file);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Unsupported file format');
     });
 
     it('should handle import errors gracefully', async () => {
-      vi.mocked(mockGltfImporter.import).mockRejectedValue(new Error('Parse error'));
+      vi.mocked(mockImporter.import).mockRejectedValue(new Error('Parse error'));
 
       const controller = createController();
       const file = new File([], 'test.glb');
@@ -141,24 +203,21 @@ describe('ImportController', () => {
       expect(result.error).toContain('Parse error');
     });
 
-    it('should add all imported objects to scene graph', async () => {
-      const mockObjects = [
+    it('should add all imported entities to scene graph', async () => {
+      const mockEntities = [
         { id: 'entity-1' },
         { id: 'entity-2' },
         { id: 'entity-3' },
       ];
 
-      const mockResult: GLTFImportResult = {
-        objects: mockObjects as never[],
+      const mockResult: ImportResult = {
+        entities: mockEntities as never[],
+        assets: [],
+        primaryAssetId: 'model-1',
         warnings: [],
-        meshAssets: [],
-        materialAssets: [],
-        meshRefs: [],
-        materialRefs: [],
-        assetMeta: { uuid: 'model-1', type: 'model' } as never,
       };
 
-      vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
+      vi.mocked(mockImporter.import).mockResolvedValue(mockResult);
 
       const controller = createController();
       const file = new File([], 'test.glb');
@@ -166,23 +225,24 @@ describe('ImportController', () => {
       await controller.importFile(file);
 
       expect(mockSceneGraph.add).toHaveBeenCalledTimes(3);
-      expect(mockSceneGraph.add).toHaveBeenCalledWith(mockObjects[0]);
-      expect(mockSceneGraph.add).toHaveBeenCalledWith(mockObjects[1]);
-      expect(mockSceneGraph.add).toHaveBeenCalledWith(mockObjects[2]);
+      expect(mockSceneGraph.add).toHaveBeenCalledWith(mockEntities[0]);
+      expect(mockSceneGraph.add).toHaveBeenCalledWith(mockEntities[1]);
+      expect(mockSceneGraph.add).toHaveBeenCalledWith(mockEntities[2]);
     });
 
     it('should emit import:complete event on success', async () => {
-      const mockResult: GLTFImportResult = {
-        objects: [{ id: 'entity-1' } as never],
+      const mockResult: ImportResult = {
+        entities: [{ id: 'entity-1' } as never],
+        assets: [
+          { uuid: 'mesh-1', type: 'mesh' } as never,
+          { uuid: 'mesh-2', type: 'mesh' } as never,
+          { uuid: 'mat-1', type: 'material' } as never,
+        ],
+        primaryAssetId: 'model-1',
         warnings: [],
-        meshAssets: [{ uuid: 'mesh-1' } as never, { uuid: 'mesh-2' } as never],
-        materialAssets: [{ uuid: 'mat-1' } as never],
-        meshRefs: [{ uuid: 'mesh-1', name: 'Mesh1', sourceIndex: 0, vertexCount: 100, triangleCount: 50 }],
-        materialRefs: [{ uuid: 'mat-1', name: 'Mat1', sourceIndex: 0, isOverridden: false }],
-        assetMeta: { uuid: 'model-1', type: 'model' } as never,
       };
 
-      vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
+      vi.mocked(mockImporter.import).mockResolvedValue(mockResult);
 
       const controller = createController();
       const file = new File([], 'model.glb');
@@ -199,17 +259,13 @@ describe('ImportController', () => {
     });
 
     it('should include warnings in result', async () => {
-      const mockResult: GLTFImportResult = {
-        objects: [],
+      const mockResult: ImportResult = {
+        entities: [],
+        assets: [],
         warnings: ['Missing normals', 'Unsupported extension'],
-        meshAssets: [],
-        materialAssets: [],
-        meshRefs: [],
-        materialRefs: [],
-        assetMeta: { uuid: 'model-1', type: 'model' } as never,
       };
 
-      vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResult);
+      vi.mocked(mockImporter.import).mockResolvedValue(mockResult);
 
       const controller = createController();
       const file = new File([], 'test.glb');
@@ -252,24 +308,21 @@ describe('ImportController', () => {
         isProjectOpen: false,
       } as unknown as ProjectService;
 
-      const mockResultSuccess: GLTFImportResult = {
-        objects: [{ id: 'entity-1' } as never],
+      const mockResultSuccess: ImportResult = {
+        entities: [{ id: 'entity-1' } as never],
+        assets: [],
+        primaryAssetId: 'model-1',
         warnings: [],
-        meshAssets: [],
-        materialAssets: [],
-        meshRefs: [],
-        materialRefs: [],
-        assetMeta: { uuid: 'model-1', type: 'model' } as never,
       };
 
-      vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResultSuccess);
+      vi.mocked(mockImporter.import).mockResolvedValue(mockResultSuccess);
 
       const controller = new ImportController({
         eventBus: mockEventBus,
         sceneGraph: mockSceneGraph,
         projectService: mockProjectServiceClosed,
-        gltfImporter: mockGltfImporter,
       });
+      controller.registerImporter(mockImporter);
 
       // Use importFile directly to skip file picker
       const file = new File([], 'test.glb');
@@ -287,24 +340,21 @@ describe('ImportController', () => {
         isProjectOpen: true,
       } as unknown as ProjectService;
 
-      const mockResultSuccess: GLTFImportResult = {
-        objects: [{ id: 'entity-1' } as never],
+      const mockResultSuccess: ImportResult = {
+        entities: [{ id: 'entity-1' } as never],
+        assets: [],
+        primaryAssetId: 'model-1',
         warnings: [],
-        meshAssets: [],
-        materialAssets: [],
-        meshRefs: [],
-        materialRefs: [],
-        assetMeta: { uuid: 'model-1', type: 'model' } as never,
       };
 
-      vi.mocked(mockGltfImporter.import).mockResolvedValue(mockResultSuccess);
+      vi.mocked(mockImporter.import).mockResolvedValue(mockResultSuccess);
 
       const controller = new ImportController({
         eventBus: mockEventBus,
         sceneGraph: mockSceneGraph,
         projectService: mockProjectServiceOpen,
-        gltfImporter: mockGltfImporter,
       });
+      controller.registerImporter(mockImporter);
       const file = new File([], 'test.glb');
 
       const result = await controller.importFile(file);

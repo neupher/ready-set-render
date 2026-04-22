@@ -52,6 +52,34 @@ function createMockModelAsset(name: string, uuid: string): IModelAsset {
   };
 }
 
+/**
+ * Build a fake `FileSystemDirectoryHandle` from a nested entries object
+ * (`{ folderName: { ... } }` for directories, `{ fileName: 'file' }` for files).
+ *
+ * Used by tests that verify the disk-mirror tree under a mocked project.
+ */
+type MockEntries = { [name: string]: MockEntries | 'file' };
+
+function mockDirHandle(name: string, entries: MockEntries): FileSystemDirectoryHandle {
+  const handle = {
+    name,
+    kind: 'directory' as const,
+    async *entries() {
+      for (const [entryName, value] of Object.entries(entries)) {
+        if (value === 'file') {
+          yield [entryName, { name: entryName, kind: 'file' }];
+        } else {
+          yield [entryName, mockDirHandle(entryName, value)];
+        }
+      }
+    },
+    getFileHandle: vi.fn(),
+    getDirectoryHandle: vi.fn(),
+    removeEntry: vi.fn(),
+  };
+  return handle as unknown as FileSystemDirectoryHandle;
+}
+
 describe('AssetBrowserTab', () => {
   let eventBus: EventBus;
   let assetRegistry: AssetRegistry;
@@ -263,8 +291,7 @@ describe('AssetBrowserTab', () => {
   });
 
   describe('imported models', () => {
-    it('should display models folder in Project section when project is open', () => {
-      // Create mock project service
+    it('shows the project section when a project is open (empty when handle is unavailable)', () => {
       const mockProjectService = {
         isProjectOpen: true,
         projectName: 'Test Project',
@@ -272,7 +299,6 @@ describe('AssetBrowserTab', () => {
         getProjectHandle: () => null,
       };
 
-      // Create new AssetBrowserTab with project service
       const tabWithProject = new AssetBrowserTab({
         eventBus,
         assetRegistry,
@@ -284,134 +310,145 @@ describe('AssetBrowserTab', () => {
       const treeItems = Array.from(tabWithProject.element.querySelectorAll('.tree-item'));
       const names = treeItems.map(item => item.querySelector('.tree-name')?.textContent);
 
-      // Should have 'models' folder in assets section
-      expect(names).toContain('models');
+      // The project section uses the project name as its label
+      expect(names).toContain('Test Project');
 
       tabWithProject.dispose();
     });
 
-    it('should display model assets under models folder', async () => {
-      // Create mock project service
+    it('mirrors the on-disk folder structure under the Project section', async () => {
+      const mockHandle = mockDirHandle('TestProject', {
+        assets: {
+          materials: {},
+          models: {},
+          shaders: {},
+        },
+      });
+
       const mockProjectService = {
         isProjectOpen: true,
-        projectName: 'Test Project',
+        projectName: 'TestProject',
         getSourceFiles: () => [],
-        getProjectHandle: () => null,
+        getProjectHandle: () => mockHandle,
       };
 
-      // Register a model asset
-      const modelAsset = createMockModelAsset('TestCar', 'model-uuid-1');
-      assetRegistry.register(modelAsset);
+      // Provide a stub assetMetaService so the disk-walk runs (the walk only
+      // executes when both projectService and assetMetaService are present).
+      const stubMetaService = { readModelMeta: vi.fn() };
 
-      // Create new AssetBrowserTab with project service
       const tabWithProject = new AssetBrowserTab({
         eventBus,
         assetRegistry,
         materialFactory,
         shaderFactory,
         projectService: mockProjectService as any,
+        assetMetaService: stubMetaService as any,
       });
 
-      // Wait for async refresh
       await tabWithProject.refresh();
 
-      const treeItems = Array.from(tabWithProject.element.querySelectorAll('.tree-item'));
-      const names = treeItems.map(item => item.querySelector('.tree-name')?.textContent);
+      // Top-level on-disk folder ('assets') is rendered under the Project section.
+      // Subfolders are collapsed by default in the TreeView; expanding them is
+      // verified separately. The presence of `assets` proves the disk walk ran
+      // and built nodes from the actual on-disk hierarchy.
+      const names = Array.from(tabWithProject.element.querySelectorAll('.tree-item'))
+        .map(item => item.querySelector('.tree-name')?.textContent);
 
-      // Legacy display shows truncated UUID: model-uu...model.json
-      // The first 8 characters of 'model-uuid-1' is 'model-uu'
-      expect(names.some(n => n?.includes('model-uu'))).toBe(true);
-
-      tabWithProject.dispose();
-    });
-
-    it('should show assets folder structure in project section', async () => {
-      // Create mock project service
-      const mockProjectService = {
-        isProjectOpen: true,
-        projectName: 'Test Project',
-        getSourceFiles: () => [],
-        getProjectHandle: () => null,
-      };
-
-      // Register a model asset
-      const modelAsset = createMockModelAsset('TestCar', 'model-uuid-2');
-      assetRegistry.register(modelAsset);
-
-      // Create new AssetBrowserTab with project service
-      const tabWithProject = new AssetBrowserTab({
-        eventBus,
-        assetRegistry,
-        materialFactory,
-        shaderFactory,
-        projectService: mockProjectService as any,
-      });
-
-      // Wait for async refresh
-      await tabWithProject.refresh();
-
-      // Get tree items and find asset-related nodes
-      const treeItems = Array.from(tabWithProject.element.querySelectorAll('.tree-item'));
-      const names = treeItems.map(item => item.querySelector('.tree-name')?.textContent);
-
-      // Assets folder structure should exist
+      expect(names).toContain('TestProject');
       expect(names).toContain('assets');
-      expect(names).toContain('models');
-      expect(names).toContain('materials');
-      expect(names).toContain('shaders');
 
       tabWithProject.dispose();
     });
 
-    it('should emit asset:selected when model asset is clicked', async () => {
-      // Create mock project service
+    it('shows registered material assets at their on-disk location', async () => {
+      // Register a material; the tree renders it from the registry when its
+      // `.material.json` file is encountered on disk.
+      const material = materialFactory.create({
+        name: 'TestMaterial',
+        shaderRef: { uuid: 'built-in-shader-pbr', type: 'shader' },
+      });
+      assetRegistry.register(material);
+
+      // Place the material file at the project root so it's visible without
+      // expanding nested folders in the TreeView.
+      const mockHandle = mockDirHandle('TestProject', {
+        [`${material.uuid}.material.json`]: 'file',
+      });
+
       const mockProjectService = {
         isProjectOpen: true,
-        projectName: 'Test Project',
+        projectName: 'TestProject',
         getSourceFiles: () => [],
-        getProjectHandle: () => null,
+        getProjectHandle: () => mockHandle,
       };
 
-      // Register a model asset
-      const modelAsset = createMockModelAsset('TestCar', 'model-uuid-3');
-      assetRegistry.register(modelAsset);
-
-      // Create new AssetBrowserTab
       const tabWithProject = new AssetBrowserTab({
         eventBus,
         assetRegistry,
         materialFactory,
         shaderFactory,
         projectService: mockProjectService as any,
+        assetMetaService: { readModelMeta: vi.fn() } as any,
       });
 
-      // Wait for async refresh
+      await tabWithProject.refresh();
+
+      const names = Array.from(tabWithProject.element.querySelectorAll('.tree-item'))
+        .map(item => item.querySelector('.tree-name')?.textContent);
+
+      expect(names).toContain('TestMaterial');
+
+      tabWithProject.dispose();
+    });
+
+    it('emits asset:selected when a material asset rendered from disk is clicked', async () => {
+      const material = materialFactory.create({
+        name: 'ClickMe',
+        shaderRef: { uuid: 'built-in-shader-pbr', type: 'shader' },
+      });
+      assetRegistry.register(material);
+
+      // Place at root to avoid TreeView expansion concerns.
+      const mockHandle = mockDirHandle('TestProject', {
+        [`${material.uuid}.material.json`]: 'file',
+      });
+
+      const tabWithProject = new AssetBrowserTab({
+        eventBus,
+        assetRegistry,
+        materialFactory,
+        shaderFactory,
+        projectService: {
+          isProjectOpen: true,
+          projectName: 'TestProject',
+          getSourceFiles: () => [],
+          getProjectHandle: () => mockHandle,
+        } as any,
+        assetMetaService: { readModelMeta: vi.fn() } as any,
+      });
+
       await tabWithProject.refresh();
 
       const selectHandler = vi.fn();
       eventBus.on('asset:selected', selectHandler);
 
-      // Find and click the model item (it appears with truncated UUID)
       const treeItems = tabWithProject.element.querySelectorAll('.tree-item');
-      const modelItem = Array.from(treeItems).find(item => {
-        const name = item.querySelector('.tree-name')?.textContent;
-        // Legacy display uses truncated UUID: model-uu...model.json
-        return name?.includes('model-uu');
-      });
+      const target = Array.from(treeItems).find(item =>
+        item.querySelector('.tree-name')?.textContent === 'ClickMe'
+      );
 
-      expect(modelItem).not.toBeNull();
-      modelItem?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(target).not.toBeNull();
+      target?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
       expect(selectHandler).toHaveBeenCalledTimes(1);
       expect(selectHandler).toHaveBeenCalledWith({
-        asset: expect.objectContaining({ uuid: 'model-uuid-3', type: 'model' }),
+        asset: expect.objectContaining({ uuid: material.uuid, type: 'material' }),
       });
 
       tabWithProject.dispose();
     });
 
-    it('should refresh when model asset is registered', async () => {
-      // Create mock project service
+    it('refreshes the tree when an asset is registered', async () => {
       const mockProjectService = {
         isProjectOpen: true,
         projectName: 'Test Project',
@@ -419,7 +456,6 @@ describe('AssetBrowserTab', () => {
         getProjectHandle: () => null,
       };
 
-      // Create new AssetBrowserTab
       const tabWithProject = new AssetBrowserTab({
         eventBus,
         assetRegistry,
@@ -428,27 +464,23 @@ describe('AssetBrowserTab', () => {
         projectService: mockProjectService as any,
       });
 
-      // Wait for async refresh
       await tabWithProject.refresh();
-
       const initialItems = tabWithProject.element.querySelectorAll('.tree-item').length;
 
-      // Register a model asset
+      // Registering a new asset should cause an asset:registered event that
+      // triggers a refresh; even with no disk, the registry-driven Built-in
+      // section has not changed, but the refresh listener was wired.
+      const refreshSpy = vi.spyOn(tabWithProject, 'refresh');
       const modelAsset = createMockModelAsset('NewModel', 'model-uuid-4');
       assetRegistry.register(modelAsset);
 
-      // Wait for async refresh to complete (triggered by event)
+      // Wait a tick for the listener to fire
       await new Promise(resolve => setTimeout(resolve, 10));
-      await tabWithProject.refresh();
 
-      // Tree should have more items now
+      expect(refreshSpy).toHaveBeenCalled();
+      // Item count should not regress (built-ins still rendered)
       const newItems = tabWithProject.element.querySelectorAll('.tree-item').length;
-      expect(newItems).toBeGreaterThan(initialItems);
-
-      // Model should appear (with truncated UUID in legacy format)
-      const names = Array.from(tabWithProject.element.querySelectorAll('.tree-item'))
-        .map(item => item.querySelector('.tree-name')?.textContent);
-      expect(names.some(n => n?.includes('model-uu'))).toBe(true);
+      expect(newItems).toBeGreaterThanOrEqual(initialItems);
 
       tabWithProject.dispose();
     });

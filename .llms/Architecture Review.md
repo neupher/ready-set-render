@@ -1,7 +1,7 @@
 # Architecture Review
 
-> **Last Updated:** 2026-04-21T15:42:00Z
-> **Status:** Active review document — Phase 1 remediation complete
+> **Last Updated:** 2026-04-22T14:30:00Z
+> **Status:** Active review document — Phase 1 + Phase 2 remediation complete
 
 ---
 
@@ -19,8 +19,8 @@ A detailed phased execution plan has been created to address all findings in thi
 
 | Phase | Addresses Finding | Status |
 |-------|-------------------|--------|
-| Phase 1 | #1 Runtime composition too centralized | Not Started |
-| Phase 2 | #2 Importer contract drift | Not Started |
+| Phase 1 | #1 Runtime composition too centralized | ✅ Complete (v0.16.0) |
+| Phase 2 | #2 Importer contract drift | ✅ Complete (v0.16.1) |
 | Phase 3 | #3 GLTF correctness gaps, #4 Renderer responsibilities | Not Started |
 | Phase 4 | #5 Asset integrity boundaries | Not Started |
 | Phase 5 | #7 Visual editor verification | Not Started |

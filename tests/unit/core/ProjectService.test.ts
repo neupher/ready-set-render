@@ -189,6 +189,34 @@ describe('ProjectService', () => {
     });
   });
 
+  describe('scanForModelMetas', () => {
+    it('returns empty when no project is open', async () => {
+      const result = await projectService.scanForModelMetas();
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('deleteSourceFile', () => {
+    it('returns false when no project is open', async () => {
+      const result = await projectService.deleteSourceFile('sources/models/car.glb');
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('duplicateSourceFile', () => {
+    it('returns null when no project is open', async () => {
+      const result = await projectService.duplicateSourceFile('sources/models/car.glb');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('setModelMetaLoader', () => {
+    it('accepts a loader without error', () => {
+      const loader = { loadFromMeta: vi.fn() };
+      expect(() => projectService.setModelMetaLoader(loader)).not.toThrow();
+    });
+  });
+
   describe('static methods', () => {
     it('should get last project name from localStorage', () => {
       // Mock localStorage

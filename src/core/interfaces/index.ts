@@ -23,7 +23,7 @@ export type {
   IInitializable,
 } from './ISceneObject';
 export { createDefaultTransform, isInitializable } from './ISceneObject';
-export type { IImporter, ImportResult } from './IImporter';
+export type { IImporter, ImportOptions, ImportResult } from './IImporter';
 
 // Entity Component System
 export type { IComponent } from './IComponent';
