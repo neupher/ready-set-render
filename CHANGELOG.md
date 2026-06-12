@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.16.2] - 2026-06-12
+
+### Fixed
+
+- Resolved Dependabot security alerts for development dependencies:
+  - Updated `vitest` and `@vitest/coverage-v8` from `^4.0.18` to `^4.1.0` to address the critical Vitest UI server advisory
+  - Added npm overrides for patched transitive versions of `postcss`, `brace-expansion`, and `ws`
+- Verified the dependency graph with `npm audit` returning zero vulnerabilities
+
+### Tests
+
+- `npm run validate` passing: 48 test files, 1441 tests
+- `npm run build` passing for the production GitHub Pages artifact
+
+---
+
 ## [0.16.1] - 2026-04-22
 
 ### Added

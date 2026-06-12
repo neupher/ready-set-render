@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-04-22T14:30:00Z
-> **Version:** 0.16.1
-> **Status:** Architecture Remediation Phase 2 Complete + Asset Workflow Fixes
+> **Last Updated:** 2026-06-12T12:48:38Z
+> **Version:** 0.16.2
+> **Status:** Dependency Security Patch Complete
 
 ---
 
@@ -34,10 +34,14 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ---
 
-## Current State (v0.16.0)
+## Current State (v0.16.2)
 
 ### What's Working
 
+- **Dependency Security (v0.16.2)**: Dependabot alerts resolved
+  - `vitest` and `@vitest/coverage-v8` updated to `^4.1.0`
+  - npm overrides pin patched transitive versions of `postcss`, `brace-expansion`, and `ws`
+  - `npm audit` reports 0 vulnerabilities
 - **Core Engine**: EventBus, SceneGraph, PluginManager (active), WebGLContext, CommandHistory, SettingsService, ImportController
 - **GLTF Scene Serialization** (Phase 8 - Complete)
   - `GroupEntity` implements `ISerializable` with `toJSON()`/`fromJSON()` methods

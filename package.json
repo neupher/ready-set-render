@@ -30,13 +30,13 @@
     "@types/webgl2": "^0.0.11",
     "@typescript-eslint/eslint-plugin": "^8.19.1",
     "@typescript-eslint/parser": "^8.19.1",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "eslint": "^9.18.0",
     "jsdom": "^25.0.1",
     "typescript": "^5.7.2",
     "vite": "^6.4.2",
     "vite-plugin-glsl": "^1.5.5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "@gltf-transform/core": "^4.3.0",
@@ -44,6 +44,9 @@
   },
   "overrides": {
     "picomatch": "^4.0.4",
-    "flatted": "^3.4.2"
+    "flatted": "^3.4.2",
+    "brace-expansion": "^2.0.3",
+    "postcss": "^8.5.10",
+    "ws": "^8.20.1"
   }
 }
