@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- Added `.llms/AGENTS.md` and a new `.llms/skills/` directory for agent-facing guidance.
+- Rewrote `.llms/GUIDELINES.md` and `.llms/WORKFLOWS.md` to simplify active guidance and workflow triggers.
+- Added starter skill documents for architecture, plugins, materials, testing, and workflows.
+
+---
+
 ## [0.16.2] - 2026-06-12
 
 ### Fixed

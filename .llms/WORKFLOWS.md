@@ -1,253 +1,81 @@
-# Workflows: WebGL Editor
+# Workflows
 
-> **Last Updated:** 2026-03-02T14:10:00Z
-> **Version:** 0.1.1
-
----
+> Last Updated: 2026-07-10T12:00:00Z
+> Status: Active
 
 ## Purpose
 
-This document defines automated workflows triggered by specific phrases. When Claude (AI assistant) sees these trigger phrases, it MUST execute the corresponding workflow steps.
+This file is a lightweight index of the session-level workflows used by this project. The human remains in control of when these workflows are invoked.
 
----
-
-## Workflow Definitions
-
----
-
-### finalise Session
-
-**Triggers:**
-- `finalise session`
-- `finalise version X.X.X`
-- `finalise as X.X.X`
-
-**Steps:**
-
-1. **Review changes**
-   - Run `git status` to identify modified files
-   - Run `git diff` to review actual changes
-   - Summarize what was accomplished
-
-2. **Update CHANGELOG.md**
-   - Version: Use version from trigger phrase, or prompt user if not specified
-   - Date: Current date (YYYY-MM-DD)
-   - Categories: Added | Changed | Fixed | Removed
-   - List all significant changes
-
-3. **Update .llms/ files with timestamps**
-   - Update `PROJECT_CONTEXT.md` (ALWAYS)
-     - Sync "Current State" section
-     - Update "Last Updated" timestamp
-     - Update version number
-     - **Update "In Progress" section** (CRITICAL):
-       - If a new multi-phase feature was started, ADD a tracking table for it
-       - If phases were completed, UPDATE the tracking table to show progress
-       - Example tracking table format:
-         ```markdown
-         ### Feature Name
-
-         Brief description. See [FEATURE_PLAN.md](./FEATURE_PLAN.md):
-
-         | Phase | Description | Status |
-         |-------|-------------|--------|
-         | Phase 1 | Description | ✅ Complete |
-         | Phase 2 | Description | Not Started |
-         ```
-     - **Update "Next Steps" section** (CRITICAL):
-       - Replace generic feature names with specific next phase
-       - Example: Replace "3D Model Import" → "GLTF Importer Phase 4: File Menu & Import UI"
-     - **Update "Project Goals" table**:
-       - Change status from "Not Started" → "In Progress" when work begins
-       - Change status to "✅ Complete" when all phases are done
-   - Update `IMPLEMENTATION_PLAN.md` (IF APPLICABLE)
-     - Mark phases as complete when finished
-     - Update bundle size tracking when measured
-     - Update success criteria when met
-     - Add timestamp only when content changes
-   - Update any other affected `.llms/*.md` files
-     - Add timestamp to "Last Updated" field
-     - Format: `YYYY-MM-DDTHH:MM:SSZ` (ISO 8601)
-
-4. **Commit**
-   ```bash
-   git add -A
-   git commit -m "<title>" -m "<changelog entry summary>"
-   ```
-
-5. **Tag** (conditional)
-   - IF version specified AND tag does not exist:
-     ```bash
-     git tag X.X.X
-     ```
-   - IF tag exists: Skip, notify user
-
-6. **Confirm**
-   - Report completion status to user
-   - List all files updated
-   - Show changelog entry
-
----
-
-### Save Session
-
-**Triggers:**
-- `save session`
-- `save progress`
-
-**Purpose:**
-Lightweight alternative to "finalise session" that records the current status without creating a commit. Ideal for preserving context when handing off to a new agent session (e.g. to avoid token compression) so work can be resumed immediately.
-
-**Steps:**
-
-1. **Review changes**
-   - Run `git status` to identify modified files
-   - Run `git diff` to review actual changes
-   - Summarize what was accomplished
-
-2. **Update CHANGELOG.md**
-   - Add an **[Unreleased]** section (or append to it if one exists)
-   - Date: Current date (YYYY-MM-DD)
-   - Categories: Added | Changed | Fixed | Removed
-   - List all significant changes made this session
-
-3. **Update .llms/ files with timestamps**
-   - Update `PROJECT_CONTEXT.md` (ALWAYS)
-     - Sync "Current State" section
-     - Update "Last Updated" timestamp
-     - Update version number if applicable
-   - Update `IMPLEMENTATION_PLAN.md` (IF APPLICABLE)
-     - Mark phases as complete when finished
-     - Update bundle size tracking when measured
-     - Update success criteria when met
-     - Add timestamp only when content changes
-   - Update any other affected `.llms/*.md` files
-     - Add timestamp to "Last Updated" field
-     - Format: `YYYY-MM-DDTHH:MM:SSZ` (ISO 8601)
-
-4. **Confirm**
-   - Report completion status to user
-   - List all files updated
-   - Show changelog entry
-   - Remind user that changes are **unstaged/uncommitted** and ready to be picked up by the next session
-
----
+## Supported Workflows
 
 ### Start Session
 
-**Triggers:**
-- `start session`
-- `new session`
-- `begin work`
+Triggers:
+- start session
+- new session
+- begin work
 
-**Steps:**
+Use this workflow when a new agent session begins. The agent should:
 
-1. **Read context files**
-   ```
-   Read .llms/PROJECT_CONTEXT.md
-   Read .llms/GUIDELINES.md
-   ```
+1. Read AGENTS.md and PROJECT_CONTEXT.md
+2. Review the current architecture and active priorities
+3. Summarize the state and ask what should be worked on next
 
-2. **Summarize current state**
-   - What was last worked on
-   - What is in progress
-   - What are the next steps
+### Save Session
 
-3. **Confirm ready**
-   - Report to user that context is loaded
-   - Ask what to work on
+Triggers:
+- save session
+- save progress
 
----
+Use this workflow to preserve progress without committing. The agent should:
+
+1. Review the changed files
+2. Update the relevant context documents
+3. Note the current state for the next session
 
 ### Update Context
 
-**Triggers:**
-- `update context`
-- `sync context`
+Triggers:
+- update context
+- sync context
 
-**Steps:**
+Use this workflow when architecture, project status, or implementation details have changed. The agent should:
 
-1. **Analyze current codebase**
-   - Review file structure
-   - Check for new modules/plugins
-   - Identify any architectural changes
+1. Review the current codebase and documentation
+2. Update PROJECT_CONTEXT.md and related reference files
+3. Keep the guidance aligned with the current implementation
 
-2. **Update PROJECT_CONTEXT.md**
-   - Sync directory structure
-   - Update current state
-   - Update next steps
-   - Add timestamp: `YYYY-MM-DDTHH:MM:SSZ`
+### Finalise Session
 
-3. **Update ARCHITECTURE.md** (if needed)
-   - Add new modules/plugins
-   - Update diagrams
-   - Add timestamp
+Triggers:
+- finalise session
+- finalise version X.X.X
+- finalise as X.X.X
 
-4. **Update LIBRARIES.md** (if new dependencies)
-   - Add any new libraries
-   - Document justification
-   - Add timestamp
+Use this workflow when the work is ready to be wrapped up. The agent should:
 
-5. **Confirm**
-   - Report what was updated
-   - Show summary of changes
-
----
+1. Review the changes and summarize them
+2. Update CHANGELOG.md and the relevant .llms files
+3. Commit and optionally tag if requested
 
 ### Add Feature
 
-**Triggers:**
-- `add feature: <name>`
-- `implement feature: <name>`
-- `new feature: <name>`
+Triggers:
+- add feature: <name>
+- implement feature: <name>
+- new feature: <name>
 
-**Steps:**
+Use this workflow when implementing a new capability. The agent should:
 
-1. **Check ARCHITECTURE.md**
-   - Determine where feature belongs
-   - Identify required interfaces
+1. Check the architecture and decide whether the feature fits a plugin
+2. Follow the relevant skill documents
+3. Add tests and update the context if the structure changes
 
-2. **Create plugin structure**
-   ```
-   src/plugins/<category>/<FeatureName>/
-   ├── <FeatureName>.ts
-   ├── interfaces/
-   └── README.md
-   ```
+## Detailed Steps
 
-3. **Create test file**
-   ```
-   tests/plugins/<category>/<FeatureName>.test.ts
-   ```
+The detailed workflow procedures now live in .llms/skills/workflows.md.
 
-4. **Update ARCHITECTURE.md**
-   - Add to module breakdown
-   - Update diagrams if needed
-   - Add timestamp
-
-5. **Implement feature**
-   - Follow PATTERNS.md conventions
-   - Follow GUIDELINES.md rules
-   - Write tests alongside code
-
-6. **Run tests**
-   - Ensure all tests pass
-   - If tests fail, iterate until passing
-
-7. **Document**
-   - Add JSDoc to public APIs
-   - Create plugin README
-
----
-
-### Add Library
-
-**Triggers:**
-- `add library: <name>`
-- `install library: <name>`
-- `add dependency: <name>`
-
-**Steps:**
 
 1. **Check if forbidden**
    - Review LIBRARIES.md forbidden list
