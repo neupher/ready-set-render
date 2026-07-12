@@ -1,6 +1,6 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-07-12T15:45:00Z
+> **Last Updated:** 2026-07-12T15:51:00Z
 > **Version:** 0.17.0
 > **Status:** Architecture Remediation Phase 3 in Progress
 
@@ -36,7 +36,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ## Current State (v0.16.2)
 
-- **Agent Guidance Restructure**: Added `.llms/AGENTS.md`, rewrote `.llms/GUIDELINES.md`, rewrote `.llms/WORKFLOWS.md`, and added skill files under `.llms/skills/` to improve agent-facing workflow guidance and documentation structure.
+- **Agent Guidance Restructure**: Moved the canonical agent entrypoint to root `AGENTS.md`, rewrote `.llms/GUIDELINES.md`, rewrote `.llms/WORKFLOWS.md`, and added skill files under `.llms/skills/` to improve agent-facing workflow guidance and documentation structure.
 
 ### What's Working
 

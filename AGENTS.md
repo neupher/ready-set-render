@@ -1,6 +1,6 @@
 # AGENTS
 
-> Last Updated: 2026-07-10T12:00:00Z
+> Last Updated: 2026-07-12T15:51:00Z
 > Status: Active
 
 ## Purpose
@@ -12,10 +12,10 @@ This file is the primary entry point for agents working in this repository. Read
 When starting a session, review these documents in order:
 
 1. AGENTS.md
-2. PROJECT_CONTEXT.md
-3. ARCHITECTURE.md
-4. TESTING.md
-5. WORKFLOWS.md
+2. .llms/PROJECT_CONTEXT.md
+3. .llms/ARCHITECTURE.md
+4. .llms/TESTING.md
+5. .llms/WORKFLOWS.md
 
 ## Core Rules
 
@@ -24,7 +24,7 @@ When starting a session, review these documents in order:
 - Use the existing command-history and undo/redo model for user-visible data changes.
 - Keep rendering work aligned with WebGL2 and the project’s Z-up coordinate convention.
 - Add or update tests whenever behavior changes.
-- Preserve the human-controlled workflow model from WORKFLOWS.md.
+- Preserve the human-controlled workflow model from .llms/WORKFLOWS.md.
 
 ## Project-Specific Guidance
 
@@ -44,7 +44,7 @@ Use these skill files for the most important recurring tasks. Read the relevant 
 
 ## How to Use Skill Files
 
-1. Start at `AGENTS.md`.
+1. Start at root `AGENTS.md`.
 2. Choose the skill file that matches the task.
 3. Read the skill file’s purpose, constraints, and checklist.
 4. Apply the relevant guidance while working in the repository.

@@ -1,6 +1,6 @@
 # Workflows
 
-> Last Updated: 2026-07-10T12:00:00Z
+> Last Updated: 2026-07-12T15:51:00Z
 > Status: Active
 
 ## Purpose
@@ -18,7 +18,7 @@ Triggers:
 
 Use this workflow when a new agent session begins. The agent should:
 
-1. Read AGENTS.md and PROJECT_CONTEXT.md
+1. Read root AGENTS.md and .llms/PROJECT_CONTEXT.md
 2. Review the current architecture and active priorities
 3. Summarize the state and ask what should be worked on next
 

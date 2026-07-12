@@ -1,6 +1,6 @@
 # Development Guidelines
 
-> Last Updated: 2026-07-10T12:00:00Z
+> Last Updated: 2026-07-12T15:51:00Z
 > Status: Active
 
 ## Purpose
@@ -18,7 +18,7 @@ This document is a compact reference for the core rules that agents should follo
 
 ## Agent Operating Rules
 
-1. Read AGENTS.md first, then PROJECT_CONTEXT.md and ARCHITECTURE.md.
+1. Read root AGENTS.md first, then .llms/PROJECT_CONTEXT.md and .llms/ARCHITECTURE.md.
 2. Use the relevant skill file for recurring tasks such as plugins, materials, testing, or workflows.
 3. For new systems that become important topics, create or update a project-specific skill file.
 4. Keep the workflow triggers in WORKFLOWS.md intact and under human control.
@@ -27,10 +27,10 @@ This document is a compact reference for the core rules that agents should follo
 ## Key References
 
 - AGENTS.md
-- ARCHITECTURE.md
-- COORDINATE_SYSTEM.md
-- TESTING.md
-- WORKFLOWS.md
+- .llms/ARCHITECTURE.md
+- .llms/COORDINATE_SYSTEM.md
+- .llms/TESTING.md
+- .llms/WORKFLOWS.md
 - .llms/skills/
 
 ## Notes for Future Growth
