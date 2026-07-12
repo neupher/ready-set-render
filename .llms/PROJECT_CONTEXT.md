@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-07-12T16:57:00Z
+> **Last Updated:** 2026-07-12T16:59:00Z
 > **Version:** 0.17.0
-> **Status:** Architecture Remediation Phase 3 in Progress
+> **Status:** Architecture Remediation Phase 3.5 Complete
 
 ---
 
@@ -48,6 +48,10 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - **Phase 3.4 handoff:** `ForwardRenderer` now delegates material-to-shader resolution to `ShaderResolver` and frame/object/material uniform marshaling to `UniformSetter`
   - `ForwardRenderer.ts` is reduced to 307 lines and focused on render flow, mesh submission, light caching, and model-matrix setup
   - Focused verification: `npm.cmd run test -- ShaderResolver UniformSetter ForwardRenderer` passes with 7 tests
+  - **Phase 3.5 handoff:** `GLTFImportService` now names multi-primitive mesh outputs with stable primitive suffixes, tracks all mesh indices on hierarchy nodes, preserves primitive-order material assignments, and expands indexed geometry before generating fallback flat normals
+  - `GLTFImporter` now creates a transformed `GroupEntity` with one child `MeshEntity` per primitive for multi-primitive GLTF nodes, preserving all primitive mesh/material references instead of importing only the first primitive
+  - Focused verification: `npm.cmd run test -- GLTFImportService GLTFImporter --run` passes with 22 tests, including workspace `test_assets/studio_setup.glb`
+  - Full verification: `npm.cmd run validate` passes with 1456 tests
 - **Dependency Security (v0.16.2)**: Dependabot alerts resolved
   - `vitest` and `@vitest/coverage-v8` updated to `^4.1.0`
   - npm overrides pin patched transitive versions of `postcss`, `brace-expansion`, and `ws`
@@ -228,11 +232,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1452 tests passing** (full `npm.cmd run validate`)
+- **1456 tests passing** (full `npm.cmd run validate`)
 - **85% coverage thresholds** enforced
 - `SceneGraphCommandContract.test.ts`: API contract validation for command classes
-- Large test-only fixture available at `/c:/Git/ready-set-render/test_assets/studio_setup.glb` for importer, editor launch, and visual verification work
-- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` must remain a test asset only and must not be bundled into the deployed application or copied into production-facing runtime assets
+- Large test-only fixture available at `test_assets/studio_setup.glb` for importer, editor launch, and visual verification work
+- `test_assets/studio_setup.glb` must remain a test asset only and must not be bundled into the deployed application or copied into production-facing runtime assets
 
 ### Architecture Highlights
 
@@ -267,7 +271,7 @@ Addresses architectural drift identified in [Architecture Review.md](./Architect
 | Phase 3.2 | Fallback Normal Generation for Indexed Geometry (GLTFImportService) | ✅ Complete |
 | Phase 3.3 | MeshGPUCache Shader-Aware Keying (meshId + programId) | ✅ Complete |
 | Phase 3.4 | ForwardRenderer Responsibility Extraction | ✅ Complete |
-| Phase 3.5 | Multi-primitive GLTF verification, indexed-normal regression test, and `studio_setup.glb` import integration test | Pending next session |
+| Phase 3.5 | Multi-primitive GLTF verification, indexed-normal regression test, and `studio_setup.glb` import integration test | ✅ Complete |
 | Phase 4 | Harden Asset Validation and Persistence Boundaries | Not Started |
 | Phase 5 | Visual Editor Verification Testing | Not Started |
 | Phase 6 | Split Oversized UI Modules (AssetBrowserTab) | Not Started |

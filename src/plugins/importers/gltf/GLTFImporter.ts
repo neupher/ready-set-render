@@ -528,38 +528,41 @@ export class GLTFImporter implements IImporter {
     materialAssets: IMaterialAsset[]
   ): IEntity | null {
     let entity: IEntity;
+    const meshIndices = node.meshIndices ?? (node.meshIndex !== undefined ? [node.meshIndex] : []);
 
-    // Create appropriate object type based on whether node has a mesh
-    if (node.meshIndex !== undefined) {
-      const meshAsset = meshAssets[node.meshIndex];
-      if (meshAsset) {
-        const meshEntity = new MeshEntity(undefined, node.name);
+    if (meshIndices.length > 1) {
+      const group = new GroupEntity(node.name);
+      group.transform.position = [...node.transform.position];
+      group.transform.rotation = [...node.transform.rotation];
+      group.transform.scale = [...node.transform.scale];
 
-        // Set mesh asset reference
-        meshEntity.meshAssetRef = {
-          uuid: meshAsset.uuid,
-          type: 'mesh',
-        } as IAssetReference;
-
-        // Apply local transform (relative to parent)
-        meshEntity.transform.position = [...node.transform.position];
-        meshEntity.transform.rotation = [...node.transform.rotation];
-        meshEntity.transform.scale = [...node.transform.scale];
-
-        // Apply material if available
-        if (node.materialIndices && node.materialIndices.length > 0) {
-          const materialAsset = materialAssets[node.materialIndices[0]];
-          if (materialAsset) {
-            const materialComponent = meshEntity.getComponent('material');
-            if (materialComponent) {
-              (materialComponent as { materialAssetRef?: IAssetReference }).materialAssetRef = {
-                uuid: materialAsset.uuid,
-                type: 'material',
-              };
-            }
-          }
+      for (let i = 0; i < meshIndices.length; i++) {
+        const meshEntity = this.createMeshEntity(
+          node,
+          meshIndices[i],
+          meshAssets,
+          materialAssets,
+          i,
+          true
+        );
+        if (meshEntity) {
+          meshEntity.parent = group as unknown as MeshEntity['parent'];
+          group.children.push(meshEntity);
         }
+      }
 
+      entity = group;
+    } else if (node.meshIndex !== undefined) {
+      const meshEntity = this.createMeshEntity(
+        node,
+        node.meshIndex,
+        meshAssets,
+        materialAssets,
+        0,
+        false
+      );
+
+      if (meshEntity) {
         entity = meshEntity;
       } else {
         // Mesh asset not found, create empty group
@@ -598,5 +601,45 @@ export class GLTFImporter implements IImporter {
     }
 
     return entity;
+  }
+
+  private createMeshEntity(
+    node: IGLTFNodeData,
+    meshIndex: number,
+    meshAssets: IMeshAsset[],
+    materialAssets: IMaterialAsset[],
+    primitiveOffset: number,
+    childOfMultiPrimitiveGroup: boolean
+  ): MeshEntity | null {
+    const meshAsset = meshAssets[meshIndex];
+    if (!meshAsset) {
+      return null;
+    }
+
+    const meshEntity = new MeshEntity(undefined, childOfMultiPrimitiveGroup ? meshAsset.name : node.name);
+    meshEntity.meshAssetRef = {
+      uuid: meshAsset.uuid,
+      type: 'mesh',
+    } as IAssetReference;
+
+    meshEntity.transform.position = childOfMultiPrimitiveGroup ? [0, 0, 0] : [...node.transform.position];
+    meshEntity.transform.rotation = childOfMultiPrimitiveGroup ? [0, 0, 0] : [...node.transform.rotation];
+    meshEntity.transform.scale = childOfMultiPrimitiveGroup ? [1, 1, 1] : [...node.transform.scale];
+
+    const materialIndex = node.materialIndices?.[primitiveOffset];
+    if (materialIndex !== undefined) {
+      const materialAsset = materialAssets[materialIndex];
+      if (materialAsset) {
+        const materialComponent = meshEntity.getComponent('material');
+        if (materialComponent) {
+          (materialComponent as { materialAssetRef?: IAssetReference }).materialAssetRef = {
+            uuid: materialAsset.uuid,
+            type: 'material',
+          };
+        }
+      }
+    }
+
+    return meshEntity;
   }
 }

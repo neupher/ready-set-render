@@ -73,6 +73,8 @@ export interface IGLTFNodeData {
   name: string;
   /** Index into the meshes array (if this node has geometry) */
   meshIndex?: number;
+  /** All mesh indices for GLTF meshes containing multiple primitives */
+  meshIndices?: number[];
   /** Indices into the materials array (for multi-material meshes) */
   materialIndices?: number[];
   /** Local transform (Z-up converted) */
@@ -208,10 +210,14 @@ export class GLTFImportService {
     for (const mesh of gltfMeshes) {
       const primitiveIndices: number[] = [];
 
-      for (const primitive of mesh.listPrimitives()) {
+      const primitives = mesh.listPrimitives();
+      for (let primitiveIndex = 0; primitiveIndex < primitives.length; primitiveIndex++) {
+        const primitive = primitives[primitiveIndex];
         try {
           const meshData = this.extractPrimitive(
             mesh.getName() || `Mesh_${meshes.length}`,
+            primitiveIndex,
+            primitives.length,
             primitive,
             warnings
           );
@@ -236,6 +242,8 @@ export class GLTFImportService {
    */
   private extractPrimitive(
     meshName: string,
+    primitiveIndex: number,
+    primitiveCount: number,
     primitive: Primitive,
     warnings: string[]
   ): IGLTFMeshData | null {
@@ -253,15 +261,17 @@ export class GLTFImportService {
     }
 
     // Convert positions from Y-up to Z-up
-    const positions = this.convertCoordinates(new Float32Array(positionArray));
+    let positions = this.convertCoordinates(new Float32Array(positionArray));
 
     // Get indices FIRST (needed for flat normal generation)
     const indicesAccessor = primitive.getIndices();
     let indices: Uint16Array | Uint32Array;
+    let hasExplicitIndices = false;
 
     if (indicesAccessor) {
       const indexArray = indicesAccessor.getArray();
       if (indexArray) {
+        hasExplicitIndices = true;
         // Use Uint16Array if indices fit, otherwise Uint32Array
         const maxIndex = Math.max(...indexArray);
         if (maxIndex <= 65535) {
@@ -278,6 +288,16 @@ export class GLTFImportService {
       indices = this.generateSequentialIndices(positions.length / 3);
     }
 
+    // Get UVs (optional)
+    let uvs: Float32Array | undefined;
+    const uvAccessor = primitive.getAttribute('TEXCOORD_0');
+    if (uvAccessor) {
+      const uvArray = uvAccessor.getArray();
+      if (uvArray) {
+        uvs = new Float32Array(uvArray);
+      }
+    }
+
     // Get normals (optional but recommended) - use flat normals if missing/invalid
     let normals: Float32Array;
     const normalAccessor = primitive.getAttribute('NORMAL');
@@ -287,21 +307,23 @@ export class GLTFImportService {
         normals = this.convertCoordinates(new Float32Array(normalArray));
       } else {
         warnings.push(`Could not get normal array, generating flat normals`);
+        if (hasExplicitIndices) {
+          const expanded = this.expandIndexedGeometry(positions, indices, uvs);
+          positions = expanded.positions;
+          indices = expanded.indices;
+          uvs = expanded.uvs;
+        }
         normals = this.generateFlatNormals(positions, indices);
       }
     } else {
       warnings.push(`Primitive has no NORMAL attribute, generating flat normals`);
-      normals = this.generateFlatNormals(positions, indices);
-    }
-
-    // Get UVs (optional)
-    let uvs: Float32Array | undefined;
-    const uvAccessor = primitive.getAttribute('TEXCOORD_0');
-    if (uvAccessor) {
-      const uvArray = uvAccessor.getArray();
-      if (uvArray) {
-        uvs = new Float32Array(uvArray);
+      if (hasExplicitIndices) {
+        const expanded = this.expandIndexedGeometry(positions, indices, uvs);
+        positions = expanded.positions;
+        indices = expanded.indices;
+        uvs = expanded.uvs;
       }
+      normals = this.generateFlatNormals(positions, indices);
     }
 
     // Get material index
@@ -315,7 +337,7 @@ export class GLTFImportService {
     const triangleCount = indices.length / 3;
 
     // Create unique name for multi-primitive meshes
-    const name = meshName;
+    const name = primitiveCount > 1 ? `${meshName}_${primitiveIndex}` : meshName;
 
     return {
       name,
@@ -390,6 +412,7 @@ export class GLTFImportService {
     // Get mesh indices
     const mesh = node.getMesh();
     let meshIndex: number | undefined;
+    let meshIndices: number[] | undefined;
     let materialIndices: number[] | undefined;
 
     if (mesh) {
@@ -397,14 +420,15 @@ export class GLTFImportService {
       if (indices && indices.length > 0) {
         // For simplicity, use the first primitive's index
         meshIndex = indices[0];
+        meshIndices = [...indices];
 
-        // Collect all material indices from primitives
+        // Collect material indices from primitives in primitive order.
         materialIndices = [];
         for (const primitive of mesh.listPrimitives()) {
           const mat = primitive.getMaterial();
           if (mat) {
             const matIndex = this.materialIndexMap.get(mat);
-            if (matIndex !== undefined && !materialIndices.includes(matIndex)) {
+            if (matIndex !== undefined) {
               materialIndices.push(matIndex);
             }
           }
@@ -436,6 +460,7 @@ export class GLTFImportService {
     return {
       name: node.getName() || `Node`,
       meshIndex,
+      meshIndices,
       materialIndices,
       transform: {
         position,
@@ -559,6 +584,42 @@ export class GLTFImportService {
     }
 
     return normals;
+  }
+
+  /**
+   * Expand indexed geometry so each triangle has unique vertices.
+   * This is required for true flat normals when source geometry shares
+   * vertices across faces but omits explicit normals.
+   */
+  private expandIndexedGeometry(
+    positions: Float32Array,
+    indices: Uint16Array | Uint32Array,
+    uvs?: Float32Array
+  ): {
+    positions: Float32Array;
+    indices: Uint16Array | Uint32Array;
+    uvs?: Float32Array;
+  } {
+    const expandedPositions = new Float32Array(indices.length * 3);
+    const expandedUvs = uvs ? new Float32Array(indices.length * 2) : undefined;
+
+    for (let i = 0; i < indices.length; i++) {
+      const sourceIndex = indices[i];
+      expandedPositions[i * 3] = positions[sourceIndex * 3];
+      expandedPositions[i * 3 + 1] = positions[sourceIndex * 3 + 1];
+      expandedPositions[i * 3 + 2] = positions[sourceIndex * 3 + 2];
+
+      if (expandedUvs && uvs) {
+        expandedUvs[i * 2] = uvs[sourceIndex * 2];
+        expandedUvs[i * 2 + 1] = uvs[sourceIndex * 2 + 1];
+      }
+    }
+
+    return {
+      positions: expandedPositions,
+      indices: this.generateSequentialIndices(indices.length),
+      uvs: expandedUvs,
+    };
   }
 
   /**

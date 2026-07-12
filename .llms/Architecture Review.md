@@ -1,7 +1,7 @@
 # Architecture Review
 
-> **Last Updated:** 2026-07-12T16:57:00Z
-> **Status:** Active review document - Phase 1 + Phase 2 + Phase 3.2/3.3/3.4 remediation complete
+> **Last Updated:** 2026-07-12T16:59:00Z
+> **Status:** Active review document - Phase 1 + Phase 2 + Phase 3 remediation complete
 
 ---
 
@@ -21,7 +21,7 @@ A detailed phased execution plan has been created to address all findings in thi
 |-------|-------------------|--------|
 | Phase 1 | #1 Runtime composition too centralized | ✅ Complete (v0.16.0) |
 | Phase 2 | #2 Importer contract drift | ✅ Complete (v0.16.1) |
-| Phase 3 | #3 GLTF correctness gaps, #4 Renderer responsibilities | In Progress (3.2/3.3/3.4 complete) |
+| Phase 3 | #3 GLTF correctness gaps, #4 Renderer responsibilities | ✅ Complete |
 | Phase 4 | #5 Asset integrity boundaries | Not Started |
 | Phase 5 | #7 Visual editor verification | Not Started |
 | Phase 6 | #6 Asset browser oversized | Not Started |
@@ -138,7 +138,7 @@ Why it matters:
 - Many editor regressions are visual or interaction-driven and are hard to catch with unit tests alone.
 - A screenshot baseline workflow would give developers and LLM agents a concrete artifact to inspect when validating rendering, UI state, import results, and scene behavior.
 - Cached screenshots would make it easier to compare expected and actual behavior across sessions and across future architectural refactors.
-- The new large fixture `/c:/Git/ready-set-render/test_assets/studio_setup.glb` makes this especially valuable because it provides a realistic scene for importer, rendering, and editor validation.
+- The new large fixture `test_assets/studio_setup.glb` makes this especially valuable because it provides a realistic scene for importer, rendering, and editor validation.
 
 Relevant files:
 - `/c:/Git/ready-set-render/package.json`
@@ -166,7 +166,7 @@ Relevant files:
 The highest-value missing verification is realistic integration coverage around the import and asset workflows.
 
 Focus areas:
-- End-to-end GLTF import tests using representative fixtures, including `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+- End-to-end GLTF import tests using representative fixtures, including `test_assets/studio_setup.glb`
 - Reimport stability and hierarchy preservation
 - Renderer cache invalidation with custom shaders
 - Asset validation for malformed on-disk data

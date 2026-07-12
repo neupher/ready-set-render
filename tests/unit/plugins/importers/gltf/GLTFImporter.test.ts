@@ -208,6 +208,93 @@ describe('GLTFImporter', () => {
       );
     });
 
+    it('should preserve all primitives from a multi-primitive GLTF node as child mesh entities', async () => {
+      const mockGLTFResult: IGLTFImportResult = {
+        meshes: [
+          {
+            name: 'Body_0',
+            positions: new Float32Array([0, 0, 0, 1, 0, 0, 1, 1, 0]),
+            normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+            indices: new Uint16Array([0, 1, 2]),
+            bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+            vertexCount: 3,
+            triangleCount: 1,
+            materialIndex: 0,
+          },
+          {
+            name: 'Body_1',
+            positions: new Float32Array([0, 0, 0, 0, 1, 0, 1, 1, 0]),
+            normals: new Float32Array([0, 0, 1, 0, 0, 1, 0, 0, 1]),
+            indices: new Uint16Array([0, 1, 2]),
+            bounds: { min: [0, 0, 0], max: [1, 1, 0] },
+            vertexCount: 3,
+            triangleCount: 1,
+            materialIndex: 1,
+          },
+        ],
+        materials: [
+          {
+            name: 'Red Material',
+            baseColor: [1, 0, 0],
+            alpha: 1,
+            metallic: 0,
+            roughness: 0.5,
+            transparent: false,
+          },
+          {
+            name: 'Blue Material',
+            baseColor: [0, 0, 1],
+            alpha: 1,
+            metallic: 0,
+            roughness: 0.25,
+            transparent: false,
+          },
+        ],
+        hierarchy: [
+          {
+            name: 'Body',
+            meshIndex: 0,
+            meshIndices: [0, 1],
+            materialIndices: [0, 1],
+            transform: {
+              position: [5, 10, 15],
+              rotation: [0, 0, 45],
+              scale: [2, 2, 2],
+            },
+            children: [],
+          },
+        ],
+        warnings: [],
+      };
+
+      vi.mocked(mockImportService.import).mockResolvedValue(mockGLTFResult);
+
+      const importer = new GLTFImporter(mockImportService, mockAssetRegistry, mockMaterialFactory);
+      const file = new File([], 'body.glb');
+
+      const result = await importer.import(file);
+      const group = result.entities[0];
+      const meshAssets = result.assets.filter(a => a.type === 'mesh');
+      const materialAssets = result.assets.filter(a => a.type === 'material');
+
+      expect(group.name).toBe('Body');
+      expect(group.transform.position).toEqual([5, 10, 15]);
+      expect(group.children).toHaveLength(2);
+      expect(group.children.map(child => child.name)).toEqual(['Body_0', 'Body_1']);
+      expect(group.children[0].parent).toBe(group);
+      expect(group.children[1].parent).toBe(group);
+
+      expect((group.children[0] as unknown as { meshAssetRef: { uuid: string } }).meshAssetRef.uuid).toBe(meshAssets[0].uuid);
+      expect((group.children[1] as unknown as { meshAssetRef: { uuid: string } }).meshAssetRef.uuid).toBe(meshAssets[1].uuid);
+
+      const firstMaterial = (group.children[0] as unknown as { getComponent: (type: string) => unknown })
+        .getComponent('material') as { materialAssetRef?: { uuid: string } };
+      const secondMaterial = (group.children[1] as unknown as { getComponent: (type: string) => unknown })
+        .getComponent('material') as { materialAssetRef?: { uuid: string } };
+      expect(firstMaterial.materialAssetRef?.uuid).toBe(materialAssets[0].uuid);
+      expect(secondMaterial.materialAssetRef?.uuid).toBe(materialAssets[1].uuid);
+    });
+
     it('should handle import warnings', async () => {
       const mockGLTFResult: IGLTFImportResult = {
         meshes: [],

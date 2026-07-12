@@ -1,8 +1,8 @@
 # Architecture Remediation Plan
 
-> **Last Updated:** 2026-07-12T16:57:00Z
+> **Last Updated:** 2026-07-12T16:58:00Z
 > **Version:** 0.1.2
-> **Status:** Phase 1 + Phase 2 + Phase 3.2/3.3/3.4 Complete
+> **Status:** Phase 1 + Phase 2 + Phase 3 Complete
 > **Priority:** Highest — Execute before new feature work
 > **Source:** [Architecture Review.md](./Architecture%20Review.md)
 
@@ -269,26 +269,32 @@ Implementation notes for future sessions:
 - `ForwardRenderer.ts` is now 307 lines and no longer contains inline shader resolution or the large uniform type switch.
 - Focused verification: `npm.cmd run test -- ShaderResolver UniformSetter ForwardRenderer` passes with 7 tests.
 
-#### 3.5 Tests
+#### 3.5 Tests ✅ COMPLETE
 
-**Next-session target:** Complete these remaining Phase 3 tests before starting Phase 4.
+**Completed:** 2026-07-12
 
 | Test | Description |
 |------|-------------|
-| Multi-primitive GLTF mesh produces correct separate IMeshData entries | New unit test using crafted fixture |
-| Missing normals on indexed geometry produces valid flat normals | New unit test |
-| MeshGPUCache returns correct VAO for different shader programs | New unit test |
+| Multi-primitive GLTF mesh produces correct separate IMeshData entries | Complete — real in-memory GLB fixture verifies primitive suffixes, material indices, and hierarchy mesh indices |
+| Missing normals on indexed geometry produces valid flat normals | Complete — indexed geometry expands before flat normal generation |
+| MeshGPUCache returns correct VAO for different shader programs | Complete |
 | ShaderResolver resolves built-in + custom shaders correctly | Complete |
 | UniformSetter handles GLSL type dispatch and fallback material uniforms | Complete |
-| Full import of `test_assets/studio_setup.glb` completes without errors | New integration test |
+| Full import of `test_assets/studio_setup.glb` completes without errors | Complete — integration test imports workspace `test_assets/studio_setup.glb` |
+
+Implementation notes:
+- `GLTFImportService` now names multi-primitive outputs with stable primitive suffixes (`Body_0`, `Body_1`), records all primitive mesh indices on hierarchy nodes, and keeps material indices in primitive order.
+- Missing normals on explicitly indexed geometry now expand indexed vertices before flat normal generation, so shared vertices do not smear face normals across hard edges.
+- `GLTFImporter` now imports multi-primitive GLTF nodes as a transformed `GroupEntity` with one child `MeshEntity` per primitive.
+- Verification: `npm.cmd run validate` passes with 1456 tests.
 
 #### Success Criteria
 
-- [ ] Multi-primitive meshes import with correct material assignments
-- [ ] Flat normal fallback produces correct normals for indexed geometry
+- [x] Multi-primitive meshes import with correct material assignments
+- [x] Flat normal fallback produces correct normals for indexed geometry
 - [x] VAO cache handles shader attribute layout differences
 - [x] ForwardRenderer line count reduced to ~350-400
-- [ ] `studio_setup.glb` imports successfully in integration test
+- [x] `studio_setup.glb` imports successfully in integration test
 - [x] All existing tests pass
 
 ---

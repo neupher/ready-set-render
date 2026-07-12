@@ -1,6 +1,6 @@
 # Testing Guidelines: WebGL Editor
 
-> **Last Updated:** 2026-04-21T13:18:21Z
+> **Last Updated:** 2026-07-12T16:59:00Z
 > **Version:** 0.1.0
 
 ---
@@ -334,7 +334,7 @@ describe('Viewport Rendering', () => {
 Recommended future visual verification flow:
 
 - Launch the editor in a browser-driven test
-- Load realistic fixtures, including `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+- Load realistic fixtures, including `test_assets/studio_setup.glb`
 - Capture screenshots and save/cache them as review artifacts
 - Use those cached images for developer review and LLM-assisted verification of rendering and UI behavior
 
@@ -468,11 +468,11 @@ Place small test models in `tests/fixtures/models/`:
 
 Large test-only model fixture:
 
-- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` - Extensive GLB fixture for importer validation, editor launch testing, and screenshot-based visual review
+- `test_assets/studio_setup.glb` - Extensive GLB fixture for importer validation, editor launch testing, and screenshot-based visual review
 
 Fixture rule:
 
-- `/c:/Git/ready-set-render/test_assets/studio_setup.glb` is for tests and manual validation only
+- `test_assets/studio_setup.glb` is for tests and manual validation only
 - It must not be imported into `src/`, `public/`, or other production-facing asset paths
 - It must not be bundled into the deployed application or included in GitHub Pages output
 - Use it for integration, E2E, and screenshot-capture workflows where realistic scene complexity is needed

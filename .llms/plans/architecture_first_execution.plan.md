@@ -1,10 +1,10 @@
 # Architecture-First Execution Plan
 
-> Last Updated: 2026-07-12T16:05:00Z
+> Last Updated: 2026-07-12T16:59:00Z
 
 ## Project Instruction
 
-For this project, all future active plan files must be created under `/c:/Git/ready-set-render/.llms/plans/`.
+For this project, all future active plan files must be created under `.llms/plans/`.
 
 Do not write project plans to `C:\Users\tapaniheikkinen\.llms\plans\` when working in this repository. Any future agent session working on `/c:/Git/ready-set-render` should treat the repository-local `.llms/plans` directory as the canonical location for active planning documents.
 
@@ -134,7 +134,7 @@ Introduce a verification workflow that catches visual and interaction regression
 Work to perform:
 - Add a browser-driven editor-launch test path that can open the editor, load scenes, and capture screenshots.
 - Create a repeatable screenshot capture and caching flow so outputs can be compared across sessions and across refactors.
-- Use `/c:/Git/ready-set-render/test_assets/studio_setup.glb` as the primary realistic validation fixture for rendering, import, and editor-state checks.
+- Use `test_assets/studio_setup.glb` as the primary realistic validation fixture for rendering, import, and editor-state checks.
 - Keep fixture-driven visual artifacts strictly in test-only infrastructure, not production assets.
 
 Critical files:
@@ -142,7 +142,7 @@ Critical files:
 - `/c:/Git/ready-set-render/tests/`
 - `/c:/Git/ready-set-render/src/core/Application.ts`
 - `/c:/Git/ready-set-render/src/ui/panels/EditorLayout.ts`
-- `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+- `test_assets/studio_setup.glb`
 
 Reuse:
 - Existing editor bootstrap in `/c:/Git/ready-set-render/src/core/Application.ts`
@@ -233,7 +233,7 @@ Key dependency notes:
 - Existing importer tests remain green and new contract tests are added
 
 ### Verification for Phase 3
-- Add integration tests around representative GLTF fixtures, including `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+- Add integration tests around representative GLTF fixtures, including `test_assets/studio_setup.glb`
 - Validate hierarchy preservation, mesh/material counts, and missing-normal fallback behavior
 - Validate shader program updates and renderer cache invalidation behavior
 
@@ -245,7 +245,7 @@ Key dependency notes:
 ### Verification for Phase 5
 - Add browser-driven launch tests that capture screenshots from the live editor
 - Persist outputs for human and agent review
-- Validate imported large-scene rendering using `/c:/Git/ready-set-render/test_assets/studio_setup.glb`
+- Validate imported large-scene rendering using `test_assets/studio_setup.glb`
 
 ### Verification for Phase 6
 - Preserve current asset browser behavior with no user-visible regressions
