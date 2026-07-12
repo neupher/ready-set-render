@@ -1,6 +1,6 @@
 # Workflows
 
-> Last Updated: 2026-07-12T15:51:00Z
+> Last Updated: 2026-07-12T16:05:00Z
 > Status: Active
 
 ## Purpose
@@ -75,6 +75,16 @@ Use this workflow when implementing a new capability. The agent should:
 ## Detailed Steps
 
 The detailed workflow procedures now live in .llms/skills/workflows.md.
+
+## Planning Documents
+
+Active planning documents live in `.llms/plans/`. Completed plans should be moved to `.llms/archive/` or summarized in `PROJECT_CONTEXT.md`/`CHANGELOG.md`, then removed from active session-start references.
+
+Agents should keep session-start context lean:
+
+1. Link only plans that are still actionable for the current priority.
+2. Replace completed-plan links with a one-line completed-work summary.
+3. Avoid requiring new sessions to read historical plans unless the user asks or the work directly depends on that history.
 
 
 1. **Check if forbidden**

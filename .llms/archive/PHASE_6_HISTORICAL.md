@@ -419,5 +419,5 @@ uniform int uLightCount;
 ## Related Documents
 
 - [../PROJECT_CONTEXT.md](../PROJECT_CONTEXT.md) - Current project state
-- [../PHASE_6_PLAN.md](../PHASE_6_PLAN.md) - Remaining phases (6.7-6.14)
+- [../plans/PHASE_6_PLAN.md](../plans/PHASE_6_PLAN.md) - Remaining phases (6.7-6.14)
 - [../ARCHITECTURE.md](../ARCHITECTURE.md) - System design reference

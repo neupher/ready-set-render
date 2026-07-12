@@ -1,17 +1,19 @@
 # Architecture-First Execution Plan
 
+> Last Updated: 2026-07-12T16:05:00Z
+
 ## Project Instruction
 
-For this project, all future plan files must be created under `/c:/Git/ready-set-render/.llms/`.
+For this project, all future active plan files must be created under `/c:/Git/ready-set-render/.llms/plans/`.
 
-Do not write project plans to `C:\Users\tapaniheikkinen\.llms\plans\` when working in this repository. Any future agent session working on `/c:/Git/ready-set-render` should treat the repository-local `.llms` directory as the canonical location for planning documents.
+Do not write project plans to `C:\Users\tapaniheikkinen\.llms\plans\` when working in this repository. Any future agent session working on `/c:/Git/ready-set-render` should treat the repository-local `.llms/plans` directory as the canonical location for active planning documents.
 
 ## Context
 
 The current project direction is feature-capable, but the runtime architecture has drifted from the plugin-driven model documented in `/c:/Git/ready-set-render/.llms/GUIDELINES.md` and `/c:/Git/ready-set-render/.llms/ARCHITECTURE.md`. The clearest evidence is `/c:/Git/ready-set-render/.llms/Architecture Review.md`, which identifies `/c:/Git/ready-set-render/src/core/Application.ts` as the current composition bottleneck and recommends a specific improvement order focused on architecture, correctness, validation, and verification before more feature expansion.
 
 This should become the highest-priority initiative because the currently pending work depends on these foundations:
-- `/c:/Git/ready-set-render/.llms/PHASE_6_PLAN.md` still treats Phase 6.10 render mode switching as the next feature, but that work will be cleaner once renderer composition is plugin-driven rather than hardcoded in `/c:/Git/ready-set-render/src/core/Application.ts`.
+- `/c:/Git/ready-set-render/.llms/plans/PHASE_6_PLAN.md` still treats Phase 6.10 render mode switching as the next feature, but that work will be cleaner once renderer composition is plugin-driven rather than hardcoded in `/c:/Git/ready-set-render/src/core/Application.ts`.
 - `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md` currently prioritizes GLTF integration testing and texture support, but the architecture review shows importer contracts, renderer/cache behavior, and asset validation need tightening first so those downstream phases do not harden the wrong seams.
 
 The intended outcome is a codebase where runtime wiring, importer behavior, renderer responsibilities, asset boundaries, and visual verification all align with the architecture the project claims to implement.
@@ -35,8 +37,8 @@ The updated priority order should become:
 
 Specific planning implications:
 - `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md` should replace its current “Next Steps” list with this initiative as the top item.
-- `/c:/Git/ready-set-render/.llms/PHASE_6_PLAN.md` should mark Phase 6.10 as deferred until runtime composition and render pipeline seams are cleaned up.
-- `/c:/Git/ready-set-render/.llms/GLTF_IMPORTER_PLAN.md` should cross-reference this initiative for importer contract cleanup and integration verification.
+- `/c:/Git/ready-set-render/.llms/plans/PHASE_6_PLAN.md` should mark Phase 6.10 as deferred until runtime composition and render pipeline seams are cleaned up.
+- `/c:/Git/ready-set-render/.llms/plans/GLTF_IMPORTER_PLAN.md` should cross-reference this initiative for importer contract cleanup and integration verification.
 
 ## Implementation Phases
 
@@ -177,15 +179,15 @@ Work to perform:
 - Update `/c:/Git/ready-set-render/.llms/GUIDELINES.md` to remove stale statements such as forward rendering not being started and the outdated Y-up migration note.
 - Update `/c:/Git/ready-set-render/.llms/ARCHITECTURE.md` to describe the actual runtime composition model and any new plugin/runtime service patterns introduced.
 - Update `/c:/Git/ready-set-render/README.md` so its architecture claims match the implemented runtime.
-- Update `/c:/Git/ready-set-render/.llms/PHASE_6_PLAN.md` to explicitly defer Phase 6.10 behind the architecture-first initiative.
-- Update `/c:/Git/ready-set-render/.llms/GLTF_IMPORTER_PLAN.md` to point Phase 9 testing and remaining importer work at the new importer/correctness phases.
+- Update `/c:/Git/ready-set-render/.llms/plans/PHASE_6_PLAN.md` to explicitly defer Phase 6.10 behind the architecture-first initiative.
+- Update `/c:/Git/ready-set-render/.llms/plans/GLTF_IMPORTER_PLAN.md` to point Phase 9 testing and remaining importer work at the new importer/correctness phases.
 
 Critical files:
 - `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md`
 - `/c:/Git/ready-set-render/.llms/GUIDELINES.md`
 - `/c:/Git/ready-set-render/.llms/ARCHITECTURE.md`
-- `/c:/Git/ready-set-render/.llms/PHASE_6_PLAN.md`
-- `/c:/Git/ready-set-render/.llms/GLTF_IMPORTER_PLAN.md`
+- `/c:/Git/ready-set-render/.llms/plans/PHASE_6_PLAN.md`
+- `/c:/Git/ready-set-render/.llms/plans/GLTF_IMPORTER_PLAN.md`
 - `/c:/Git/ready-set-render/README.md`
 
 ## Existing Functions, Utilities, and Patterns To Reuse
@@ -276,14 +278,14 @@ Expected primary modification set:
 - `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md`
 - `/c:/Git/ready-set-render/.llms/GUIDELINES.md`
 - `/c:/Git/ready-set-render/.llms/ARCHITECTURE.md`
-- `/c:/Git/ready-set-render/.llms/PHASE_6_PLAN.md`
-- `/c:/Git/ready-set-render/.llms/GLTF_IMPORTER_PLAN.md`
+- `/c:/Git/ready-set-render/.llms/plans/PHASE_6_PLAN.md`
+- `/c:/Git/ready-set-render/.llms/plans/GLTF_IMPORTER_PLAN.md`
 - `/c:/Git/ready-set-render/README.md`
 
 ## Deferred Work After This Initiative
 
 These should remain planned, but explicitly deferred behind the architecture-first track:
-- Render mode dropdown from `/c:/Git/ready-set-render/.llms/PHASE_6_PLAN.md`
+- Render mode dropdown from `/c:/Git/ready-set-render/.llms/plans/PHASE_6_PLAN.md`
 - Asset metadata texture support from `/c:/Git/ready-set-render/.llms/PROJECT_CONTEXT.md`
 - Remaining GLTF importer polish beyond the contract/correctness/testing work absorbed into this initiative
 

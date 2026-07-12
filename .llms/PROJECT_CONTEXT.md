@@ -1,6 +1,6 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-07-12T15:51:00Z
+> **Last Updated:** 2026-07-12T16:05:00Z
 > **Version:** 0.17.0
 > **Status:** Architecture Remediation Phase 3 in Progress
 
@@ -254,7 +254,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Architecture Remediation (HIGHEST PRIORITY)
 
-Addresses architectural drift identified in [Architecture Review.md](./Architecture%20Review.md). See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md):
+Addresses architectural drift identified in [Architecture Review.md](./Architecture%20Review.md). See [ARCHITECTURE_REMEDIATION_PLAN.md](./plans/ARCHITECTURE_REMEDIATION_PLAN.md):
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -274,7 +274,7 @@ Addresses architectural drift identified in [Architecture Review.md](./Architect
 
 ### Asset Metadata System Revamp
 
-Unity-style `.assetmeta` companion files. See [ASSET_META_SYSTEM_PLAN.md](./ASSET_META_SYSTEM_PLAN.md):
+Unity-style `.assetmeta` companion files. See [ASSET_META_SYSTEM_PLAN.md](./plans/ASSET_META_SYSTEM_PLAN.md):
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -292,7 +292,7 @@ Unity-style `.assetmeta` companion files. See [ASSET_META_SYSTEM_PLAN.md](./ASSE
 
 ### Asset System Implementation
 
-Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./ASSET_SYSTEM_PLAN.md):
+Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./plans/ASSET_SYSTEM_PLAN.md):
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -305,7 +305,7 @@ Pre-requisite for Phase 6.9 (Live Shader Editor). See [ASSET_SYSTEM_PLAN.md](./A
 
 ### Phase 6: Functional WebGL Editor
 
-Remaining sub-phases (see [PHASE_6_PLAN.md](./PHASE_6_PLAN.md)):
+Remaining sub-phases (see [PHASE_6_PLAN.md](./plans/PHASE_6_PLAN.md)):
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -330,7 +330,7 @@ Raw `.glsl` file support has been fully implemented. All phases complete:
 
 ### GLTF Importer Implementation
 
-Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN.md):
+Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./plans/GLTF_IMPORTER_PLAN.md):
 
 | Phase | Description | Status |
 |-------|-------------|--------|
@@ -349,7 +349,7 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 
 ## Next Steps (Recommended Order)
 
-1. **Architecture Remediation Phase 3: Correctness Fixes** — Multi-primitive meshes, fallback normals, MeshGPUCache shader-aware keying, ForwardRenderer extraction. See [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)
+1. **Default Built-In GLTF Sample** — Plan how `test_assets/studio_setup/scene.gltf` should appear in the Built-in project view without turning the test fixture into a production-bundled runtime asset. See [DEFAULT_BUILTIN_GLTF_PLAN.md](./plans/DEFAULT_BUILTIN_GLTF_PLAN.md)
 2. **Architecture Remediation Phases 4–7** — Asset validation, visual testing, UI decomposition (AssetBrowserTab is now ~1,820 lines after Phase 2 + asset-workflow work — likely a Phase 6 candidate), documentation
 3. **GLTF Importer Phase 9: Testing (Integration)** — Integration tests (overlaps with Remediation Phase 3/5)
 4. **Asset Metadata System Phase 5: Texture Support** — .assetmeta for texture imports
@@ -376,7 +376,6 @@ Foundation for 3D model import. See [GLTF_IMPORTER_PLAN.md](./GLTF_IMPORTER_PLAN
 ready-set-render/
 ├── .llms/                    # AI context and guidelines
 │   ├── PROJECT_CONTEXT.md    # This file (current state)
-│   ├── PHASE_6_PLAN.md       # Remaining Phase 6 work
 │   ├── ARCHITECTURE.md       # System design
 │   ├── COORDINATE_SYSTEM.md  # Z-up right-handed convention
 │   ├── GUIDELINES.md         # Development rules
@@ -384,6 +383,7 @@ ready-set-render/
 │   ├── WORKFLOWS.md          # Automation triggers
 │   ├── LIBRARIES.md          # Dependency tracking
 │   ├── TESTING.md            # Test requirements
+│   ├── plans/                # Active planning documents
 │   └── archive/              # Historical plan documents
 ├── src/
 │   ├── core/                 # Core engine modules
@@ -427,7 +427,7 @@ For detailed history of completed phases, see:
 
 ## Related Documents
 
-- [PHASE_6_PLAN.md](./PHASE_6_PLAN.md) - Remaining Phase 6 work (6.8-6.13)
+- [PHASE_6_PLAN.md](./plans/PHASE_6_PLAN.md) - Remaining Phase 6 work (6.8-6.13)
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - System design details
 - [COORDINATE_SYSTEM.md](./COORDINATE_SYSTEM.md) - Z-up convention
 - [GUIDELINES.md](./GUIDELINES.md) - Development rules

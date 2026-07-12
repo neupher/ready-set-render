@@ -1,6 +1,6 @@
 # Rendering Architecture Refactor Plan
 
-> **Last Updated:** 2026-01-23T22:50:00Z
+> **Last Updated:** 2026-07-12T16:05:00Z
 > **Priority:** HIGH - Must complete before adding new primitives or importers
 > **Estimated Effort:** 4-6 hours
 
@@ -261,4 +261,4 @@ Cube.ts (~500 lines)
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Update after refactor
 - [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) - Update current state
-- [PHASE_6_PLAN.md](./PHASE_6_PLAN.md) - Insert before Phase 6.8
+- [PHASE_6_PLAN.md](../plans/PHASE_6_PLAN.md) - Insert before Phase 6.8

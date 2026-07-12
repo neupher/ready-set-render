@@ -40,7 +40,7 @@ Current documentation is in the parent `.llms/` folder:
 | File | Purpose |
 |------|---------|
 | `PROJECT_CONTEXT.md` | Current project state and next steps |
-| `PHASE_6_PLAN.md` | Remaining Phase 6 work (6.7-6.14) |
+| `../plans/PHASE_6_PLAN.md` | Remaining Phase 6 work (6.7-6.14) |
 | `ARCHITECTURE.md` | System design reference |
 | `GUIDELINES.md` | Mandatory development rules |
 | `COORDINATE_SYSTEM.md` | Coordinate system convention (Z-up) |

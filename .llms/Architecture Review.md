@@ -1,6 +1,6 @@
 # Architecture Review
 
-> **Last Updated:** 2026-04-22T14:30:00Z
+> **Last Updated:** 2026-07-12T16:05:00Z
 > **Status:** Active review document — Phase 1 + Phase 2 remediation complete
 
 ---
@@ -15,7 +15,7 @@ This document tracks the current architectural review of the project and highlig
 
 A detailed phased execution plan has been created to address all findings in this review:
 
-**[ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md)** — 7 phases, ~10–14 sessions
+**[ARCHITECTURE_REMEDIATION_PLAN.md](./plans/ARCHITECTURE_REMEDIATION_PLAN.md)** — 7 phases, ~10–14 sessions
 
 | Phase | Addresses Finding | Status |
 |-------|-------------------|--------|
@@ -187,7 +187,7 @@ Known mismatches between docs and implementation:
 
 ## Session Note
 
-Any new session reviewing or extending architecture-sensitive areas should read this file and the [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md) before making changes in the following areas:
+Any new session reviewing or extending architecture-sensitive areas should read this file and the [ARCHITECTURE_REMEDIATION_PLAN.md](./plans/ARCHITECTURE_REMEDIATION_PLAN.md) before making changes in the following areas:
 - renderer and pipeline work
 - importer work
 - asset system changes
@@ -199,7 +199,7 @@ Any new session reviewing or extending architecture-sensitive areas should read 
 
 ## Related Documents
 
-- [ARCHITECTURE_REMEDIATION_PLAN.md](./ARCHITECTURE_REMEDIATION_PLAN.md) — Execution plan for this review
+- [ARCHITECTURE_REMEDIATION_PLAN.md](./plans/ARCHITECTURE_REMEDIATION_PLAN.md) — Execution plan for this review
 - [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) — Current project state
 - [GUIDELINES.md](./GUIDELINES.md) — Development rules
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — System design documentation
