@@ -100,6 +100,7 @@ export function createMockGL(): WebGL2RenderingContext {
     uniform4f: vi.fn(),
     uniform1i: vi.fn(),
     uniform3fv: vi.fn(),
+    uniformMatrix3fv: vi.fn(),
     uniformMatrix4fv: vi.fn(),
 
     // Draw methods

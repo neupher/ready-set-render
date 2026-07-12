@@ -18,10 +18,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Cache entries now use stable WebGL program object identity instead of `ACTIVE_UNIFORMS`, avoiding collisions between different shader programs
   - Solid and wireframe VAOs now bind attributes using the supplied shader program's `aPosition`, `aNormal`, and `aTexCoord` locations when available
   - Mesh disposal now clears solid and wireframe cache entries independently, including wireframe-only resources
+- **Architecture Remediation Phase 3.4**: ForwardRenderer responsibility extraction
+  - `ForwardRenderer` now delegates material-to-shader resolution to `ShaderResolver`
+  - Uniform marshaling now lives in `UniformSetter`, including frame uniforms, transform uniforms, shader-declared material parameters, and fallback color/opacity uniforms
+  - `ForwardRenderer.ts` is reduced to 307 lines and focused on render flow and mesh submission
 
 ### Added
 
 - Architecture Remediation Phase 3.2 & 3.3: Correctness fixes for GLTF import and GPU caching
+- Unit coverage for `ShaderResolver` and `UniformSetter`
 - Root `AGENTS.md` and a new `.llms/skills/` directory for agent-facing guidance.
 - Rewrote `.llms/GUIDELINES.md` and `.llms/WORKFLOWS.md` to simplify active guidance and workflow triggers.
 - Added starter skill documents for architecture, plugins, materials, testing, and workflows.
@@ -29,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Tests
 
 - `npm.cmd run test -- MeshGPUCache` passing: 1 test file, 30 tests
+- `npm.cmd run test -- ShaderResolver UniformSetter ForwardRenderer` passing: 2 test files, 7 tests
+- `npm.cmd run validate` passing: 50 test files, 1452 tests
 
 ---
 

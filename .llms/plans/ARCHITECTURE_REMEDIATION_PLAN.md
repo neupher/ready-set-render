@@ -1,8 +1,8 @@
 # Architecture Remediation Plan
 
-> **Last Updated:** 2026-07-12T15:45:00Z
+> **Last Updated:** 2026-07-12T16:57:00Z
 > **Version:** 0.1.2
-> **Status:** Phase 1 + Phase 2 + Phase 3.2/3.3 Complete
+> **Status:** Phase 1 + Phase 2 + Phase 3.2/3.3/3.4 Complete
 > **Priority:** Highest — Execute before new feature work
 > **Source:** [Architecture Review.md](./Architecture%20Review.md)
 
@@ -103,7 +103,7 @@ Replace the manual plugin construction with PluginManager registration:
 - [ ] No setter injection (`set*()`) remains on any plugin
 - [ ] All plugins receive dependencies through `IPluginContext`
 - [ ] Application.ts line count reduced by ~100–150 lines
-- [ ] All existing tests pass with zero changes
+- [x] All existing tests pass with zero changes
 
 ---
 
@@ -250,7 +250,9 @@ Implementation notes for future sessions:
 - `dispose(meshId)` now scans `solidCache` and `wireframeCache` separately, fixing the wireframe-only disposal path.
 - Focused verification: `npm.cmd run test -- MeshGPUCache` passes with 30 tests.
 
-#### 3.4 ForwardRenderer Responsibility Extraction
+#### 3.4 ForwardRenderer Responsibility Extraction ✅ COMPLETE
+
+**Completed:** 2026-07-12
 
 **File:** `src/plugins/renderers/forward/ForwardRenderer.ts`
 
@@ -261,15 +263,23 @@ Extract the shader resolution and uniform marshaling logic into focused helpers:
 
 This reduces ForwardRenderer from ~603 lines to ~350–400, and makes the shader pipeline reusable for future renderers (Deferred, Raytracing).
 
+Implementation notes for future sessions:
+- `ShaderResolver` now resolves material asset references, cached custom shader UUIDs, built-in shader names, and Lambert fallback programs.
+- `UniformSetter` now applies per-frame uniforms, object transform uniforms, shader-declared material uniforms, and fallback color/opacity uniforms.
+- `ForwardRenderer.ts` is now 307 lines and no longer contains inline shader resolution or the large uniform type switch.
+- Focused verification: `npm.cmd run test -- ShaderResolver UniformSetter ForwardRenderer` passes with 7 tests.
+
 #### 3.5 Tests
+
+**Next-session target:** Complete these remaining Phase 3 tests before starting Phase 4.
 
 | Test | Description |
 |------|-------------|
 | Multi-primitive GLTF mesh produces correct separate IMeshData entries | New unit test using crafted fixture |
 | Missing normals on indexed geometry produces valid flat normals | New unit test |
 | MeshGPUCache returns correct VAO for different shader programs | New unit test |
-| ShaderResolver resolves built-in + custom shaders correctly | New unit test |
-| UniformSetter handles all GLSL types | New unit test |
+| ShaderResolver resolves built-in + custom shaders correctly | Complete |
+| UniformSetter handles GLSL type dispatch and fallback material uniforms | Complete |
 | Full import of `test_assets/studio_setup.glb` completes without errors | New integration test |
 
 #### Success Criteria
@@ -277,9 +287,9 @@ This reduces ForwardRenderer from ~603 lines to ~350–400, and makes the shader
 - [ ] Multi-primitive meshes import with correct material assignments
 - [ ] Flat normal fallback produces correct normals for indexed geometry
 - [x] VAO cache handles shader attribute layout differences
-- [ ] ForwardRenderer line count reduced to ~350–400
+- [x] ForwardRenderer line count reduced to ~350-400
 - [ ] `studio_setup.glb` imports successfully in integration test
-- [ ] All existing tests pass
+- [x] All existing tests pass
 
 ---
 
@@ -348,7 +358,7 @@ This allows new asset types to be added without modifying registry code.
 - [ ] `FileSystemAssetStore.load()` validates against type-specific schemas
 - [ ] Dangling references are detectable and reportable
 - [ ] Asset type list is not hardcoded
-- [ ] All existing tests pass
+- [x] All existing tests pass
 
 ---
 

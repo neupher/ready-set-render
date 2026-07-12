@@ -1,7 +1,7 @@
 # Architecture Review
 
-> **Last Updated:** 2026-07-12T16:05:00Z
-> **Status:** Active review document — Phase 1 + Phase 2 remediation complete
+> **Last Updated:** 2026-07-12T16:57:00Z
+> **Status:** Active review document - Phase 1 + Phase 2 + Phase 3.2/3.3/3.4 remediation complete
 
 ---
 
@@ -21,7 +21,7 @@ A detailed phased execution plan has been created to address all findings in thi
 |-------|-------------------|--------|
 | Phase 1 | #1 Runtime composition too centralized | ✅ Complete (v0.16.0) |
 | Phase 2 | #2 Importer contract drift | ✅ Complete (v0.16.1) |
-| Phase 3 | #3 GLTF correctness gaps, #4 Renderer responsibilities | Not Started |
+| Phase 3 | #3 GLTF correctness gaps, #4 Renderer responsibilities | In Progress (3.2/3.3/3.4 complete) |
 | Phase 4 | #5 Asset integrity boundaries | Not Started |
 | Phase 5 | #7 Visual editor verification | Not Started |
 | Phase 6 | #6 Asset browser oversized | Not Started |

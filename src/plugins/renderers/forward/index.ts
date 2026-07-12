@@ -5,3 +5,6 @@
  */
 
 export { ForwardRenderer } from './ForwardRenderer';
+export { ShaderResolver } from './ShaderResolver';
+export { UniformSetter } from './UniformSetter';
+export type { FrameUniforms, ObjectUniforms } from './UniformSetter';

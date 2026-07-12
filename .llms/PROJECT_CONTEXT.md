@@ -1,6 +1,6 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-07-12T16:05:00Z
+> **Last Updated:** 2026-07-12T16:57:00Z
 > **Version:** 0.17.0
 > **Status:** Architecture Remediation Phase 3 in Progress
 
@@ -45,6 +45,9 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
   - VAO creation asks the active program for `aPosition`, `aNormal`, and `aTexCoord` locations and skips missing attributes (`-1`), so custom shader layouts no longer reuse incompatible VAOs
   - `dispose(meshId)` independently scans solid and wireframe caches; wireframe-only resources are no longer leaked when no matching solid resources exist
   - Focused verification: `npm.cmd run test -- MeshGPUCache` passes with 30 tests
+  - **Phase 3.4 handoff:** `ForwardRenderer` now delegates material-to-shader resolution to `ShaderResolver` and frame/object/material uniform marshaling to `UniformSetter`
+  - `ForwardRenderer.ts` is reduced to 307 lines and focused on render flow, mesh submission, light caching, and model-matrix setup
+  - Focused verification: `npm.cmd run test -- ShaderResolver UniformSetter ForwardRenderer` passes with 7 tests
 - **Dependency Security (v0.16.2)**: Dependabot alerts resolved
   - `vitest` and `@vitest/coverage-v8` updated to `^4.1.0`
   - npm overrides pin patched transitive versions of `postcss`, `brace-expansion`, and `ws`
@@ -225,7 +228,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Test Coverage
 
-- **1441 tests passing** (1424 prior + 14 new + 5 rewritten Asset Browser tests)
+- **1452 tests passing** (full `npm.cmd run validate`)
 - **85% coverage thresholds** enforced
 - `SceneGraphCommandContract.test.ts`: API contract validation for command classes
 - Large test-only fixture available at `/c:/Git/ready-set-render/test_assets/studio_setup.glb` for importer, editor launch, and visual verification work
@@ -235,6 +238,7 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 - **Architecture Remediation Phase 3.2 & 3.3**: Correctness fixes for GLTF import and GPU caching ✅ Complete
 - **MeshGPUCache shader-aware keying**: Per-program object identity and program-specific attribute lookups are used for both solid and wireframe VAOs
+- **ForwardRenderer helper split**: `ShaderResolver` owns material/shader UUID fallback behavior; `UniformSetter` owns GLSL uniform dispatch and material parameter defaults
 - **Application.ts** orchestrates all modules via PluginManager (clean 98-line index.ts)
 - **PluginManager** manages plugin lifecycle — register, initialize (topological order), dispose (reverse order)
 - **IPluginContext** rich service locator (11 fields) — plugins receive all shared services at initialization
@@ -262,6 +266,8 @@ Addresses architectural drift identified in [Architecture Review.md](./Architect
 | Phase 2 | Repair Importer Abstractions | ✅ Complete |
 | Phase 3.2 | Fallback Normal Generation for Indexed Geometry (GLTFImportService) | ✅ Complete |
 | Phase 3.3 | MeshGPUCache Shader-Aware Keying (meshId + programId) | ✅ Complete |
+| Phase 3.4 | ForwardRenderer Responsibility Extraction | ✅ Complete |
+| Phase 3.5 | Multi-primitive GLTF verification, indexed-normal regression test, and `studio_setup.glb` import integration test | Pending next session |
 | Phase 4 | Harden Asset Validation and Persistence Boundaries | Not Started |
 | Phase 5 | Visual Editor Verification Testing | Not Started |
 | Phase 6 | Split Oversized UI Modules (AssetBrowserTab) | Not Started |
