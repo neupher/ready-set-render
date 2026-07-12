@@ -1,6 +1,6 @@
 # Workflows Skill
 
-> Last Updated: 2026-07-10T12:00:00Z
+> Last Updated: 2026-07-12T15:50:00Z
 
 ## Purpose
 
@@ -18,6 +18,7 @@ Use this skill for tasks such as:
 
 ## Relevant Files
 
+- .llms/AGENTS.md
 - WORKFLOWS.md
 - PROJECT_CONTEXT.md
 - ARCHITECTURE.md
@@ -29,6 +30,8 @@ Use this skill for tasks such as:
 - Keep workflow triggers recognizable and stable.
 - Prefer lightweight handoff updates over verbose auto-generated summaries.
 - When the task changes scope, update the relevant context files and the workflow reference.
+- If root `AGENTS.md` is absent, use `.llms/AGENTS.md` as the project agent entrypoint.
+- Treat commits/tags during finalise as explicit user-controlled actions; update handoff docs without committing unless the user asks.
 
 ## Checklist
 

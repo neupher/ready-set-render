@@ -79,8 +79,8 @@ function createMockEdgeData(): IEdgeData {
 /**
  * Create a mock shader program.
  */
-function createMockProgram(): WebGLProgram {
-  return { id: 'program' } as unknown as WebGLProgram;
+function createMockProgram(id = 'program'): WebGLProgram {
+  return { id } as unknown as WebGLProgram;
 }
 
 describe('MeshGPUCache', () => {
@@ -131,7 +131,7 @@ describe('MeshGPUCache', () => {
       cache.getOrCreateSolid('mesh1', meshData, program);
 
       expect(cache.getSolidCacheSize()).toBe(1);
-      expect(cache.hasSolidResources('mesh1')).toBe(true);
+      expect(cache.hasSolidResources('mesh1', program)).toBe(true);
     });
 
     it('should return cached resources on subsequent calls', () => {
@@ -142,6 +142,37 @@ describe('MeshGPUCache', () => {
 
       expect(resources1).toBe(resources2);
       expect(gl.createVertexArray).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create separate resources for different shader programs', () => {
+      const meshData = createMockMeshData();
+      const otherProgram = createMockProgram('other-program');
+
+      const resources1 = cache.getOrCreateSolid('mesh1', meshData, program);
+      const resources2 = cache.getOrCreateSolid('mesh1', meshData, otherProgram);
+
+      expect(resources1).not.toBe(resources2);
+      expect(cache.getSolidCacheSize()).toBe(2);
+    });
+
+    it('should bind attributes using the provided shader program locations', () => {
+      const meshData = createMockMeshData();
+      meshData.uvs = new Float32Array([0, 0, 1, 0, 0.5, 1]);
+      vi.mocked(gl.getAttribLocation).mockImplementation((_program, name) => {
+        if (name === 'aPosition') return 4;
+        if (name === 'aNormal') return 5;
+        if (name === 'aTexCoord') return 6;
+        return -1;
+      });
+
+      cache.getOrCreateSolid('mesh1', meshData, program);
+
+      expect(gl.getAttribLocation).toHaveBeenCalledWith(program, 'aPosition');
+      expect(gl.getAttribLocation).toHaveBeenCalledWith(program, 'aNormal');
+      expect(gl.getAttribLocation).toHaveBeenCalledWith(program, 'aTexCoord');
+      expect(gl.enableVertexAttribArray).toHaveBeenCalledWith(4);
+      expect(gl.enableVertexAttribArray).toHaveBeenCalledWith(5);
+      expect(gl.enableVertexAttribArray).toHaveBeenCalledWith(6);
     });
 
     it('should create separate resources for different meshes', () => {
@@ -192,7 +223,7 @@ describe('MeshGPUCache', () => {
       cache.getOrCreateWireframe('mesh1', edgeData, program);
 
       expect(cache.getWireframeCacheSize()).toBe(1);
-      expect(cache.hasWireframeResources('mesh1')).toBe(true);
+      expect(cache.hasWireframeResources('mesh1', program)).toBe(true);
     });
 
     it('should return cached wireframe resources', () => {
@@ -203,31 +234,42 @@ describe('MeshGPUCache', () => {
 
       expect(resources1).toBe(resources2);
     });
+
+    it('should create separate wireframe resources for different shader programs', () => {
+      const edgeData = createMockEdgeData();
+      const otherProgram = createMockProgram('other-program');
+
+      const resources1 = cache.getOrCreateWireframe('mesh1', edgeData, program);
+      const resources2 = cache.getOrCreateWireframe('mesh1', edgeData, otherProgram);
+
+      expect(resources1).not.toBe(resources2);
+      expect(cache.getWireframeCacheSize()).toBe(2);
+    });
   });
 
   describe('hasSolidResources', () => {
     it('should return false for non-existent mesh', () => {
-      expect(cache.hasSolidResources('nonexistent')).toBe(false);
+      expect(cache.hasSolidResources('nonexistent', program)).toBe(false);
     });
 
     it('should return true after creating resources', () => {
       const meshData = createMockMeshData();
       cache.getOrCreateSolid('mesh1', meshData, program);
 
-      expect(cache.hasSolidResources('mesh1')).toBe(true);
+      expect(cache.hasSolidResources('mesh1', program)).toBe(true);
     });
   });
 
   describe('hasWireframeResources', () => {
     it('should return false for non-existent mesh', () => {
-      expect(cache.hasWireframeResources('nonexistent')).toBe(false);
+      expect(cache.hasWireframeResources('nonexistent', program)).toBe(false);
     });
 
     it('should return true after creating resources', () => {
       const edgeData = createMockEdgeData();
       cache.getOrCreateWireframe('mesh1', edgeData, program);
 
-      expect(cache.hasWireframeResources('mesh1')).toBe(true);
+      expect(cache.hasWireframeResources('mesh1', program)).toBe(true);
     });
   });
 
@@ -241,8 +283,18 @@ describe('MeshGPUCache', () => {
 
       cache.dispose('mesh1');
 
-      expect(cache.hasSolidResources('mesh1')).toBe(false);
-      expect(cache.hasWireframeResources('mesh1')).toBe(false);
+      expect(cache.hasSolidResources('mesh1', program)).toBe(false);
+      expect(cache.hasWireframeResources('mesh1', program)).toBe(false);
+    });
+
+    it('should dispose wireframe resources even when no solid resources exist', () => {
+      const edgeData = createMockEdgeData();
+      cache.getOrCreateWireframe('mesh1', edgeData, program);
+
+      cache.dispose('mesh1');
+
+      expect(cache.hasWireframeResources('mesh1', program)).toBe(false);
+      expect(cache.getWireframeCacheSize()).toBe(0);
     });
 
     it('should call WebGL delete methods', () => {
@@ -272,8 +324,8 @@ describe('MeshGPUCache', () => {
 
       cache.disposeSolid('mesh1');
 
-      expect(cache.hasSolidResources('mesh1')).toBe(false);
-      expect(cache.hasWireframeResources('mesh1')).toBe(true);
+      expect(cache.hasSolidResources('mesh1', program)).toBe(false);
+      expect(cache.hasWireframeResources('mesh1', program)).toBe(true);
     });
   });
 
@@ -287,8 +339,8 @@ describe('MeshGPUCache', () => {
 
       cache.disposeWireframe('mesh1');
 
-      expect(cache.hasSolidResources('mesh1')).toBe(true);
-      expect(cache.hasWireframeResources('mesh1')).toBe(false);
+      expect(cache.hasSolidResources('mesh1', program)).toBe(true);
+      expect(cache.hasWireframeResources('mesh1', program)).toBe(false);
     });
   });
 

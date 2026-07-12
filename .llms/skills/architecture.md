@@ -1,6 +1,6 @@
 # Architecture Skill
 
-> Last Updated: 2026-07-10T12:00:00Z
+> Last Updated: 2026-07-12T15:50:00Z
 
 ## Purpose
 
@@ -28,6 +28,8 @@ Use this skill for tasks such as:
 - Keep dependencies explicit and interface-based where possible.
 - Preserve plugin-based extensibility.
 - Avoid introducing global state unless it is already part of the established architecture.
+- For renderer GPU caches, avoid deriving resource identity from shader metadata. VAO cache keys must account for the actual `WebGLProgram` object because attribute layouts can differ across custom shaders.
+- When creating VAOs for shader-driven rendering, query attribute locations from the active program and tolerate missing attributes (`-1`).
 
 ## Checklist
 

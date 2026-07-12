@@ -1,6 +1,6 @@
 # Testing Skill
 
-> Last Updated: 2026-07-10T12:00:00Z
+> Last Updated: 2026-07-12T15:50:00Z
 
 ## Purpose
 
@@ -26,6 +26,8 @@ Use this skill for tasks such as:
 - Prefer tests that exercise real behavior rather than mock-only behavior.
 - Add regression coverage for bugs that are fixed.
 - Keep tests focused on observable outcomes.
+- For WebGL cache/shader regressions, include cases for multiple shader programs, custom attribute locations, missing attributes, and disposal paths.
+- If Vitest/esbuild cannot load config because of sandbox filesystem restrictions, rerun the same command with approval; do not report that as a product test failure.
 
 ## Checklist
 

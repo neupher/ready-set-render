@@ -255,33 +255,7 @@ export class GLTFImportService {
     // Convert positions from Y-up to Z-up
     const positions = this.convertCoordinates(new Float32Array(positionArray));
 
-    // Get normals (optional but recommended)
-    let normals: Float32Array;
-    const normalAccessor = primitive.getAttribute('NORMAL');
-    if (normalAccessor) {
-      const normalArray = normalAccessor.getArray();
-      if (normalArray) {
-        normals = this.convertCoordinates(new Float32Array(normalArray));
-      } else {
-        warnings.push(`Could not get normal array, generating flat normals`);
-        normals = this.generateFlatNormals(positions);
-      }
-    } else {
-      warnings.push(`Primitive has no NORMAL attribute, generating flat normals`);
-      normals = this.generateFlatNormals(positions);
-    }
-
-    // Get UVs (optional)
-    let uvs: Float32Array | undefined;
-    const uvAccessor = primitive.getAttribute('TEXCOORD_0');
-    if (uvAccessor) {
-      const uvArray = uvAccessor.getArray();
-      if (uvArray) {
-        uvs = new Float32Array(uvArray);
-      }
-    }
-
-    // Get indices
+    // Get indices FIRST (needed for flat normal generation)
     const indicesAccessor = primitive.getIndices();
     let indices: Uint16Array | Uint32Array;
 
@@ -302,6 +276,32 @@ export class GLTFImportService {
     } else {
       // Generate sequential indices for non-indexed geometry
       indices = this.generateSequentialIndices(positions.length / 3);
+    }
+
+    // Get normals (optional but recommended) - use flat normals if missing/invalid
+    let normals: Float32Array;
+    const normalAccessor = primitive.getAttribute('NORMAL');
+    if (normalAccessor) {
+      const normalArray = normalAccessor.getArray();
+      if (normalArray) {
+        normals = this.convertCoordinates(new Float32Array(normalArray));
+      } else {
+        warnings.push(`Could not get normal array, generating flat normals`);
+        normals = this.generateFlatNormals(positions, indices);
+      }
+    } else {
+      warnings.push(`Primitive has no NORMAL attribute, generating flat normals`);
+      normals = this.generateFlatNormals(positions, indices);
+    }
+
+    // Get UVs (optional)
+    let uvs: Float32Array | undefined;
+    const uvAccessor = primitive.getAttribute('TEXCOORD_0');
+    if (uvAccessor) {
+      const uvArray = uvAccessor.getArray();
+      if (uvArray) {
+        uvs = new Float32Array(uvArray);
+      }
     }
 
     // Get material index
@@ -514,16 +514,24 @@ export class GLTFImportService {
   }
 
   /**
-   * Generate flat shading normals from positions.
+   * Generate flat shading normals from positions using indexed geometry.
+   * Each triangle gets its own unique normal computed from vertex positions.
    */
-  private generateFlatNormals(positions: Float32Array): Float32Array {
-    const normals = new Float32Array(positions.length);
+  private generateFlatNormals(positions: Float32Array, indices: Uint16Array | Uint32Array): Float32Array {
+    const vertexCount = positions.length / 3;
+    const indexLength = indices.length;
+    const normals = new Float32Array(vertexCount * 3);
 
-    for (let i = 0; i < positions.length; i += 9) {
+    // Process each triangle and compute normal for all three vertices
+    for (let t = 0; t < indexLength / 3; t++) {
+      const i0 = indices[t * 3];
+      const i1 = indices[t * 3 + 1];
+      const i2 = indices[t * 3 + 2];
+
       // Get three vertices of the triangle
-      const v0 = [positions[i], positions[i + 1], positions[i + 2]];
-      const v1 = [positions[i + 3], positions[i + 4], positions[i + 5]];
-      const v2 = [positions[i + 6], positions[i + 7], positions[i + 8]];
+      const v0 = [positions[i0 * 3], positions[i0 * 3 + 1], positions[i0 * 3 + 2]];
+      const v1 = [positions[i1 * 3], positions[i1 * 3 + 1], positions[i1 * 3 + 2]];
+      const v2 = [positions[i2 * 3], positions[i2 * 3 + 1], positions[i2 * 3 + 2]];
 
       // Calculate edges
       const e1 = [v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2]];
@@ -536,18 +544,18 @@ export class GLTFImportService {
 
       // Normalize
       const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
-      const invLen = len > 0 ? 1 / len : 0;
+      if (len === 0) continue; // Skip degenerate triangles
+
+      const invLen = 1 / len;
 
       const normalX = nx * invLen;
       const normalY = ny * invLen;
       const normalZ = nz * invLen;
 
-      // Set normal for all three vertices
-      for (let j = 0; j < 9; j += 3) {
-        normals[i + j] = normalX;
-        normals[i + j + 1] = normalY;
-        normals[i + j + 2] = normalZ;
-      }
+      // Set normal for all three vertices of this triangle
+      normals[i0 * 3] = normalX; normals[i0 * 3 + 1] = normalY; normals[i0 * 3 + 2] = normalZ;
+      normals[i1 * 3] = normalX; normals[i1 * 3 + 1] = normalY; normals[i1 * 3 + 2] = normalZ;
+      normals[i2 * 3] = normalX; normals[i2 * 3 + 1] = normalY; normals[i2 * 3 + 2] = normalZ;
     }
 
     return normals;

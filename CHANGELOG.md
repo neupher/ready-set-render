@@ -9,11 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Architecture Remediation Phase 3.2**: Flat normal generation with indexed geometry
+  - `GLTFImportService.generateFlatNormals()` now accepts indices parameter to compute per-triangle normals
+  - Fixes incorrect shading on imported models missing explicit normal attributes
+- **Architecture Remediation Phase 3.3**: MeshGPUCache shader-aware VAO keying
+  - Cache entries now use stable WebGL program object identity instead of `ACTIVE_UNIFORMS`, avoiding collisions between different shader programs
+  - Solid and wireframe VAOs now bind attributes using the supplied shader program's `aPosition`, `aNormal`, and `aTexCoord` locations when available
+  - Mesh disposal now clears solid and wireframe cache entries independently, including wireframe-only resources
+
 ### Added
 
-- Added `.llms/AGENTS.md` and a new `.llms/skills/` directory for agent-facing guidance.
+- Architecture Remediation Phase 3.2 & 3.3: Correctness fixes for GLTF import and GPU caching
+- `.llms/AGENTS.md` and a new `.llms/skills/` directory for agent-facing guidance.
 - Rewrote `.llms/GUIDELINES.md` and `.llms/WORKFLOWS.md` to simplify active guidance and workflow triggers.
 - Added starter skill documents for architecture, plugins, materials, testing, and workflows.
+
+### Tests
+
+- `npm.cmd run test -- MeshGPUCache` passing: 1 test file, 30 tests
 
 ---
 

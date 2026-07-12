@@ -1,8 +1,8 @@
 # Architecture Remediation Plan
 
-> **Last Updated:** 2026-04-22T14:30:00Z
+> **Last Updated:** 2026-07-12T15:45:00Z
 > **Version:** 0.1.2
-> **Status:** Phase 1 + Phase 2 Complete
+> **Status:** Phase 1 + Phase 2 + Phase 3.2/3.3 Complete
 > **Priority:** Highest — Execute before new feature work
 > **Source:** [Architecture Review.md](./Architecture%20Review.md)
 
@@ -231,15 +231,24 @@ class ImportController {
 2. Ensure the generated normals array length matches the expanded positions array.
 3. Add test coverage for this specific path.
 
-#### 3.3 MeshGPUCache Shader-Aware Keying
+#### 3.3 MeshGPUCache Shader-Aware Keying ✅ COMPLETE
+
+**Completed:** 2026-07-12
 
 **File:** `src/plugins/renderers/shared/MeshGPUCache.ts`
 
 **Current issue:** VAOs are keyed by mesh ID only. When a custom shader uses different attribute locations, the cached VAO may bind attributes to wrong locations.
 
 Fix options (choose during implementation):
-- **Option A:** Key VAOs by `meshId + programId` (simple, may increase memory).
+- **Option A:** Key VAOs by `meshId + programId` (simple, may increase memory). **Chosen:** implemented via a `WeakMap<WebGLProgram, number>` so each WebGL program object gets a stable identity without querying shader metadata.
 - **Option B:** Use standardized attribute locations across all shaders via `gl.bindAttribLocation()` before linking (requires shader compilation change but is the correct long-term solution).
+
+Implementation notes for future sessions:
+- `MeshGPUCache.generateCacheKey()` now combines `meshId` with stable program object identity; this replaces the previous `ACTIVE_UNIFORMS` query, which could collide across programs.
+- Solid VAOs query `aPosition`, `aNormal`, and `aTexCoord` from the active program and skip disabled/missing attributes.
+- Wireframe VAOs also query `aPosition` from the active program instead of assuming location 0.
+- `dispose(meshId)` now scans `solidCache` and `wireframeCache` separately, fixing the wireframe-only disposal path.
+- Focused verification: `npm.cmd run test -- MeshGPUCache` passes with 30 tests.
 
 #### 3.4 ForwardRenderer Responsibility Extraction
 
@@ -267,7 +276,7 @@ This reduces ForwardRenderer from ~603 lines to ~350–400, and makes the shader
 
 - [ ] Multi-primitive meshes import with correct material assignments
 - [ ] Flat normal fallback produces correct normals for indexed geometry
-- [ ] VAO cache handles shader attribute layout differences
+- [x] VAO cache handles shader attribute layout differences
 - [ ] ForwardRenderer line count reduced to ~350–400
 - [ ] `studio_setup.glb` imports successfully in integration test
 - [ ] All existing tests pass

@@ -12,7 +12,7 @@
  * const cache = new MeshGPUCache(gl);
  *
  * // In render loop:
- * const resources = cache.getOrCreate(entity.id, meshData, program);
+ * const resources = cache.getOrCreateSolid(entity.id, meshData, program);
  * gl.bindVertexArray(resources.vao);
  * gl.drawElements(gl.TRIANGLES, resources.indexCount, gl.UNSIGNED_SHORT, 0);
  *
@@ -54,16 +54,56 @@ export interface EdgeGPUResources {
 }
 
 /**
+ * Cache key component - combines mesh ID and program ID for shader-aware caching.
+ * This ensures different shaders with different attribute locations get separate VAOs.
+ */
+export interface MeshCacheKey {
+  /** Unique identifier for the mesh (usually entity.id) */
+  readonly meshId: string;
+  /** WebGLProgram ID used for rendering this mesh */
+  readonly programId: number | null;
+}
+
+/**
  * Centralized cache for mesh GPU resources.
  * Prevents duplication of GPU resource management across primitives.
+ *
+ * FIX FOR PHASE 3.3: Now uses shader-aware cache keys (meshId + programId)
+ * to ensure VAOs have correct attribute locations for each shader program.
  */
 export class MeshGPUCache {
   private readonly gl: WebGL2RenderingContext;
+
+  // Cache maps keyed by "meshId|programId" string combination
   private readonly solidCache = new Map<string, MeshGPUResources>();
   private readonly wireframeCache = new Map<string, EdgeGPUResources>();
+  private readonly programIds = new WeakMap<WebGLProgram, number>();
+  private nextProgramId = 1;
 
   constructor(gl: WebGL2RenderingContext) {
     this.gl = gl;
+  }
+
+  /**
+   * Generate a unique cache key combining mesh ID and shader program.
+   * This ensures VAOs are created separately for different shaders
+   * that may have different attribute locations.
+   */
+  private generateCacheKey(meshId: string, program: WebGLProgram | null): string {
+    const programId = program ? this.getProgramId(program) : null;
+    return `${meshId}|${programId ?? 'null'}`;
+  }
+
+  /**
+   * Get a stable identity for a WebGL program object.
+   */
+  private getProgramId(program: WebGLProgram): number {
+    let programId = this.programIds.get(program);
+    if (programId === undefined) {
+      programId = this.nextProgramId++;
+      this.programIds.set(program, programId);
+    }
+    return programId;
   }
 
   /**
@@ -77,17 +117,20 @@ export class MeshGPUCache {
   getOrCreateSolid(
     meshId: string,
     meshData: IMeshData,
-    program: WebGLProgram
+    program: WebGLProgram | null
   ): MeshGPUResources {
+    // Generate cache key that includes shader program ID
+    const cacheKey = this.generateCacheKey(meshId, program);
+
     // Return cached resources if available
-    const cached = this.solidCache.get(meshId);
+    const cached = this.solidCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
     // Create new GPU resources
     const resources = this.createSolidResources(meshData, program);
-    this.solidCache.set(meshId, resources);
+    this.solidCache.set(cacheKey, resources);
     return resources;
   }
 
@@ -102,62 +145,92 @@ export class MeshGPUCache {
   getOrCreateWireframe(
     meshId: string,
     edgeData: IEdgeData,
-    program: WebGLProgram
+    program: WebGLProgram | null
   ): EdgeGPUResources {
+    // Generate cache key that includes shader program ID
+    const cacheKey = this.generateCacheKey(meshId, program);
+
     // Return cached resources if available
-    const cached = this.wireframeCache.get(meshId);
+    const cached = this.wireframeCache.get(cacheKey);
     if (cached) {
       return cached;
     }
 
     // Create new GPU resources
     const resources = this.createWireframeResources(edgeData, program);
-    this.wireframeCache.set(meshId, resources);
+    this.wireframeCache.set(cacheKey, resources);
     return resources;
   }
 
   /**
    * Check if solid resources exist for a mesh.
+   * Note: This now checks by cache key, not just meshId.
    */
-  hasSolidResources(meshId: string): boolean {
-    return this.solidCache.has(meshId);
+  hasSolidResources(meshId: string, program: WebGLProgram | null): boolean {
+    const cacheKey = this.generateCacheKey(meshId, program);
+    return this.solidCache.has(cacheKey);
   }
 
   /**
    * Check if wireframe resources exist for a mesh.
    */
-  hasWireframeResources(meshId: string): boolean {
-    return this.wireframeCache.has(meshId);
+  hasWireframeResources(meshId: string, program: WebGLProgram | null): boolean {
+    const cacheKey = this.generateCacheKey(meshId, program);
+    return this.wireframeCache.has(cacheKey);
   }
 
   /**
    * Dispose GPU resources for a specific mesh.
+   * Note: This disposes all shaders' VAOs for a given mesh since we can't easily track per-shader.
    */
   dispose(meshId: string): void {
-    this.disposeSolid(meshId);
-    this.disposeWireframe(meshId);
+    // Clear the cache key and remove all entries that match this mesh ID
+    const solidKeysToDelete = Array.from(this.solidCache.keys()).filter(key => key.startsWith(`${meshId}|`));
+    for (const key of solidKeysToDelete) {
+      const resources = this.solidCache.get(key);
+      if (resources) {
+        this.deleteSolidResources(resources);
+      }
+      this.solidCache.delete(key);
+    }
+
+    // Do the same for wireframe cache
+    const wireframeKeysToDelete = Array.from(this.wireframeCache.keys()).filter(key => key.startsWith(`${meshId}|`));
+    wireframeKeysToDelete.forEach(key => {
+      const resources = this.wireframeCache.get(key);
+      if (resources) {
+        this.deleteWireframeResources(resources);
+      }
+      this.wireframeCache.delete(key);
+    });
   }
 
   /**
    * Dispose solid GPU resources for a specific mesh.
    */
   disposeSolid(meshId: string): void {
-    const resources = this.solidCache.get(meshId);
-    if (resources) {
-      this.deleteSolidResources(resources);
-      this.solidCache.delete(meshId);
-    }
+    const keysToDelete = Array.from(this.solidCache.keys()).filter(key => key.startsWith(`${meshId}|`));
+    keysToDelete.forEach(key => {
+      const resources = this.solidCache.get(key);
+      if (resources) {
+        this.deleteSolidResources(resources);
+        this.solidCache.delete(key);
+      }
+    });
   }
 
   /**
    * Dispose wireframe GPU resources for a specific mesh.
    */
   disposeWireframe(meshId: string): void {
-    const resources = this.wireframeCache.get(meshId);
-    if (resources) {
-      this.deleteWireframeResources(resources);
-      this.wireframeCache.delete(meshId);
-    }
+    const keysToDelete = Array.from(this.wireframeCache.keys()).filter(key => key.startsWith(`${meshId}|`));
+    keysToDelete.forEach(key => {
+      const resources = this.wireframeCache.get(key);
+      if (resources) {
+        this.deleteWireframeResources(resources);
+        this.wireframeCache.delete(key);
+      }
+    });
   }
 
   /**
@@ -191,12 +264,18 @@ export class MeshGPUCache {
 
   /**
    * Create solid mesh GPU resources.
+   * FIX FOR PHASE 3.3: Now uses program parameter for attribute location binding.
    */
   private createSolidResources(
     meshData: IMeshData,
-    program: WebGLProgram
+    program: WebGLProgram | null
   ): MeshGPUResources {
     const gl = this.gl;
+
+    // If no program is provided, use default attribute locations.
+    const aPositionLoc = program ? gl.getAttribLocation(program, 'aPosition') : 0;
+    const aNormalLoc = program ? gl.getAttribLocation(program, 'aNormal') : 1;
+    const aTexCoordLoc = program ? gl.getAttribLocation(program, 'aTexCoord') : 2;
 
     // Create VAO
     const vao = gl.createVertexArray();
@@ -213,7 +292,6 @@ export class MeshGPUCache {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionVbo);
     gl.bufferData(gl.ARRAY_BUFFER, meshData.positions, gl.STATIC_DRAW);
 
-    const aPositionLoc = gl.getAttribLocation(program, 'aPosition');
     if (aPositionLoc >= 0) {
       gl.enableVertexAttribArray(aPositionLoc);
       gl.vertexAttribPointer(aPositionLoc, 3, gl.FLOAT, false, 0, 0);
@@ -227,7 +305,6 @@ export class MeshGPUCache {
     gl.bindBuffer(gl.ARRAY_BUFFER, normalVbo);
     gl.bufferData(gl.ARRAY_BUFFER, meshData.normals, gl.STATIC_DRAW);
 
-    const aNormalLoc = gl.getAttribLocation(program, 'aNormal');
     if (aNormalLoc >= 0) {
       gl.enableVertexAttribArray(aNormalLoc);
       gl.vertexAttribPointer(aNormalLoc, 3, gl.FLOAT, false, 0, 0);
@@ -241,7 +318,6 @@ export class MeshGPUCache {
         gl.bindBuffer(gl.ARRAY_BUFFER, uvVbo);
         gl.bufferData(gl.ARRAY_BUFFER, meshData.uvs, gl.STATIC_DRAW);
 
-        const aTexCoordLoc = gl.getAttribLocation(program, 'aTexCoord');
         if (aTexCoordLoc >= 0) {
           gl.enableVertexAttribArray(aTexCoordLoc);
           gl.vertexAttribPointer(aTexCoordLoc, 2, gl.FLOAT, false, 0, 0);
@@ -275,7 +351,7 @@ export class MeshGPUCache {
    */
   private createWireframeResources(
     edgeData: IEdgeData,
-    program: WebGLProgram
+    program: WebGLProgram | null
   ): EdgeGPUResources {
     const gl = this.gl;
 
@@ -294,7 +370,7 @@ export class MeshGPUCache {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionVbo);
     gl.bufferData(gl.ARRAY_BUFFER, edgeData.lineVertices, gl.STATIC_DRAW);
 
-    const aPositionLoc = gl.getAttribLocation(program, 'aPosition');
+    const aPositionLoc = program ? gl.getAttribLocation(program, 'aPosition') : 0;
     if (aPositionLoc >= 0) {
       gl.enableVertexAttribArray(aPositionLoc);
       gl.vertexAttribPointer(aPositionLoc, 3, gl.FLOAT, false, 0, 0);

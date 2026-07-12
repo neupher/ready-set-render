@@ -1,8 +1,8 @@
 # Project Context: WebGL Editor
 
-> **Last Updated:** 2026-07-10T12:00:00Z
-> **Version:** 0.16.2
-> **Status:** Agent Guidance Restructure In Progress
+> **Last Updated:** 2026-07-12T15:45:00Z
+> **Version:** 0.17.0
+> **Status:** Architecture Remediation Phase 3 in Progress
 
 ---
 
@@ -40,6 +40,11 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### What's Working
 
+- **Architecture Remediation Phase 3.2 & 3.3**: Correctness fixes for GLTF import and GPU caching ✅ Complete
+  - **Phase 3.3 handoff:** `MeshGPUCache` now keys solid and wireframe VAOs by `meshId|programIdentity` using a `WeakMap<WebGLProgram, number>` rather than shader metadata such as `ACTIVE_UNIFORMS`
+  - VAO creation asks the active program for `aPosition`, `aNormal`, and `aTexCoord` locations and skips missing attributes (`-1`), so custom shader layouts no longer reuse incompatible VAOs
+  - `dispose(meshId)` independently scans solid and wireframe caches; wireframe-only resources are no longer leaked when no matching solid resources exist
+  - Focused verification: `npm.cmd run test -- MeshGPUCache` passes with 30 tests
 - **Dependency Security (v0.16.2)**: Dependabot alerts resolved
   - `vitest` and `@vitest/coverage-v8` updated to `^4.1.0`
   - npm overrides pin patched transitive versions of `postcss`, `brace-expansion`, and `ws`
@@ -228,6 +233,8 @@ A modular, extensible WebGL2-based 3D editor designed for learning and implement
 
 ### Architecture Highlights
 
+- **Architecture Remediation Phase 3.2 & 3.3**: Correctness fixes for GLTF import and GPU caching ✅ Complete
+- **MeshGPUCache shader-aware keying**: Per-program object identity and program-specific attribute lookups are used for both solid and wireframe VAOs
 - **Application.ts** orchestrates all modules via PluginManager (clean 98-line index.ts)
 - **PluginManager** manages plugin lifecycle — register, initialize (topological order), dispose (reverse order)
 - **IPluginContext** rich service locator (11 fields) — plugins receive all shared services at initialization
@@ -253,7 +260,8 @@ Addresses architectural drift identified in [Architecture Review.md](./Architect
 |-------|-------------|--------|
 | Phase 1 | Reconcile Runtime Composition with Plugin Architecture | ✅ Complete |
 | Phase 2 | Repair Importer Abstractions | ✅ Complete |
-| Phase 3 | Fix Importer and Renderer Correctness Risks | Not Started |
+| Phase 3.2 | Fallback Normal Generation for Indexed Geometry (GLTFImportService) | ✅ Complete |
+| Phase 3.3 | MeshGPUCache Shader-Aware Keying (meshId + programId) | ✅ Complete |
 | Phase 4 | Harden Asset Validation and Persistence Boundaries | Not Started |
 | Phase 5 | Visual Editor Verification Testing | Not Started |
 | Phase 6 | Split Oversized UI Modules (AssetBrowserTab) | Not Started |
